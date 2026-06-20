@@ -47,19 +47,16 @@ class LoginScreen(DirectObject):
         frame = DirectFrame(
             frameColor=UI.STONE,
             frameSize=(-0.62, 0.62, -0.38, 0.38),
-            pos=(0, 0, 0),
         )
         inset = DirectFrame(
             parent=frame,
             frameColor=PANEL,
             frameSize=(-0.59, 0.59, -0.35, 0.35),
-            pos=(0, 0, 0),
         )
         title_strip = DirectFrame(
             parent=frame,
             frameColor=UI.PARCHMENT,
             frameSize=(-0.45, 0.45, 0.205, 0.315),
-            pos=(0, 0, 0),
         )
         title = DirectLabel(
             parent=frame,

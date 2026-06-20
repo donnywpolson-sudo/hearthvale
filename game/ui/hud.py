@@ -29,12 +29,20 @@ TAB_ORDER = (INVENTORY_TAB, CLOTHES_TAB, SKILLS_TAB)
 INVENTORY_COLUMNS = 4
 INVENTORY_ROWS = 7
 INVENTORY_SLOT_COUNT = INVENTORY_COLUMNS * INVENTORY_ROWS
-INVENTORY_QUANTITY_TEXT_SCALE = 0.024
-SIDE_TAB_TEXT_SCALE = 0.036
+INVENTORY_QUANTITY_TEXT_SCALE = 0.027
+SIDE_TAB_TEXT_SCALE = 0.039
 SKILL_ROW_SPACING = 0.095
-SKILL_NAME_TEXT_SCALE = 0.027
-SKILL_DETAIL_TEXT_SCALE = 0.023
-ITEM_ICON_LABEL_TEXT_SCALE = 0.020
+SKILL_NAME_TEXT_SCALE = 0.031
+SKILL_DETAIL_TEXT_SCALE = 0.026
+ITEM_ICON_LABEL_TEXT_SCALE = 0.023
+STATS_TEXT_SCALE = 0.036
+FEEDBACK_TEXT_SCALE = 0.039
+CHAT_VISIBLE_LINES = 8
+CHAT_HISTORY_LIMIT = 100
+CHAT_TEXT_SCALE = 0.027
+ROW_TEXT_SCALE = 0.022
+ROW_BUTTON_TEXT_SCALE = 0.023
+SMALL_BUTTON_TEXT_SCALE = 0.023
 IconSpec = tuple[
     tuple[float, float, float, float],
     tuple[float, float, float],
@@ -110,33 +118,42 @@ class Hud:
         self.hover_text = ""
         self.ui_hover_text = ""
         self.shop_stock: list[dict[str, object]] = []
+        self.quest_objective_text = ""
+        self.quest_objective_completed = False
         self.quantity_mode = "all"
         self.chat_messages: list[str] = []
+        self.chat_scroll = 0
         self.context_buttons: list[DirectButton] = []
 
-        self.stats_panel = _panel((-0.02, 0.44, -0.25, 0.04), (-1.75, 0, 0.95), PANEL)
-        self.stats = _text(self.stats_panel, "", (0.025, -0.035), 0.032, TextNode.ALeft, TEXT, True)
-        _button(self.stats_panel, "File", (0.09, 0, -0.155), 0.030, self.toggle_file_menu)
-        self.file_menu = _panel((-0.11, 0.11, -0.155, 0.02), (0.09, 0, -0.21), PANEL_DARK, self.stats_panel)
-        _button(self.file_menu, "Save", (0.0, 0, -0.025), 0.028, self._save_from_menu)
-        _button(self.file_menu, "Load", (0.0, 0, -0.080), 0.028, self._load_from_menu)
-        _button(self.file_menu, "Quit", (0.0, 0, -0.135), 0.028, self._quit_from_menu)
+        self.stats_panel = _panel((-0.02, 0.49, -0.22, 0.04), (-1.75, 0, 0.95), PANEL)
+        self.stats = _text(self.stats_panel, "", (0.025, -0.035), STATS_TEXT_SCALE, TextNode.ALeft, TEXT, True)
+        self.file_button = _button(self.stats_panel, "File", (0.37, 0, -0.155), SMALL_BUTTON_TEXT_SCALE, self.toggle_file_menu)
+        self.file_menu = _panel((-0.11, 0.11, -0.155, 0.02), (0.37, 0, -0.21), PANEL_DARK, self.stats_panel)
+        _button(self.file_menu, "Save", (0.0, 0, -0.025), SMALL_BUTTON_TEXT_SCALE, self._save_from_menu)
+        _button(self.file_menu, "Load", (0.0, 0, -0.080), SMALL_BUTTON_TEXT_SCALE, self._load_from_menu)
+        _button(self.file_menu, "Quit", (0.0, 0, -0.135), SMALL_BUTTON_TEXT_SCALE, self._quit_from_menu)
         self.file_menu.hide()
 
         self.feedback_panel = _panel((-0.54, 0.54, -0.075, 0.045), (0.0, 0, 0.91), PANEL_DARK)
-        self.feedback = _text(self.feedback_panel, "", (0.0, -0.012), 0.034, TextNode.ACenter, GOLD, True)
+        self.feedback = _text(self.feedback_panel, "", (0.0, -0.012), FEEDBACK_TEXT_SCALE, TextNode.ACenter, GOLD, True)
         self.progress_track = _frame((-0.48, 0.48, -0.058, -0.046), (0.0, 0, 0.0), SLOT, self.feedback_panel)
         self.progress_fill = _frame((-0.48, -0.48, -0.058, -0.046), (0.0, 0, 0.0), GOLD, self.feedback_panel)
         self.progress_track.hide()
         self.progress_fill.hide()
-        self.xp_toast = _text(self.feedback_panel, "", (0.0, 0.070), 0.034, TextNode.ACenter, GOLD, True)
+        self.xp_toast = _text(self.feedback_panel, "", (0.0, 0.070), FEEDBACK_TEXT_SCALE, TextNode.ACenter, GOLD, True)
         self.xp_toast.hide()
+
+        self.quest_panel = _panel((-0.44, 0.44, -0.040, 0.040), (0.0, 0, 0.805), PANEL_DARK)
+        self.quest_objective = _text(self.quest_panel, "", (0.0, -0.011), 0.030, TextNode.ACenter, TEXT, True)
+        self.quest_panel.hide()
 
         self.chat_panel = _panel((-0.92, 0.40, -0.23, 0.03), (-0.76, 0, -0.70), PANEL_DARK)
         self.chat_lines = [
-            _text(self.chat_panel, "", (-0.88, -0.010 - index * 0.030), 0.023, TextNode.ALeft, TEXT, True)
-            for index in range(8)
+            _text(self.chat_panel, "", (-0.88, -0.010 - index * 0.031), CHAT_TEXT_SCALE, TextNode.ALeft, TEXT, True)
+            for index in range(CHAT_VISIBLE_LINES)
         ]
+        self.chat_up_button = _button(self.chat_panel, "Up", (0.30, 0, -0.050), SMALL_BUTTON_TEXT_SCALE, lambda: self.scroll_chat(1))
+        self.chat_down_button = _button(self.chat_panel, "Down", (0.30, 0, -0.145), SMALL_BUTTON_TEXT_SCALE, lambda: self.scroll_chat(-1))
 
         self.side_panel = _panel((-0.26, 0.26, -1.38, 0.18), (1.48, 0, 0.74), PANEL)
         _text(self.side_panel, "RuneScape Valley", (0.0, 0.115), 0.034, TextNode.ACenter, GOLD)
@@ -199,18 +216,16 @@ class Hud:
         selected_item_id: str | None = None,
         shop_stock: list[dict[str, object]] | None = None,
         gather_progress: float | None = None,
+        quest_objective_text: str = "",
+        quest_objective_completed: bool = False,
     ) -> None:
         if shop_stock is not None:
             self.shop_stock = list(shop_stock)
-        selected = selected_text or "Selected: none"
-        selected_item = f"Selected item: {_item_name(self.items_data, selected_item_id)}" if selected_item_id else "Selected item: none"
         self.stats.setText(
             "\n".join(
                 [
                     f"Account: {account}",
                     time_text,
-                    selected,
-                    selected_item,
                 ]
             )
         )
@@ -221,6 +236,7 @@ class Hud:
         self._sync_bank_rows(inventory, bank)
         self._sync_shop_rows(inventory, self.shop_stock)
         self._sync_progress(gather_progress)
+        self._sync_quest_objective(quest_objective_text, quest_objective_completed)
 
     def set_feedback(self, message: str) -> None:
         self.feedback_message = message
@@ -236,11 +252,22 @@ class Hud:
         message = message.strip()
         if not message:
             return
+        follow_latest = self.chat_scroll == 0
         self.chat_messages.append(message)
-        self.chat_messages = self.chat_messages[-8:]
-        for index, line in enumerate(self.chat_lines):
-            text = self.chat_messages[index] if index < len(self.chat_messages) else ""
-            line.setText(text)
+        if len(self.chat_messages) > CHAT_HISTORY_LIMIT:
+            overflow = len(self.chat_messages) - CHAT_HISTORY_LIMIT
+            del self.chat_messages[:overflow]
+        if follow_latest:
+            self.chat_scroll = 0
+        else:
+            self.chat_scroll = min(self.chat_scroll + 1, self._max_chat_scroll())
+        self._sync_chat_lines()
+
+    def scroll_chat(self, delta: int) -> None:
+        if delta == 0:
+            return
+        self.chat_scroll = max(0, min(self._max_chat_scroll(), self.chat_scroll + delta))
+        self._sync_chat_lines()
 
     def set_hover_text(self, message: str) -> None:
         self.hover_text = message
@@ -378,10 +405,10 @@ class Hud:
 
     def _build_quantity_buttons(self, parent: DirectFrame, origin: tuple[float, float]) -> None:
         x, z = origin
-        _text(parent, "Qty", (x - 0.10, z - 0.004), 0.020, TextNode.ACenter, GOLD)
+        _text(parent, "Qty", (x - 0.10, z - 0.004), SMALL_BUTTON_TEXT_SCALE, TextNode.ACenter, GOLD)
         for index, mode in enumerate(("1", "5", "10", "all")):
             label = "All" if mode == "all" else mode
-            _button(parent, label, (x + index * 0.095, 0, z), 0.020, lambda mode=mode: self.set_quantity_mode(mode))
+            _button(parent, label, (x + index * 0.095, 0, z), SMALL_BUTTON_TEXT_SCALE, lambda mode=mode: self.set_quantity_mode(mode))
 
     def set_quantity_mode(self, mode: str) -> None:
         if mode in {"1", "5", "10", "all"}:
@@ -490,6 +517,33 @@ class Hud:
     def _sync_feedback_text(self) -> None:
         self.feedback.setText(self.ui_hover_text or self.hover_text or self.feedback_message)
 
+    def _sync_chat_lines(self) -> None:
+        visible_messages = self._visible_chat_messages()
+        for index, line in enumerate(self.chat_lines):
+            text = visible_messages[index] if index < len(visible_messages) else ""
+            line.setText(text)
+
+    def _visible_chat_messages(self) -> list[str]:
+        if len(self.chat_messages) <= CHAT_VISIBLE_LINES:
+            return list(self.chat_messages)
+        start = len(self.chat_messages) - CHAT_VISIBLE_LINES - self.chat_scroll
+        start = max(0, min(start, len(self.chat_messages) - CHAT_VISIBLE_LINES))
+        return self.chat_messages[start : start + CHAT_VISIBLE_LINES]
+
+    def _max_chat_scroll(self) -> int:
+        return max(0, len(self.chat_messages) - CHAT_VISIBLE_LINES)
+
+    def _sync_quest_objective(self, text: str, completed: bool) -> None:
+        self.quest_objective_text = text
+        self.quest_objective_completed = completed
+        if not text:
+            self.quest_panel.hide()
+            self.quest_objective.setText("")
+            return
+        self.quest_panel.show()
+        self.quest_objective.setText(text)
+        self.quest_objective["fg"] = GOLD if completed else TEXT
+
     def _sync_bank_rows(self, inventory: dict[str, int], bank: dict[str, int]) -> None:
         visible_item_ids = _bank_item_ids(self.items_data, inventory, bank)
         visible_item_id_set = set(visible_item_ids)
@@ -512,20 +566,20 @@ class Hud:
             row = self.bank_rows.get(item_id)
             if row is None:
                 row = _BankRow(
-                    item_label=_text(self.bank_panel, _item_name(self.items_data, item_id), (x, y), 0.018, TextNode.ALeft, TEXT, True),
-                    bank_label=_text(self.bank_panel, "", (x + 0.52, y), 0.018, TextNode.ACenter, TEXT, True),
+                    item_label=_text(self.bank_panel, _item_name(self.items_data, item_id), (x, y), ROW_TEXT_SCALE, TextNode.ALeft, TEXT, True),
+                    bank_label=_text(self.bank_panel, "", (x + 0.52, y), ROW_TEXT_SCALE, TextNode.ACenter, TEXT, True),
                     deposit_button=_button(
                         self.bank_panel,
                         "Dep",
                         (x + 0.64, 0, y + 0.004),
-                        0.020,
+                        ROW_BUTTON_TEXT_SCALE,
                         lambda item_id=item_id: self.on_deposit_item(item_id),
                     ),
                     withdraw_button=_button(
                         self.bank_panel,
                         "Wit",
                         (x + 0.77, 0, y + 0.004),
-                        0.020,
+                        ROW_BUTTON_TEXT_SCALE,
                         lambda item_id=item_id: self.on_withdraw_item(item_id),
                     ),
                 )
@@ -566,14 +620,14 @@ class Hud:
                     else (lambda item_id=item_id: self.on_sell_item(item_id))
                 )
                 row = _ShopRow(
-                    item_label=_text(self.shop_panel, _item_name(self.items_data, item_id), (-0.68, y), 0.019, TextNode.ALeft, TEXT, True),
-                    quantity_label=_text(self.shop_panel, "", (0.20, y), 0.019, TextNode.ACenter, TEXT, True),
-                    price_label=_text(self.shop_panel, "", (0.36, y), 0.019, TextNode.ACenter, TEXT, True),
+                    item_label=_text(self.shop_panel, _item_name(self.items_data, item_id), (-0.68, y), ROW_TEXT_SCALE, TextNode.ALeft, TEXT, True),
+                    quantity_label=_text(self.shop_panel, "", (0.20, y), ROW_TEXT_SCALE, TextNode.ACenter, TEXT, True),
+                    price_label=_text(self.shop_panel, "", (0.36, y), ROW_TEXT_SCALE, TextNode.ACenter, TEXT, True),
                     action_button=_button(
                         self.shop_panel,
                         action_text,
                         (0.58, 0, y + 0.004),
-                        0.020,
+                        ROW_BUTTON_TEXT_SCALE,
                         command,
                     ),
                 )
@@ -757,10 +811,12 @@ def _frame(
     color: tuple[float, float, float, float],
     parent: Any | None = None,
 ) -> DirectFrame:
-    kwargs: dict[str, Any] = {"frameSize": frame_size, "frameColor": color, "pos": pos}
+    kwargs: dict[str, Any] = {"frameSize": frame_size, "frameColor": color}
     if parent is not None:
         kwargs["parent"] = parent
-    return DirectFrame(**kwargs)
+    frame = DirectFrame(**kwargs)
+    frame.setPos(*pos)
+    return frame
 
 
 def _icon_frame(
@@ -769,13 +825,14 @@ def _icon_frame(
     color: tuple[float, float, float, float],
     parent: Any,
 ) -> DirectFrame:
-    return DirectFrame(
+    frame = DirectFrame(
         parent=parent,
         frameSize=frame_size,
         frameColor=color,
-        pos=pos,
         state=DGG.DISABLED,
     )
+    frame.setPos(*pos)
+    return frame
 
 
 def _icon_label(parent: Any) -> OnscreenText:
@@ -787,8 +844,8 @@ def _icon_label(parent: Any) -> OnscreenText:
         align=TextNode.ACenter,
         fg=TEXT,
         mayChange=True,
-        shadow=(0.045, -0.045),
-        shadow_fg=(0.02, 0.01, 0.0, 1.0),
+        shadow=(0.02, 0.01, 0.0, 1.0),
+        shadowOffset=(0.045, -0.045),
     )
 
 

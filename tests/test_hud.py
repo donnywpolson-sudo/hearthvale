@@ -52,7 +52,33 @@ class FakeWidget:
 
 
 class FakeOnscreenText(FakeWidget):
+    ALLOWED_INIT_OPTIONS = {
+        "align",
+        "bg",
+        "decal",
+        "direction",
+        "drawOrder",
+        "fg",
+        "font",
+        "frame",
+        "mayChange",
+        "parent",
+        "pos",
+        "roll",
+        "scale",
+        "shadow",
+        "shadowOffset",
+        "sort",
+        "style",
+        "text",
+        "wordwrap",
+    }
+
     def __init__(self, *args, **kwargs) -> None:
+        unknown_options = set(kwargs) - self.ALLOWED_INIT_OPTIONS
+        if unknown_options:
+            unknown = ", ".join(sorted(unknown_options))
+            raise TypeError(f"unexpected OnscreenText option(s): {unknown}")
         super().__init__(*args, **kwargs)
         self.may_change = bool(self.options.get("mayChange")) or not self.text
 
@@ -159,8 +185,113 @@ def test_feedback_routes_to_chatbox_and_keeps_latest_messages(monkeypatch) -> No
         ui.set_feedback(f"Message {index}")
 
     assert ui.feedback.text == "Message 9"
-    assert ui.chat_messages == [f"Message {index}" for index in range(2, 10)]
+    assert ui.chat_messages == [f"Message {index}" for index in range(10)]
     assert [line.text for line in ui.chat_lines] == [f"Message {index}" for index in range(2, 10)]
+
+
+def test_stats_panel_omits_selected_tile_and_item_text(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    ui = hud.Hud(_items())
+
+    ui.update(
+        account="test",
+        time_text="Day 1 08:00\nHP: 10/10",
+        selected_text="Selected tile: 18, 17",
+        selected_item_id="raw_shrimp",
+        inventory={"raw_shrimp": 1},
+        bank={},
+        skills=FakeSkills(),
+    )
+
+    assert ui.stats.text == "Account: test\nDay 1 08:00\nHP: 10/10"
+    assert "Selected" not in ui.stats.text
+    assert ui.file_button.pos == (0.37, 0, -0.155)
+
+
+def test_chat_log_scrolls_through_history_and_autofollows_latest(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    ui = hud.Hud(_items())
+
+    for index in range(12):
+        ui.set_feedback(f"Message {index}")
+
+    assert [line.text for line in ui.chat_lines] == [f"Message {index}" for index in range(4, 12)]
+
+    ui.scroll_chat(2)
+    assert ui.chat_scroll == 2
+    assert [line.text for line in ui.chat_lines] == [f"Message {index}" for index in range(2, 10)]
+
+    ui.set_feedback("Message 12")
+    assert ui.chat_scroll == 3
+    assert [line.text for line in ui.chat_lines] == [f"Message {index}" for index in range(2, 10)]
+
+    ui.chat_down_button.click()
+    assert ui.chat_scroll == 2
+    assert [line.text for line in ui.chat_lines] == [f"Message {index}" for index in range(3, 11)]
+
+    ui.scroll_chat(-99)
+    ui.set_feedback("Message 13")
+    assert ui.chat_scroll == 0
+    assert [line.text for line in ui.chat_lines] == [f"Message {index}" for index in range(6, 14)]
+
+
+def test_chat_history_is_capped_after_retaining_scrollback(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    ui = hud.Hud(_items())
+
+    for index in range(hud.CHAT_HISTORY_LIMIT + 5):
+        ui.set_feedback(f"Message {index}")
+
+    assert len(ui.chat_messages) == hud.CHAT_HISTORY_LIMIT
+    assert ui.chat_messages[0] == "Message 5"
+    assert ui.chat_messages[-1] == f"Message {hud.CHAT_HISTORY_LIMIT + 4}"
+
+
+def test_quest_objective_panel_updates_and_marks_completion(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    ui = hud.Hud(_items())
+
+    assert ui.quest_panel.hidden is True
+
+    ui.update(
+        account="test",
+        time_text="Day 1 08:00",
+        selected_text="Selected: none",
+        inventory={},
+        bank={},
+        skills=FakeSkills(),
+        quest_objective_text="Starter path 1/8: Smelt a bar.",
+    )
+
+    assert ui.quest_panel.hidden is False
+    assert ui.quest_objective.text == "Starter path 1/8: Smelt a bar."
+    assert ui.quest_objective.options["fg"] == hud.TEXT
+
+    ui.update(
+        account="test",
+        time_text="Day 1 08:00",
+        selected_text="Selected: none",
+        inventory={},
+        bank={},
+        skills=FakeSkills(),
+        quest_objective_text="Starter path complete.",
+        quest_objective_completed=True,
+    )
+
+    assert ui.quest_objective.text == "Starter path complete."
+    assert ui.quest_objective.options["fg"] == hud.GOLD
+
+    ui.update(
+        account="test",
+        time_text="Day 1 08:00",
+        selected_text="Selected: none",
+        inventory={},
+        bank={},
+        skills=FakeSkills(),
+    )
+
+    assert ui.quest_panel.hidden is True
+    assert ui.quest_objective.text == ""
 
 
 def test_quantity_mode_caps_transaction_amount(monkeypatch) -> None:
@@ -239,6 +370,9 @@ def test_skills_tab_uses_larger_two_line_skill_rows(monkeypatch) -> None:
     assert row.detail_label.text == "Level 1  0 XP"
     assert row.detail_label.options["scale"] == hud.SKILL_DETAIL_TEXT_SCALE
     assert ui.tab_buttons[hud.SKILLS_TAB].options["scale"] == hud.SIDE_TAB_TEXT_SCALE
+    assert hud.STATS_TEXT_SCALE > 0.032
+    assert hud.CHAT_TEXT_SCALE > 0.023
+    assert hud.ROW_TEXT_SCALE > 0.019
 
 
 def test_selected_inventory_slot_is_highlighted(monkeypatch) -> None:

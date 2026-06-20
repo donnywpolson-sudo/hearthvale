@@ -12,9 +12,26 @@ python -m pip install -r requirements.txt
 
 ## Run
 
+Use the built Windows launcher when available:
+
+```powershell
+.\dist\RuneScapeValley.exe
+```
+
+The launcher is also copied to the Desktop by `launcher\build_launcher.ps1`:
+
+```powershell
+& "$env:USERPROFILE\Desktop\RuneScapeValley.exe"
+```
+
+For development or troubleshooting, run the game module directly:
+
 ```powershell
 python -m game.main
 ```
+
+`Launch Game.bat`, if present, is only an optional manual fallback for running
+`python -m game.main`. The EXE launcher does not depend on that batch file.
 
 ## Test
 
@@ -36,7 +53,9 @@ python -m game.tools.validate_data
 - Mouse wheel: zoom camera
 - Hover tiles and objects to show their name in the top-center status box.
 - Left click ground: move player to a tile
-- Right click resource/shop/bank/cooking range/training dummy: interact
+- Left click ground item: walk to it and pick it up
+- Right click resource/shop/bank/cooking range/training dummy/ground item: choose an action
+- Bottom event log `Up` / `Down`: scroll through previous messages
 - In-game `File` menu: save, load, or quit
 - `F5`: save the currently logged-in account
 - `F9`: load the currently logged-in account

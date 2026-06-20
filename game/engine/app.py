@@ -38,6 +38,8 @@ from game.world.time import GameTime
 
 
 LOGGER = logging.getLogger(__name__)
+DAYLIGHT_TINT = (1.0, 0.98, 0.90, 1.0)
+DAYLIGHT_SKY = (0.56, 0.70, 0.84, 1.0)
 
 
 class GameApp(ShowBase):
@@ -78,6 +80,7 @@ class GameApp(ShowBase):
     def _create_world(self) -> None:
         self.world_map = WorldMap(self.world_data)
         self.world_map.render(self.render)
+        self._apply_fixed_world_light()
 
         self.inventory = Inventory()
         self.bank = Bank()
@@ -163,7 +166,6 @@ class GameApp(ShowBase):
         self.interactions.update()
         self.game_time.update(dt)
         self._update_hover_marker()
-        self._update_world_tint()
         self._update_hud()
         self.hud.tick(dt)
         return task.cont
@@ -174,6 +176,12 @@ class GameApp(ShowBase):
     def on_left_click(self) -> None:
         if hasattr(self, "hud"):
             self.hud.hide_context_menu()
+        obj = object_from_mouse(self, self.world_map)
+        if obj is not None and obj.kind == "ground_item":
+            self.selected_text = f"Selected object: {obj.kind} ({obj.object_id})"
+            self._show_marker(self.destination_marker, obj.tile)
+            self.interactions.interact_with(obj)
+            return
         tile, _ = ground_tile_from_mouse(self, self.world_map.grid)
         if tile is None:
             self.set_feedback("No ground selected")
@@ -470,6 +478,7 @@ class GameApp(ShowBase):
         self._update_hud()
 
     def _update_hud(self) -> None:
+        objective = self.quest.current_objective()
         self.hud.update(
             account=self.current_username or "",
             time_text=f"{self.game_time.display()}\nHP: {self.combat.current_hitpoints}/{self.combat.max_hitpoints()}",
@@ -481,6 +490,8 @@ class GameApp(ShowBase):
             selected_text=self.selected_text,
             shop_stock=[stock_item.__dict__ for stock_item in self.shop.stock_items()],
             gather_progress=self._activity_progress(),
+            quest_objective_text=objective.text,
+            quest_objective_completed=objective.completed,
         )
 
     def _add_coins(self, amount: int) -> None:
@@ -598,10 +609,9 @@ class GameApp(ShowBase):
         marker.setPos(x, y, 0.045)
         marker.show()
 
-    def _update_world_tint(self) -> None:
-        tint, sky = visuals.world_tint(self.game_time.minute)
-        self.render.setColorScale(*tint)
-        self.setBackgroundColor(*sky)
+    def _apply_fixed_world_light(self) -> None:
+        self.render.setColorScale(*DAYLIGHT_TINT)
+        self.setBackgroundColor(*DAYLIGHT_SKY)
 
     def _activity_progress(self) -> float | None:
         pending = self.gathering.pending

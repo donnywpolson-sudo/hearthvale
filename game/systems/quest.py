@@ -51,6 +51,12 @@ class QuestResult:
     completed: bool = False
 
 
+@dataclass(frozen=True)
+class QuestObjective:
+    text: str
+    completed: bool = False
+
+
 class QuestSystem:
     def __init__(self, state: QuestState | None = None) -> None:
         self.state = state or QuestState()
@@ -75,6 +81,17 @@ class QuestSystem:
         self.state.flags.add(flag)
         return True
 
+    def current_objective(self) -> QuestObjective:
+        if self.state.completed:
+            return QuestObjective("Starter path complete.", completed=True)
+        if not self.state.started:
+            return QuestObjective("Talk to the Village Guide.")
+        missing = [flag for flag in STARTER_QUEST_FLAGS if flag not in self.state.flags]
+        if not missing:
+            return QuestObjective("Return to the Village Guide.")
+        progress = len(STARTER_QUEST_FLAGS) - len(missing)
+        return QuestObjective(f"Starter path {progress}/{len(STARTER_QUEST_FLAGS)}: {_objective_label(missing[0])}.")
+
     def to_dict(self) -> dict[str, object]:
         return self.state.to_dict()
 
@@ -83,4 +100,17 @@ class QuestSystem:
 
 
 def _flag_label(flag: str) -> str:
-    return flag.replace("_", " ")
+    return _objective_label(flag).lower()
+
+
+def _objective_label(flag: str) -> str:
+    return {
+        "cooked_food": "Cook food",
+        "smelted_bar": "Smelt a bar",
+        "smithed_gear": "Smith gear",
+        "equipped_weapon": "Equip a weapon",
+        "ate_food": "Eat food",
+        "defeated_enemy": "Defeat an enemy",
+        "used_bank": "Use the bank",
+        "used_shop": "Use the shop",
+    }.get(flag, flag.replace("_", " ").title())

@@ -106,6 +106,66 @@ def test_context_action_generation_covers_interactable_types() -> None:
     assert _action_ids(manager, "mob_01") == ["attack", "examine", "cancel"]
 
 
+def test_ground_item_actions_and_default_pickup() -> None:
+    world = WorldMap(
+        {
+            "width": 4,
+            "height": 4,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [],
+        }
+    )
+    ground_item = world.add_ground_item("coins", 3, (1, 1))
+    inventory = Inventory()
+    feedback: list[str] = []
+    manager = InteractionManager(
+        world,
+        _Player(tile=(1, 1)),
+        inventory,
+        Skills(_skills()),
+        Shop(_items()),
+        lambda amount: None,
+        feedback.append,
+    )
+
+    assert manager.get_actions(ground_item)[0].action_id == "take"
+    assert manager.get_actions(ground_item)[0].label == "Take Coins"
+
+    manager.interact_with(ground_item)
+
+    assert inventory.count("coins") == 3
+    assert world.get_object(ground_item.object_id) is None
+    assert feedback[-1] == "Picked up 3 Coins"
+
+
+def test_left_click_ground_item_uses_pickup_interaction(monkeypatch) -> None:
+    from game.engine import app as app_module
+
+    ground_item = WorldObject("ground_item_0001", "ground_item", (2, 2), blocking=False, item_id="coins", quantity=3)
+    interactions = _ClickInteractions()
+    hidden: list[bool] = []
+    shown: list[tuple[object, tuple[int, int]]] = []
+    fake_app = SimpleNamespace(
+        hud=SimpleNamespace(hide_context_menu=lambda: hidden.append(True)),
+        world_map=SimpleNamespace(grid=object()),
+        destination_marker=object(),
+        interactions=interactions,
+        selected_text="",
+        _show_marker=lambda marker, tile: shown.append((marker, tile)),
+        set_feedback=lambda message: None,
+    )
+    monkeypatch.setattr(app_module, "object_from_mouse", lambda _base, _world_map: ground_item)
+    monkeypatch.setattr(app_module, "ground_tile_from_mouse", lambda _base, _grid: ((3, 3), None))
+
+    app_module.GameApp.on_left_click(fake_app)
+
+    assert hidden == [True]
+    assert shown == [(fake_app.destination_marker, (2, 2))]
+    assert interactions.interacted == [ground_item]
+    assert interactions.moved == []
+
+
 def test_perform_action_separates_examine_from_npc_talk() -> None:
     feedback: list[str] = []
     talked_to: list[str] = []
@@ -290,6 +350,7 @@ def _skills() -> dict[str, dict[str, object]]:
 
 def _items() -> dict[str, dict[str, object]]:
     return {
+        "coins": {"name": "Coins", "category": "currency", "sell_price": 0},
         "logs": {"name": "Logs", "category": "wood", "sell_price": 3},
         "raw_shrimp": {
             "name": "Raw shrimp",
@@ -333,6 +394,18 @@ class _Player:
 
     def set_path(self, path: list[tuple[int, int]]) -> None:
         self.path = path
+
+
+class _ClickInteractions:
+    def __init__(self) -> None:
+        self.interacted: list[WorldObject] = []
+        self.moved: list[tuple[int, int]] = []
+
+    def interact_with(self, obj: WorldObject) -> None:
+        self.interacted.append(obj)
+
+    def move_to_tile(self, tile: tuple[int, int]) -> None:
+        self.moved.append(tile)
 
 
 class FakeClock:

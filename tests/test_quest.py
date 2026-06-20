@@ -36,3 +36,35 @@ def test_quest_state_round_trip() -> None:
 
     assert loaded.state.started is True
     assert loaded.state.flags == {"cooked_food", "used_shop"}
+
+
+def test_starter_quest_objective_tracks_next_step_and_completion() -> None:
+    quest = QuestSystem()
+
+    objective = quest.current_objective()
+
+    assert objective.text == "Talk to the Village Guide."
+    assert objective.completed is False
+
+    quest.talk_to_starter()
+
+    assert quest.current_objective().text == "Starter path 0/8: Cook food."
+
+    quest.record("cooked_food")
+
+    assert quest.current_objective().text == "Starter path 1/8: Smelt a bar."
+
+    for flag in STARTER_QUEST_FLAGS:
+        quest.record(flag)
+
+    objective = quest.current_objective()
+
+    assert objective.text == "Return to the Village Guide."
+    assert objective.completed is False
+
+    quest.talk_to_starter()
+
+    objective = quest.current_objective()
+
+    assert objective.text == "Starter path complete."
+    assert objective.completed is True
