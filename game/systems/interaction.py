@@ -10,7 +10,7 @@ from game.systems.cooking import CookingSystem
 from game.systems.gathering import GatheringSystem
 from game.systems.inventory import Inventory
 from game.systems.shop import Shop
-from game.systems.smithing import SmithingSystem
+from game.systems.smithing import SmithingRecipe, SmithingSystem
 from game.systems.skills import Skills
 from game.world.grid import Tile
 from game.world.map import WorldMap
@@ -44,6 +44,7 @@ class InteractionManager:
         talk_to_npc: Callable[[WorldObject], None] | None = None,
         on_cooking_result: Callable[[object], None] | None = None,
         on_smithing_result: Callable[[object], None] | None = None,
+        on_smithing_choice: Callable[[str, list[SmithingRecipe]], None] | None = None,
         on_combat_result: Callable[[object], None] | None = None,
     ) -> None:
         self.world_map = world_map
@@ -63,6 +64,7 @@ class InteractionManager:
         self.talk_to_npc = talk_to_npc
         self.on_cooking_result = on_cooking_result
         self.on_smithing_result = on_smithing_result
+        self.on_smithing_choice = on_smithing_choice
         self.on_combat_result = on_combat_result
         self.pending_object_id: str | None = None
         self.pending_action_id: str | None = None
@@ -126,6 +128,16 @@ class InteractionManager:
             self.feedback(self._examine_text(obj))
             return
         self._interact_default(obj, action_id)
+
+    def start_smithing_recipe(self, action_type: str, recipe_id: str) -> None:
+        if self.smithing is None:
+            self.feedback("Select ore to smelt" if action_type == "smelting" else "Select bars to smith")
+            return
+        self._cancel_gathering()
+        self._cancel_cooking()
+        self._cancel_combat()
+        result = self.smithing.start_recipe_by_id(action_type, recipe_id)
+        self.feedback(result.feedback)
 
     def _interact_default(self, obj: WorldObject | None, action_id: str | None = None) -> None:
         if obj is None:
@@ -331,6 +343,8 @@ class InteractionManager:
         self._cancel_gathering()
         self._cancel_cooking()
         self._cancel_combat()
+        if self._show_smithing_choice("smelting"):
+            return
         result = self.smithing.start_smelting(self.selected_item_id)
         self.feedback(result.feedback)
 
@@ -341,8 +355,20 @@ class InteractionManager:
         self._cancel_gathering()
         self._cancel_cooking()
         self._cancel_combat()
+        if self._show_smithing_choice("smithing"):
+            return
         result = self.smithing.start_smithing(self.selected_item_id)
         self.feedback(result.feedback)
+
+    def _show_smithing_choice(self, action_type: str) -> bool:
+        if self.smithing is None or self.on_smithing_choice is None:
+            return False
+        recipes = self.smithing.matching_recipes(action_type, self.selected_item_id)
+        if len(recipes) <= 1:
+            return False
+        self.feedback("Choose a recipe to smelt" if action_type == "smelting" else "Choose a recipe to smith")
+        self.on_smithing_choice(action_type, recipes)
+        return True
 
     def _perform_combat(self, obj: WorldObject) -> None:
         if self.combat is None:

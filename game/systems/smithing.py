@@ -63,6 +63,7 @@ class SmithingResult:
     quantity: int = 0
     xp: int = 0
     pending: bool = False
+    needs_choice: bool = False
     duration: float = 0.0
 
 
@@ -82,15 +83,25 @@ class SmithingSystem:
         self.pending: PendingSmithing | None = None
 
     def start_smelting(self, selected_item_id: str | None) -> SmithingResult:
-        recipe = self.recipe_for_item("smelting", selected_item_id)
-        if recipe is None:
+        recipes = self.matching_recipes("smelting", selected_item_id)
+        if not recipes:
             return SmithingResult(False, "Select ore to smelt")
-        return self.start_recipe(recipe)
+        if len(recipes) > 1:
+            return SmithingResult(False, "Choose a recipe to smelt", needs_choice=True)
+        return self.start_recipe(recipes[0])
 
     def start_smithing(self, selected_item_id: str | None) -> SmithingResult:
-        recipe = self.recipe_for_item("smithing", selected_item_id)
-        if recipe is None:
+        recipes = self.matching_recipes("smithing", selected_item_id)
+        if not recipes:
             return SmithingResult(False, "Select bars to smith")
+        if len(recipes) > 1:
+            return SmithingResult(False, "Choose a recipe to smith", needs_choice=True)
+        return self.start_recipe(recipes[0])
+
+    def start_recipe_by_id(self, action_type: str, recipe_id: str) -> SmithingResult:
+        recipe = self.recipe_by_id(action_type, recipe_id)
+        if recipe is None:
+            return SmithingResult(False, "Recipe unavailable", recipe_id=recipe_id)
         return self.start_recipe(recipe)
 
     def start_recipe(self, recipe: SmithingRecipe) -> SmithingResult:
@@ -174,13 +185,23 @@ class SmithingSystem:
         speed_bonus = min(0.50, 0.05 * level_advantage)
         return max(0.75, recipe.base_seconds * (1.0 - speed_bonus))
 
-    def recipe_for_item(self, action_type: str, selected_item_id: str | None) -> SmithingRecipe | None:
+    def matching_recipes(self, action_type: str, selected_item_id: str | None) -> list[SmithingRecipe]:
         if selected_item_id is None:
+            return []
+        return [
+            recipe
+            for recipe in self.recipes.get(action_type, {}).values()
+            if selected_item_id in recipe.inputs
+        ]
+
+    def recipe_by_id(self, action_type: str, recipe_id: str) -> SmithingRecipe | None:
+        return self.recipes.get(action_type, {}).get(recipe_id)
+
+    def recipe_for_item(self, action_type: str, selected_item_id: str | None) -> SmithingRecipe | None:
+        recipes = self.matching_recipes(action_type, selected_item_id)
+        if not recipes:
             return None
-        for recipe in self.recipes.get(action_type, {}).values():
-            if selected_item_id in recipe.inputs:
-                return recipe
-        return None
+        return recipes[0]
 
 
 def _recipes_from_data(data: dict[str, Any]) -> dict[str, dict[str, SmithingRecipe]]:

@@ -8,7 +8,8 @@ from game.systems.gathering import GatheringSystem, ResourceNode
 from game.systems.interaction import InteractionManager
 from game.systems.inventory import Inventory
 from game.systems.shop import Shop
-from game.systems.skills import Skills, osrs_xp_thresholds
+from game.systems.skills import Skills, skill_xp_thresholds
+from game.systems.smithing import SmithingSystem
 from game.world.grid import TileGrid
 from game.world.map import WorldMap
 from game.world.objects import WorldObject
@@ -278,6 +279,67 @@ def test_move_cancels_pending_cooking() -> None:
     assert player.path
 
 
+def test_multiple_smithing_matches_request_recipe_choice() -> None:
+    world = WorldMap(
+        {
+            "width": 4,
+            "height": 4,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [],
+            "anvil": {"id": "anvil_01", "tile": [1, 2]},
+        }
+    )
+    inventory = Inventory({"bronze_bar": 2})
+    skills = Skills(_skills())
+    smithing = SmithingSystem(_recipes(), inventory, skills)
+    feedback: list[str] = []
+    choices: list[tuple[str, list[str]]] = []
+    manager = InteractionManager(
+        world,
+        _Player(tile=(1, 1)),
+        inventory,
+        skills,
+        Shop(_items()),
+        lambda amount: None,
+        feedback.append,
+        smithing=smithing,
+        on_smithing_choice=lambda action_type, recipes: choices.append(
+            (action_type, [recipe.recipe_id for recipe in recipes])
+        ),
+    )
+
+    manager.select_inventory_item("bronze_bar")
+    manager.interact_with(world.get_object("anvil_01"))
+
+    assert feedback[-1] == "Choose a recipe to smith"
+    assert choices == [("smithing", ["bronze_sword", "bronze_shield"])]
+    assert smithing.pending is None
+
+
+def test_selected_smithing_recipe_starts_exact_recipe() -> None:
+    inventory = Inventory({"bronze_bar": 2})
+    skills = Skills(_skills())
+    smithing = SmithingSystem(_recipes(), inventory, skills)
+    feedback: list[str] = []
+    manager = InteractionManager(
+        SimpleNamespace(),
+        SimpleNamespace(tile=(0, 0)),
+        inventory,
+        skills,
+        Shop(_items()),
+        lambda amount: None,
+        feedback.append,
+        smithing=smithing,
+    )
+
+    manager.start_smithing_recipe("smithing", "bronze_shield")
+
+    assert smithing.pending is not None
+    assert smithing.pending.recipe_id == "bronze_shield"
+    assert feedback[-1] == "Smithing Bronze shield... 2.6s"
+
+
 def test_combat_walks_adjacent_kills_mob_and_spawns_pickup_drop() -> None:
     clock = FakeClock()
     world = WorldMap(
@@ -315,7 +377,7 @@ def test_combat_walks_adjacent_kills_mob_and_spawns_pickup_drop() -> None:
     manager.update()
 
     assert combat.pending is not None
-    assert feedback[-1] == "Attacking Worn dummy... 1.0s"
+    assert feedback[-1] == "Attacking Worn dummy: 2/2 HP; you: 10/10 HP; 1.0s"
 
     clock.now += 1.0
     manager.update()
@@ -325,7 +387,7 @@ def test_combat_walks_adjacent_kills_mob_and_spawns_pickup_drop() -> None:
     assert world.get_object("mob_01").active is False
     ground_items = [obj for obj in world.objects.values() if obj.kind == "ground_item"]
     assert [obj.item_id for obj in ground_items] == ["coins", "wooden_splinters"]
-    assert feedback[-1] == "Defeated Worn dummy; drops appeared"
+    assert feedback[-1] == "Defeated Worn dummy; you: 9/10 HP; drops appeared"
 
     manager.interact_with(ground_items[0])
 
@@ -338,12 +400,17 @@ def _skills() -> dict[str, dict[str, object]]:
         "woodcutting": {
             "display_name": "Woodcutting",
             "starting_level": 1,
-            "xp_thresholds": osrs_xp_thresholds(),
+            "xp_thresholds": skill_xp_thresholds(),
         },
         "cooking": {
             "display_name": "Cooking",
             "starting_level": 1,
-            "xp_thresholds": osrs_xp_thresholds(),
+            "xp_thresholds": skill_xp_thresholds(),
+        },
+        "smithing": {
+            "display_name": "Smithing",
+            "starting_level": 1,
+            "xp_thresholds": skill_xp_thresholds(),
         },
     }
 
@@ -352,6 +419,9 @@ def _items() -> dict[str, dict[str, object]]:
     return {
         "coins": {"name": "Coins", "category": "currency", "sell_price": 0},
         "logs": {"name": "Logs", "category": "wood", "sell_price": 3},
+        "bronze_bar": {"name": "Bronze bar", "category": "bar", "sell_price": 12},
+        "bronze_sword": {"name": "Bronze sword", "category": "weapon", "sell_price": 24},
+        "bronze_shield": {"name": "Bronze shield", "category": "armor", "sell_price": 30},
         "raw_shrimp": {
             "name": "Raw shrimp",
             "category": "fish",
@@ -362,6 +432,34 @@ def _items() -> dict[str, dict[str, object]]:
             "base_cook_seconds": 1.8,
         },
         "cooked_shrimp": {"name": "Cooked shrimp", "category": "fish", "sell_price": 7},
+    }
+
+
+def _recipes() -> dict[str, object]:
+    return {
+        "smelting": [],
+        "smithing": [
+            {
+                "recipe_id": "bronze_sword",
+                "display_name": "Bronze sword",
+                "inputs": {"bronze_bar": 1},
+                "output_item_id": "bronze_sword",
+                "output_quantity": 1,
+                "required_level": 1,
+                "xp_reward": 12,
+                "base_seconds": 2.0,
+            },
+            {
+                "recipe_id": "bronze_shield",
+                "display_name": "Bronze shield",
+                "inputs": {"bronze_bar": 2},
+                "output_item_id": "bronze_shield",
+                "output_quantity": 1,
+                "required_level": 1,
+                "xp_reward": 24,
+                "base_seconds": 2.6,
+            },
+        ],
     }
 
 

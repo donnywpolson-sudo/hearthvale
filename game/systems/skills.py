@@ -6,7 +6,8 @@ from typing import Any
 
 
 XP_PER_LEVEL = 100
-OSRS_MAX_LEVEL = 99
+MAX_SKILL_LEVEL = 99
+OSRS_MAX_LEVEL = MAX_SKILL_LEVEL
 STANDARD_SKILL_IDS = (
     "woodcutting",
     "mining",
@@ -102,7 +103,7 @@ def level_for_xp(xp: int) -> int:
     return 1 + xp // XP_PER_LEVEL
 
 
-def osrs_xp_thresholds(max_level: int = OSRS_MAX_LEVEL) -> dict[str, int]:
+def skill_xp_thresholds(max_level: int = MAX_SKILL_LEVEL) -> dict[str, int]:
     if max_level < 1:
         raise ValueError("max_level must be positive")
 
@@ -112,6 +113,10 @@ def osrs_xp_thresholds(max_level: int = OSRS_MAX_LEVEL) -> dict[str, int]:
         points += math.floor(level + 300 * (2 ** (level / 7)))
         thresholds[str(level + 1)] = math.floor(points / 4)
     return thresholds
+
+
+def osrs_xp_thresholds(max_level: int = MAX_SKILL_LEVEL) -> dict[str, int]:
+    return skill_xp_thresholds(max_level)
 
 
 def _normalize_definitions(
@@ -133,5 +138,5 @@ def _standard_definition(skill_id: str) -> dict[str, Any]:
     return {
         "display_name": skill_id,
         "starting_level": starting_level,
-        "xp_thresholds": osrs_xp_thresholds(),
+        "xp_thresholds": skill_xp_thresholds(),
     }

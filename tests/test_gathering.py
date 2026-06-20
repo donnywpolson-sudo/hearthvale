@@ -7,7 +7,7 @@ from pathlib import Path
 from game.engine.save import load_game, save_game
 from game.systems.gathering import GatheringSystem, ResourceNode
 from game.systems.inventory import Inventory
-from game.systems.skills import Skills, osrs_xp_thresholds
+from game.systems.skills import Skills, skill_xp_thresholds
 from game.world.grid import TileGrid
 
 
@@ -15,17 +15,17 @@ SKILLS = {
     "woodcutting": {
         "display_name": "woodcutting",
         "starting_level": 1,
-        "xp_thresholds": osrs_xp_thresholds(),
+        "xp_thresholds": skill_xp_thresholds(),
     },
     "mining": {
         "display_name": "mining",
         "starting_level": 1,
-        "xp_thresholds": osrs_xp_thresholds(),
+        "xp_thresholds": skill_xp_thresholds(),
     },
     "fishing": {
         "display_name": "fishing",
         "starting_level": 1,
-        "xp_thresholds": osrs_xp_thresholds(),
+        "xp_thresholds": skill_xp_thresholds(),
     },
 }
 

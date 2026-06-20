@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from game.systems.combat import CombatSystem, DropStack, MobDefinition
-from game.systems.skills import Skills, osrs_xp_thresholds
+from game.systems.skills import Skills, skill_xp_thresholds
 from game.world.grid import TileGrid
 
 
@@ -22,6 +22,7 @@ def test_combat_auto_attacks_until_mob_dies_and_respawns() -> None:
 
     assert started.success is True
     assert started.pending is True
+    assert started.feedback == "Attacking Worn dummy: 2/2 HP; you: 10/10 HP; 1.0s"
 
     clock.now += 1.0
     first_hit = system.update()
@@ -74,6 +75,7 @@ def test_combat_damages_player_grants_xp_and_can_heal() -> None:
 
     assert result is not None
     assert result.enemy_damage == 1
+    assert result.feedback == "Hit Worn dummy: 2/3 HP left; Worn dummy hit you for 1; you: 9/10 HP"
     assert system.current_hitpoints == 9
     assert skills.xp("attack") == 4
 
@@ -92,6 +94,7 @@ def test_combat_reports_player_death() -> None:
 
     assert result is not None
     assert result.player_dead is True
+    assert result.feedback == "You were defeated by Worn dummy; Worn dummy: 3/4 HP; you: 0/10 HP"
     assert system.current_hitpoints == 0
 
 
@@ -109,7 +112,7 @@ def _mob(hitpoints: int = 2, level: int = 1) -> MobDefinition:
 
 
 def _skills() -> dict[str, dict[str, object]]:
-    thresholds = osrs_xp_thresholds()
+    thresholds = skill_xp_thresholds()
     return {
         "attack": {"display_name": "Attack", "starting_level": 1, "xp_thresholds": thresholds},
         "strength": {"display_name": "Strength", "starting_level": 1, "xp_thresholds": thresholds},

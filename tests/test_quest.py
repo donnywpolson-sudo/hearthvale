@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
+from game.engine.app import GameApp
+from game.systems.inventory import COINS_ITEM_ID
+from game.systems.inventory import Inventory
 from game.systems.quest import QuestSystem, STARTER_QUEST_FLAGS
+from game.systems.skills import Skills, skill_xp_thresholds
 
 
 def test_starter_quest_starts_tracks_flags_and_completes_once() -> None:
@@ -18,11 +24,54 @@ def test_starter_quest_starts_tracks_flags_and_completes_once() -> None:
 
     assert completed.completed is True
     assert "Quest complete" in completed.feedback
+    assert [(reward.item_id, reward.quantity) for reward in completed.item_rewards] == [(COINS_ITEM_ID, 50)]
+    assert [(reward.skill_id, reward.xp) for reward in completed.skill_rewards] == [("smithing", 40)]
 
     after = quest.talk_to_starter()
 
     assert after.completed is False
     assert "safer" in after.feedback
+    assert after.item_rewards == ()
+    assert after.skill_rewards == ()
+
+
+def test_starter_quest_missing_objective_feedback_is_stable() -> None:
+    quest = QuestSystem()
+    quest.talk_to_starter()
+
+    missing = quest.talk_to_starter()
+
+    assert missing.completed is False
+    assert "Still needed: cook food" in missing.feedback
+    assert missing.item_rewards == ()
+    assert missing.skill_rewards == ()
+
+
+def test_starter_quest_reward_payload_grants_once_when_applied() -> None:
+    quest = QuestSystem()
+    quest.talk_to_starter()
+    for flag in STARTER_QUEST_FLAGS:
+        quest.record(flag)
+    completed = quest.talk_to_starter()
+    after = quest.talk_to_starter()
+    app = SimpleNamespace(
+        inventory=Inventory(),
+        skills=Skills(
+            {
+                "smithing": {
+                    "display_name": "Smithing",
+                    "starting_level": 1,
+                    "xp_thresholds": skill_xp_thresholds(),
+                }
+            }
+        ),
+    )
+
+    GameApp._apply_quest_rewards(app, completed)
+    GameApp._apply_quest_rewards(app, after)
+
+    assert app.inventory.count(COINS_ITEM_ID) == 50
+    assert app.skills.xp("smithing") == 40
 
 
 def test_quest_state_round_trip() -> None:

@@ -27,7 +27,7 @@ from game.systems.inventory import COINS_ITEM_ID, Inventory
 from game.systems.interaction import InteractionManager
 from game.systems.quest import QuestSystem
 from game.systems.shop import Shop
-from game.systems.smithing import SmithingSystem
+from game.systems.smithing import SmithingRecipe, SmithingSystem
 from game.systems.skills import Skills
 from game.ui.login import LoginScreen
 from game.ui.hud import Hud
@@ -148,6 +148,7 @@ class GameApp(ShowBase):
             talk_to_npc=self.talk_to_npc,
             on_cooking_result=self.on_cooking_result,
             on_smithing_result=self.on_smithing_result,
+            on_smithing_choice=self.show_smithing_choices,
             on_combat_result=self.on_combat_result,
         )
 
@@ -210,6 +211,13 @@ class GameApp(ShowBase):
             self.set_feedback("Nothing to interact with")
             return
         self.interactions.perform_action(action_id, obj)
+
+    def show_smithing_choices(self, action_type: str, recipes: list[SmithingRecipe]) -> None:
+        actions = [(recipe.recipe_id, recipe.display_name) for recipe in recipes]
+        self.hud.show_context_menu(
+            actions,
+            lambda recipe_id, action_type=action_type: self.interactions.start_smithing_recipe(action_type, recipe_id),
+        )
 
     def save_game(self) -> None:
         if self.current_username is None:
@@ -447,13 +455,17 @@ class GameApp(ShowBase):
     def talk_to_npc(self, obj) -> None:
         if obj.quest_id == "starter_path":
             result = self.quest.talk_to_starter()
-            if result.completed:
-                self.inventory.add(COINS_ITEM_ID, 50)
-                self.skills.add_xp("smithing", 40)
+            self._apply_quest_rewards(result)
             self.set_feedback(result.feedback)
             self._update_hud()
             return
         self.set_feedback(f"{obj.display_name}: Hello.")
+
+    def _apply_quest_rewards(self, result: object) -> None:
+        for reward in getattr(result, "item_rewards", ()):
+            self.inventory.add(reward.item_id, reward.quantity)
+        for reward in getattr(result, "skill_rewards", ()):
+            self.skills.add_xp(reward.skill_id, reward.xp)
 
     def on_cooking_result(self, result: object) -> None:
         if getattr(result, "success", False) and getattr(result, "cooked_item_id", None):
@@ -474,7 +486,10 @@ class GameApp(ShowBase):
         if getattr(result, "player_dead", False):
             self.player.set_position_tile(self.world_map.player_start)
             self.combat.reset_player()
-            self.set_feedback("You died and respawned at the crossroads.")
+            self.set_feedback(
+                f"You died and respawned at the crossroads. HP restored to "
+                f"{self.combat.current_hitpoints}/{self.combat.max_hitpoints()}."
+            )
         self._update_hud()
 
     def _update_hud(self) -> None:

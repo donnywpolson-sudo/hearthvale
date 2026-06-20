@@ -5,7 +5,7 @@ from copy import deepcopy
 import pytest
 
 from game.engine.validation import DataValidationError, validate_all
-from game.systems.skills import osrs_xp_thresholds
+from game.systems.skills import skill_xp_thresholds
 
 
 def test_data_validation_success() -> None:
@@ -239,7 +239,7 @@ def _items() -> dict[str, dict[str, object]]:
 
 
 def _skills() -> dict[str, dict[str, object]]:
-    thresholds = osrs_xp_thresholds()
+    thresholds = skill_xp_thresholds()
     return {
         "woodcutting": {
             "display_name": "Woodcutting",

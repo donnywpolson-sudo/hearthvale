@@ -9,7 +9,7 @@ USERS_DB_PATH = BASE_DIR.parent / "users.db"
 SAVES_DIR = BASE_DIR.parent / "saves"
 LOGS_DIR = BASE_DIR.parent / "logs"
 
-WINDOW_TITLE = "RuneScape Valley Prototype"
+WINDOW_TITLE = "Hearthvale Prototype"
 WINDOW_SIZE = (1280, 720)
 
 TILE_SIZE = 1.0

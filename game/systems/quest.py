@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from game.systems.inventory import COINS_ITEM_ID
+
 
 STARTER_QUEST_ID = "starter_path"
 STARTER_QUEST_FLAGS = (
@@ -46,15 +48,33 @@ class QuestState:
 
 
 @dataclass(frozen=True)
-class QuestResult:
-    feedback: str
+class QuestObjective:
+    text: str
     completed: bool = False
 
 
 @dataclass(frozen=True)
-class QuestObjective:
-    text: str
+class QuestItemReward:
+    item_id: str
+    quantity: int
+
+
+@dataclass(frozen=True)
+class QuestSkillReward:
+    skill_id: str
+    xp: int
+
+
+@dataclass(frozen=True)
+class QuestResult:
+    feedback: str
     completed: bool = False
+    item_rewards: tuple[QuestItemReward, ...] = ()
+    skill_rewards: tuple[QuestSkillReward, ...] = ()
+
+
+STARTER_QUEST_ITEM_REWARDS = (QuestItemReward(COINS_ITEM_ID, 50),)
+STARTER_QUEST_SKILL_REWARDS = (QuestSkillReward("smithing", 40),)
 
 
 class QuestSystem:
@@ -73,7 +93,12 @@ class QuestSystem:
         if missing:
             return QuestResult(f"Guide: Keep going. Still needed: {', '.join(_flag_label(flag) for flag in missing)}.")
         self.state.completed = True
-        return QuestResult("Quest complete: Starter path. Reward: 50 coins, +40 Smithing XP.", completed=True)
+        return QuestResult(
+            "Quest complete: Starter path. Reward: 50 coins, +40 Smithing XP.",
+            completed=True,
+            item_rewards=STARTER_QUEST_ITEM_REWARDS,
+            skill_rewards=STARTER_QUEST_SKILL_REWARDS,
+        )
 
     def record(self, flag: str) -> bool:
         if flag not in STARTER_QUEST_FLAGS or self.state.completed:

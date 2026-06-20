@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from game.systems.equipment import Equipment
 from game.systems.inventory import Inventory
-from game.systems.skills import Skills, osrs_xp_thresholds
+from game.systems.skills import Skills, skill_xp_thresholds
 
 
 def test_equipment_requires_combat_level() -> None:
@@ -17,7 +17,7 @@ def test_equipment_requires_combat_level() -> None:
     assert inventory.to_dict() == {"iron_sword": 1}
     assert equipment.to_dict() == {}
 
-    skills.add_xp("attack", osrs_xp_thresholds()["15"])
+    skills.add_xp("attack", skill_xp_thresholds()["15"])
     equipped = equipment.equip("iron_sword")
 
     assert equipped.success
@@ -28,7 +28,7 @@ def test_equipment_requires_combat_level() -> None:
 def test_equipping_replaces_and_unequips_items() -> None:
     inventory = Inventory({"bronze_sword": 1, "iron_sword": 1})
     skills = Skills(_skills())
-    skills.add_xp("attack", osrs_xp_thresholds()["15"])
+    skills.add_xp("attack", skill_xp_thresholds()["15"])
     equipment = Equipment(_items(), inventory, skills)
 
     assert equipment.equip("bronze_sword").success
@@ -43,7 +43,7 @@ def test_equipping_replaces_and_unequips_items() -> None:
 
 
 def _skills() -> dict[str, dict[str, object]]:
-    thresholds = osrs_xp_thresholds()
+    thresholds = skill_xp_thresholds()
     return {
         "attack": {
             "display_name": "attack",

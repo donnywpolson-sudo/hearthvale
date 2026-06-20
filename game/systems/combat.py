@@ -179,15 +179,17 @@ class CombatSystem:
 
         if self.pending is not None:
             if self.pending.mob_id == mob.mob_id:
+                state = self._state_for(mob)
                 return CombatResult(
                     True,
-                    _pending_feedback(mob, self.remaining_seconds()),
+                    _pending_feedback(mob, state.hitpoints, self.current_hitpoints, self.max_hitpoints(), self.remaining_seconds()),
                     mob_id=mob.mob_id,
                     pending=True,
                     duration=self.pending.duration,
                 )
             self.cancel_pending()
 
+        state = self._state_for(mob)
         self.pending = PendingCombat(
             mob_id=mob.mob_id,
             complete_at=self.time_provider() + mob.attack_seconds,
@@ -195,7 +197,7 @@ class CombatSystem:
         )
         return CombatResult(
             True,
-            f"Attacking {mob.display_name}... {mob.attack_seconds:.1f}s",
+            _pending_feedback(mob, state.hitpoints, self.current_hitpoints, self.max_hitpoints(), mob.attack_seconds),
             mob_id=mob.mob_id,
             pending=True,
             duration=mob.attack_seconds,
@@ -225,7 +227,7 @@ class CombatSystem:
             )
             return CombatResult(
                 True,
-                f"Defeated {mob.display_name}",
+                f"Defeated {mob.display_name}; you: {self.current_hitpoints}/{self.max_hitpoints()} HP",
                 mob_id=mob.mob_id,
                 killed=True,
                 drops=mob.drops,
@@ -238,7 +240,11 @@ class CombatSystem:
             self.states[mob.mob_id] = MobState(hitpoints=remaining_hitpoints)
             return CombatResult(
                 False,
-                f"You were defeated by {mob.display_name}",
+                (
+                    f"You were defeated by {mob.display_name}; "
+                    f"{mob.display_name}: {remaining_hitpoints}/{mob.hitpoints} HP; "
+                    f"you: {self.current_hitpoints}/{self.max_hitpoints()} HP"
+                ),
                 mob_id=mob.mob_id,
                 player_damage=player_damage,
                 enemy_damage=enemy_damage,
@@ -253,7 +259,11 @@ class CombatSystem:
         )
         return CombatResult(
             True,
-            f"Hit {mob.display_name}: {remaining_hitpoints} HP left; {mob.display_name} hit you for {enemy_damage}",
+            (
+                f"Hit {mob.display_name}: {remaining_hitpoints}/{mob.hitpoints} HP left; "
+                f"{mob.display_name} hit you for {enemy_damage}; "
+                f"you: {self.current_hitpoints}/{self.max_hitpoints()} HP"
+            ),
             mob_id=mob.mob_id,
             pending=True,
             duration=mob.attack_seconds,
@@ -347,5 +357,15 @@ def mobs_from_data(data: Iterable[dict[str, Any]]) -> dict[str, MobDefinition]:
     return {mob.mob_id: mob for mob in mobs}
 
 
-def _pending_feedback(mob: MobDefinition, remaining_seconds: float) -> str:
-    return f"Attacking {mob.display_name}... {remaining_seconds:.1f}s"
+def _pending_feedback(
+    mob: MobDefinition,
+    mob_hitpoints: int,
+    player_hitpoints: int,
+    player_max_hitpoints: int,
+    remaining_seconds: float,
+) -> str:
+    return (
+        f"Attacking {mob.display_name}: {mob_hitpoints}/{mob.hitpoints} HP; "
+        f"you: {player_hitpoints}/{player_max_hitpoints} HP; "
+        f"{remaining_seconds:.1f}s"
+    )

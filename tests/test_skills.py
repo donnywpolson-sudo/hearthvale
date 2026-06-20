@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from game.systems.skills import Skills, osrs_xp_thresholds
+from game.systems.skills import Skills, osrs_xp_thresholds, skill_xp_thresholds
 
 
 DEFINITIONS = {
@@ -15,13 +15,14 @@ DEFINITIONS = {
 
 
 class SkillsTests(unittest.TestCase):
-    def test_osrs_xp_thresholds_match_key_levels(self) -> None:
-        thresholds = osrs_xp_thresholds()
+    def test_skill_xp_thresholds_match_key_levels(self) -> None:
+        thresholds = skill_xp_thresholds()
 
         self.assertEqual(thresholds["1"], 0)
         self.assertEqual(thresholds["2"], 83)
         self.assertEqual(thresholds["50"], 101333)
         self.assertEqual(thresholds["99"], 13034431)
+        self.assertEqual(osrs_xp_thresholds(), thresholds)
 
     def test_threshold_leveling(self) -> None:
         skills = Skills(DEFINITIONS)
@@ -35,13 +36,13 @@ class SkillsTests(unittest.TestCase):
         skills.add_xp("woodcutting", 50)
         self.assertEqual(skills.get("woodcutting").level, 3)
 
-    def test_osrs_level_calculation_caps_at_99(self) -> None:
+    def test_threshold_level_calculation_caps_at_99(self) -> None:
         skills = Skills(
             {
                 "cooking": {
                     "display_name": "Cooking",
                     "starting_level": 1,
-                    "xp_thresholds": osrs_xp_thresholds(),
+                    "xp_thresholds": skill_xp_thresholds(),
                 }
             }
         )
@@ -61,7 +62,7 @@ class SkillsTests(unittest.TestCase):
                 "hitpoints": {
                     "display_name": "Hitpoints",
                     "starting_level": 10,
-                    "xp_thresholds": osrs_xp_thresholds(),
+                    "xp_thresholds": skill_xp_thresholds(),
                 }
             }
         )
@@ -76,12 +77,12 @@ class SkillsTests(unittest.TestCase):
                 "woodcutting": {
                     "display_name": "Woodcutting",
                     "starting_level": 1,
-                    "xp_thresholds": osrs_xp_thresholds(),
+                    "xp_thresholds": skill_xp_thresholds(),
                 },
                 "cooking": {
                     "display_name": "Cooking",
                     "starting_level": 1,
-                    "xp_thresholds": osrs_xp_thresholds(),
+                    "xp_thresholds": skill_xp_thresholds(),
                 },
             }
         )

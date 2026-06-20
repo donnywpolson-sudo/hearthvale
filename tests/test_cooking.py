@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from game.systems.cooking import CookingSystem
 from game.systems.inventory import Inventory
-from game.systems.skills import Skills, osrs_xp_thresholds
+from game.systems.skills import Skills, skill_xp_thresholds
 
 
 class FakeClock:
@@ -59,7 +59,7 @@ def test_higher_cooking_level_reduces_duration() -> None:
     recipe = cooking.recipes["raw_shrimp"]
 
     level_one_duration = cooking.cook_duration(recipe)
-    skills.add_xp("cooking", int(osrs_xp_thresholds()["6"]))
+    skills.add_xp("cooking", int(skill_xp_thresholds()["6"]))
     level_six_duration = cooking.cook_duration(recipe)
 
     assert level_one_duration == 1.8
@@ -129,6 +129,6 @@ def _skills() -> dict[str, dict[str, object]]:
         "cooking": {
             "display_name": "Cooking",
             "starting_level": 1,
-            "xp_thresholds": osrs_xp_thresholds(),
+            "xp_thresholds": skill_xp_thresholds(),
         }
     }
