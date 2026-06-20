@@ -12,26 +12,27 @@ python -m pip install -r requirements.txt
 
 ## Run
 
-Use the built Windows launcher when available:
-
-```powershell
-.\dist\Hearthvale.exe
-```
-
-The launcher is also copied to the Desktop by `launcher\build_launcher.ps1`:
-
-```powershell
-& "$env:USERPROFILE\Desktop\Hearthvale.exe"
-```
-
 For development or troubleshooting, run the game module directly:
 
 ```powershell
 python -m game.main
 ```
 
-`Launch Game.bat`, if present, is only an optional manual fallback for running
-`python -m game.main`. The EXE launcher does not depend on that batch file.
+To build the Windows launcher:
+
+```powershell
+.\launcher\build_launcher.ps1
+```
+
+Then run the built launcher from the project folder:
+
+```powershell
+.\dist\Hearthvale.exe
+```
+
+If you move the launcher outside the project folder, set `HEARTHVALE_PROJECT_ROOT`
+to this checkout before running it. `Launch Game.bat`, if present, is only an
+optional manual fallback for running `python -m game.main`.
 
 ## Test
 

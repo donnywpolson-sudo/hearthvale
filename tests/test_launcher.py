@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from launcher import hearthvale_launcher as launcher
+
+
+def test_resolve_project_root_uses_source_checkout(tmp_path: Path) -> None:
+    project_root = _project_root(tmp_path, "source_project")
+    source_file = project_root / "launcher" / "hearthvale_launcher.py"
+
+    resolved = launcher.resolve_project_root(
+        environ={},
+        source_file=source_file,
+        cwd=tmp_path,
+        frozen=False,
+    )
+
+    assert resolved == project_root.resolve()
+
+
+def test_env_project_root_takes_precedence(tmp_path: Path) -> None:
+    env_root = _project_root(tmp_path, "env_project")
+    source_root = _project_root(tmp_path, "source_project")
+
+    resolved = launcher.resolve_project_root(
+        environ={launcher.ENV_PROJECT_ROOT: str(env_root)},
+        source_file=source_root / "launcher" / "hearthvale_launcher.py",
+        cwd=source_root,
+        frozen=False,
+    )
+
+    assert resolved == env_root.resolve()
+
+
+def test_frozen_launcher_resolves_project_root_from_dist_exe(tmp_path: Path) -> None:
+    project_root = _project_root(tmp_path, "frozen_project")
+    executable_path = project_root / "dist" / "Hearthvale.exe"
+
+    resolved = launcher.resolve_project_root(
+        environ={},
+        executable_path=executable_path,
+        source_file=tmp_path / "missing" / "launcher" / "hearthvale_launcher.py",
+        cwd=tmp_path,
+        frozen=True,
+    )
+
+    assert resolved == project_root.resolve()
+
+
+def test_candidate_python_paths_prefer_venv_pythonw_then_python(tmp_path: Path) -> None:
+    project_root = _project_root(tmp_path, "project")
+
+    assert launcher.candidate_python_paths(project_root) == [
+        str(project_root / ".venv" / "Scripts" / "pythonw.exe"),
+        str(project_root / ".venv" / "Scripts" / "python.exe"),
+        "python",
+    ]
+
+
+def test_build_command_uses_resolved_python(tmp_path: Path) -> None:
+    project_root = _project_root(tmp_path, "project")
+    pythonw = project_root / ".venv" / "Scripts" / "pythonw.exe"
+    pythonw.parent.mkdir(parents=True)
+    pythonw.touch()
+
+    assert launcher.resolve_python(project_root) == str(pythonw)
+    assert launcher.build_command(project_root) == [str(pythonw), "-m", "game.main"]
+
+
+def _project_root(tmp_path: Path, name: str) -> Path:
+    project_root = tmp_path / name
+    game_dir = project_root / "game"
+    game_dir.mkdir(parents=True)
+    (game_dir / "main.py").touch()
+    return project_root

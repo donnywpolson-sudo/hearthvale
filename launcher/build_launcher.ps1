@@ -2,10 +2,9 @@ $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $PythonExe = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
-$LauncherScript = Join-Path $ProjectRoot "launcher\runescape_launcher.py"
-$IconPath = Join-Path $ProjectRoot "launcher\runescape.ico"
+$LauncherScript = Join-Path $ProjectRoot "launcher\hearthvale_launcher.py"
+$IconPath = Join-Path $ProjectRoot "launcher\hearthvale.ico"
 $OutputExe = Join-Path $ProjectRoot "dist\Hearthvale.exe"
-$DesktopExe = Join-Path ([Environment]::GetFolderPath("Desktop")) "Hearthvale.exe"
 
 function Test-PyInstaller {
     $PreviousErrorActionPreference = $ErrorActionPreference
@@ -53,9 +52,7 @@ try {
         throw "Expected launcher exe was not created: $OutputExe"
     }
 
-    Copy-Item -Path $OutputExe -Destination $DesktopExe -Force
     Write-Host "Built launcher: $OutputExe"
-    Write-Host "Copied launcher to: $DesktopExe"
 }
 finally {
     Pop-Location
