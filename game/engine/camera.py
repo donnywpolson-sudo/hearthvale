@@ -17,9 +17,18 @@ class CameraState:
 
 
 class GameCamera:
-    def __init__(self, camera, state: CameraState) -> None:
+    def __init__(
+        self,
+        camera,
+        state: CameraState,
+        *,
+        bounds_width: float | None = None,
+        bounds_height: float | None = None,
+    ) -> None:
         self.camera = camera
         self.state = state
+        self.bounds_width = bounds_width
+        self.bounds_height = bounds_height
 
     def update_from_input(self, keys: dict[str, bool], dt: float) -> None:
         rad = math.radians(self.state.heading)
@@ -42,8 +51,6 @@ class GameCamera:
         if keys.get("e"):
             self.state.heading -= settings.CAMERA_ROTATE_SPEED * dt
 
-        self.state.center_x = max(0.0, min(settings.WORLD_WIDTH, self.state.center_x))
-        self.state.center_y = max(0.0, min(settings.WORLD_HEIGHT, self.state.center_y))
         self.apply()
 
     def zoom(self, amount: float) -> None:
@@ -54,6 +61,7 @@ class GameCamera:
         self.apply()
 
     def apply(self) -> None:
+        self._clamp_to_bounds()
         heading = math.radians(self.state.heading)
         pitch = math.radians(settings.CAMERA_PITCH_DEGREES)
         horizontal_distance = self.state.zoom * math.cos(pitch)
@@ -71,6 +79,10 @@ class GameCamera:
         self.state.center_x += dx
         self.state.center_y += dy
 
+    def _clamp_to_bounds(self) -> None:
+        self.state.center_x = _clamp_axis(self.state.center_x, self.bounds_width)
+        self.state.center_y = _clamp_axis(self.state.center_y, self.bounds_height)
+
     def to_dict(self) -> dict[str, float]:
         return {
             "center_x": self.state.center_x,
@@ -85,3 +97,9 @@ class GameCamera:
         self.state.heading = float(data.get("heading", self.state.heading))
         self.state.zoom = float(data.get("zoom", self.state.zoom))
         self.apply()
+
+
+def _clamp_axis(value: float, upper_bound: float | None) -> float:
+    if upper_bound is None:
+        return max(0.0, value)
+    return max(0.0, min(float(upper_bound), value))

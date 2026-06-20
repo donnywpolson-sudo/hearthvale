@@ -18,13 +18,19 @@ class WorldObject:
     kind: str
     tile: Tile
     blocking: bool = True
+    active: bool = True
+    display_name: str = ""
     chopped: bool = False
     node_type: str = ""
     skill_id: str = ""
     required_level: int = 1
+    level: int = 1
+    hitpoints: int = 0
     xp_reward: int = 0
     item_reward: str = ""
     quantity_reward: int = 1
+    item_id: str = ""
+    quantity: int = 0
     depleted_state: str = "depleted"
     respawn_seconds: float | None = None
     depleted: bool = False
@@ -32,7 +38,13 @@ class WorldObject:
 
     @property
     def is_interactable(self) -> bool:
-        return self.kind in {"shop", "bank"} or self.is_resource_node or self.depleted
+        if not self.active:
+            return False
+        return (
+            self.kind in {"shop", "bank", "cooking_range", "combat_dummy", "mob", "ground_item"}
+            or self.is_resource_node
+            or self.depleted
+        )
 
     @property
     def is_resource_node(self) -> bool:

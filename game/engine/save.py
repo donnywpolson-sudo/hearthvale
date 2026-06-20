@@ -11,11 +11,28 @@ import re
 from typing import Any
 
 from game import settings
+from game.systems.inventory import COINS_ITEM_ID
 
 DEFAULT_SAVE_DIR = settings.SAVES_DIR
-SAVE_VERSION = 1
+SAVE_VERSION = 2
 MAX_SAVE_STEM_LENGTH = 64
 LOGGER = logging.getLogger(__name__)
+STARTER_ITEMS = {
+    "bronze_axe": 1,
+    "bronze_pickaxe": 1,
+    "fishing_rod": 1,
+    "bronze_sword": 1,
+    "bronze_shield": 1,
+}
+DEFAULT_SKILL_IDS = (
+    "woodcutting",
+    "mining",
+    "fishing",
+    "cooking",
+    "attack",
+    "strength",
+    "defence",
+)
 _SAFE_FILENAME_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
 _WINDOWS_RESERVED_NAMES = {
     "CON",
@@ -73,13 +90,16 @@ def create_default_save(username: str) -> dict[str, Any]:
                 "heading": 45.0,
                 "zoom": 22.0,
             },
-            "inventory": {},
+            "inventory": dict(STARTER_ITEMS),
             "bank": {},
-            "coins": 0,
+            "equipment": {},
             "skills": {
-                "woodcutting": {"xp": 0, "level": 1},
-                "mining": {"xp": 0, "level": 1},
-                "fishing": {"xp": 0, "level": 1},
+                skill_id: {"xp": 0, "level": 1}
+                for skill_id in DEFAULT_SKILL_IDS
+            },
+            "combat": {
+                "mobs": {},
+                "ground_items": [],
             },
             "depleted_resources": [],
             "chopped_trees": [],
@@ -87,6 +107,10 @@ def create_default_save(username: str) -> dict[str, Any]:
                 "depleted_resources": [],
                 "chopped_trees": [],
                 "resource_nodes": {},
+                "combat": {
+                    "mobs": {},
+                    "ground_items": [],
+                },
                 "day": 1,
                 "minute": 360.0,
             },
@@ -152,6 +176,46 @@ def load_or_create_save(
     return state, True
 
 
+def migrate_legacy_coins_to_inventory(state: dict[str, Any]) -> dict[str, Any]:
+    migrated = deepcopy(state)
+    inventory = migrated.get("inventory")
+    inventory = dict(inventory) if isinstance(inventory, dict) else {}
+
+    legacy_coins = _positive_int(migrated.pop("coins", 0))
+    inventory_coins = _positive_int(inventory.get(COINS_ITEM_ID, 0))
+    if legacy_coins > 0 and inventory_coins <= 0:
+        inventory[COINS_ITEM_ID] = legacy_coins
+    elif inventory_coins <= 0:
+        inventory.pop(COINS_ITEM_ID, None)
+
+    migrated["inventory"] = inventory
+    return migrated
+
+
+def migrate_legacy_starter_items(state: dict[str, Any]) -> dict[str, Any]:
+    migrated = deepcopy(state)
+    version = _positive_int(migrated.get("version", 1))
+    if version >= 2:
+        return migrated
+
+    inventory = migrated.get("inventory")
+    inventory = dict(inventory) if isinstance(inventory, dict) else {}
+    equipment = migrated.get("equipment")
+    equipped_items = set(equipment.values()) if isinstance(equipment, dict) else set()
+    for item_id, quantity in STARTER_ITEMS.items():
+        if _positive_int(inventory.get(item_id, 0)) <= 0 and item_id not in equipped_items:
+            inventory[item_id] = quantity
+    migrated["inventory"] = inventory
+    migrated.setdefault("equipment", {})
+    return migrated
+
+
+def migrate_save_state(state: dict[str, Any]) -> dict[str, Any]:
+    migrated = migrate_legacy_coins_to_inventory(state)
+    migrated = migrate_legacy_starter_items(migrated)
+    return migrated
+
+
 def _write_json(path: Path, state: dict[str, Any]) -> None:
     if path.parent != Path("."):
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -165,6 +229,14 @@ def _write_json(path: Path, state: dict[str, Any]) -> None:
         encoding="utf-8",
     )
     os.replace(temp_path, path)
+
+
+def _positive_int(value: object) -> int:
+    try:
+        quantity = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return max(quantity, 0)
 
 
 def _backup_path(path: Path) -> Path:

@@ -28,13 +28,16 @@ python -m game.tools.validate_data
 - Start at the local login screen.
 - Enter a username and password, then select `Register` to create a local account.
 - Select `Login` to enter the game with an existing local account.
+- Press Tab in the username field to move focus to the password field.
 - Press Enter in the password field to attempt login.
 - Select `Quit` on the login screen to close the prototype.
 - `WASD`: pan camera
 - `Q` / `E`: rotate camera
 - Mouse wheel: zoom camera
+- Hover tiles and objects to show their name in the top-center status box.
 - Left click ground: move player to a tile
-- Right click resource/shop/bank: interact
+- Right click resource/shop/bank/cooking range/training dummy: interact
+- In-game `File` menu: save, load, or quit
 - `F5`: save the currently logged-in account
 - `F9`: load the currently logged-in account
 - `Esc`: quit
@@ -55,19 +58,19 @@ automatically when needed.
 
 ## Current MVP Features
 
-- 30x30 tile world with grass, dirt paths, blocked rocks, trees, copper rocks, fishing spots, stumps, depleted rocks, and one shop/NPC marker.
+- 100x100 scalable tile world with the current starter area, grass, dirt paths, blocked rocks, trees, copper rocks, fishing spots, stumps, depleted rocks, shop, bank, cooking range, and training dummy markers.
 - Angled RuneScape-style camera independent from player movement.
-- Left-click movement with grid A* pathfinding and no-path feedback.
-- Right-click interactions that walk adjacent before gathering or selling.
-- Shared gathering system for Woodcutting, Mining, and Fishing with JSON-defined XP, level requirements, item rewards, depletion, and respawn state.
-- Data-driven inventory display, bottom-right skills panel, coin balance, simple day/time clock, HUD text, and per-account save/load.
+- Left-click movement with grid A* pathfinding.
+- Right-click interactions that walk adjacent before gathering, opening bank/shop panels, or training combat.
+- Shared gathering system for woodcutting, mining, and fishing with JSON-defined XP, level requirements, item rewards, depletion, respawn state, and required starter tools.
+- Data-driven inventory display, bottom-right skills/equipment tabs, bankable coin item stack, simple day/time clock, compact account/time HUD, File menu, and per-account save/load.
 - Bank booth with an in-game bank panel for depositing and withdrawing inventory stacks.
+- Shop panel for choosing specific sellable inventory stacks instead of instantly selling everything.
+- Basic combat skills and equipment requirements for wielding higher-tier weapons and shields.
 - Data validation for `items.json`, `skills.json`, and `world.json`.
 
 ## Next Recommended Systems
 
 - Replace placeholder geometry with art assets.
 - Add basic character/object animations.
-- Require tools for gathering actions.
-- Add a shop panel instead of instant selling.
 - Expand the map data and object definitions.

@@ -10,3 +10,6 @@ users.db
 users.db-*
 saves/
 logs/
+build/
+dist/
+*.spec

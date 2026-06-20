@@ -19,13 +19,18 @@ from game.engine import save
 from game.engine.validation import validate_data_dir
 from game.entities.player import Player
 from game.systems.bank import Bank
+from game.systems.combat import CombatSystem
+from game.systems.cooking import CookingSystem
+from game.systems.equipment import Equipment
 from game.systems.gathering import GatheringSystem, ResourceNodeState
-from game.systems.inventory import Inventory
+from game.systems.inventory import COINS_ITEM_ID, Inventory
 from game.systems.interaction import InteractionManager
 from game.systems.shop import Shop
 from game.systems.skills import Skills
 from game.ui.login import LoginScreen
 from game.ui.hud import Hud
+from game.style import WorldPalette as Palette
+from game.world import visuals
 from game.world.map import WorldMap
 from game.world.time import GameTime
 
@@ -74,13 +79,16 @@ class GameApp(ShowBase):
         self.inventory = Inventory()
         self.bank = Bank()
         self.skills = Skills(self.skills_data)
+        self.equipment = Equipment(self.items_data, self.inventory, self.skills)
         self.gathering = GatheringSystem(self.world_map.resource_nodes, self.inventory, self.skills)
-        self.shop = Shop(self.items_data)
-        self.coins = 0
+        self.cooking = CookingSystem(self.items_data, self.inventory, self.skills)
+        self.combat = CombatSystem(self.world_map.mob_definitions)
+        self.shop = Shop(self.items_data, self.world_map.shop_stock)
         self.game_time = GameTime()
 
         self.player = Player(self.world_map.grid, self.world_map.player_start)
         self.player.render(self.render)
+        self._create_world_markers()
 
         camera_data = self.world_map.camera_start
         self.game_camera = GameCamera(
@@ -91,6 +99,8 @@ class GameApp(ShowBase):
                 heading=float(camera_data.get("heading", 45.0)),
                 zoom=float(camera_data.get("zoom", 22.0)),
             ),
+            bounds_width=self.world_map.grid.width,
+            bounds_height=self.world_map.grid.height,
         )
         self.game_camera.apply()
 
@@ -101,6 +111,15 @@ class GameApp(ShowBase):
             on_deposit_item=self.deposit_bank_item,
             on_withdraw_item=self.withdraw_bank_item,
             on_deposit_all=self.deposit_all_bank,
+            on_shop_close=self.close_shop,
+            on_buy_item=self.buy_shop_item,
+            on_sell_item=self.sell_inventory_item,
+            on_sell_all=self.sell_all_shop_items,
+            on_select_item=self.select_inventory_item,
+            on_unequip_slot=self.unequip_slot,
+            on_save=self.save_game,
+            on_load=self.load_game,
+            on_quit=self.userExit,
         )
         self.selected_text = "Selected: none"
         self.interactions = InteractionManager(
@@ -111,8 +130,12 @@ class GameApp(ShowBase):
             self.shop,
             self._add_coins,
             self.set_feedback,
-            self.gathering,
+            gathering=self.gathering,
+            cooking=self.cooking,
+            combat=self.combat,
             open_bank=self.open_bank,
+            open_shop=self.open_shop,
+            train_combat=self.train_combat,
         )
 
         self.input = InputManager(self)
@@ -125,9 +148,14 @@ class GameApp(ShowBase):
         self.player.update(dt)
         self.gathering.refresh_all()
         self.world_map.apply_resource_states(self.gathering.states)
+        self.combat.refresh_all()
+        self.world_map.apply_mob_states(self.combat.states)
         self.interactions.update()
         self.game_time.update(dt)
+        self._update_hover_marker()
+        self._update_world_tint()
         self._update_hud()
+        self.hud.tick(dt)
         return task.cont
 
     def on_mouse_wheel(self, direction: int) -> None:
@@ -139,6 +167,7 @@ class GameApp(ShowBase):
             self.set_feedback("No ground selected")
             return
         self.selected_text = f"Selected tile: {tile[0]}, {tile[1]}"
+        self._show_marker(self.destination_marker, tile)
         self.interactions.move_to_tile(tile)
 
     def on_right_click(self) -> None:
@@ -147,9 +176,11 @@ class GameApp(ShowBase):
             tile, _ = ground_tile_from_mouse(self, self.world_map.grid)
             if tile is not None:
                 self.selected_text = f"Selected tile: {tile[0]}, {tile[1]}"
+                self._show_marker(self.selection_marker, tile)
             self.set_feedback("No object selected")
             return
         self.selected_text = f"Selected object: {obj.kind} ({obj.object_id})"
+        self._show_marker(self.selection_marker, obj.tile)
         self.interactions.interact_with(obj)
 
     def save_game(self) -> None:
@@ -192,14 +223,19 @@ class GameApp(ShowBase):
         depleted_resources = sorted(self.world_map.depleted_resource_ids)
         time_state = self.game_time.to_dict()
         resource_nodes = self.gathering.to_dict()
+        combat_state = {
+            "mobs": self.combat.to_dict(),
+            "ground_items": self.world_map.ground_items_to_dict(),
+        }
         return {
             "version": save.SAVE_VERSION,
             "username": self.current_username,
             "player": self.player.to_dict(),
             "inventory": self.inventory.to_dict(),
             "bank": self.bank.to_dict(),
-            "coins": self.coins,
+            "equipment": self.equipment.to_dict(),
             "skills": self.skills.to_dict(),
+            "combat": combat_state,
             "chopped_trees": chopped_trees,
             "depleted_resources": depleted_resources,
             "time": time_state,
@@ -207,36 +243,60 @@ class GameApp(ShowBase):
                 "chopped_trees": chopped_trees,
                 "depleted_resources": depleted_resources,
                 "resource_nodes": resource_nodes,
+                "combat": combat_state,
                 **time_state,
             },
             "camera": self.game_camera.to_dict(),
         }
 
     def _apply_save_state(self, state: dict[str, Any]) -> None:
+        state = save.migrate_save_state(state)
         world_state = state.get("world", {})
         self.player.load_dict(state.get("player", {}))
         self.inventory = Inventory.from_dict(state.get("inventory", {}))
         self.bank = Bank.from_dict(state.get("bank", {}))
         self.skills.load_dict(state.get("skills", {}))
-        self.coins = int(state.get("coins", self.coins))
+        self.equipment.inventory = self.inventory
+        self.equipment.skills = self.skills
+        self.equipment.load_dict(state.get("equipment", {}))
         self.game_time.load_dict(state.get("time", world_state))
         self.game_camera.load_dict(state.get("camera", {}))
         resource_states = self._resource_states_from_save(state, world_state)
         self.gathering.inventory = self.inventory
         self.gathering.skills = self.skills
         self.gathering.load_dict(resource_states)
+        self.cooking.inventory = self.inventory
+        self.cooking.skills = self.skills
+        self.cooking.cancel_pending()
+        combat_state = self._combat_state_from_save(state, world_state)
+        self.combat.load_dict(combat_state.get("mobs", {}))
         self.world_map.apply_resource_states(self.gathering.states)
+        self.world_map.apply_mob_states(self.combat.states)
+        ground_items = combat_state.get("ground_items", [])
+        self.world_map.load_ground_items(ground_items if isinstance(ground_items, list) else [])
         self.interactions.inventory = self.inventory
         self.interactions.skills = self.skills
         self.interactions.gathering = self.gathering
+        self.interactions.cooking = self.cooking
+        self.interactions.combat = self.combat
 
     def open_bank(self) -> None:
+        self.hud.close_shop()
         self.hud.open_bank()
         self._update_hud()
         self.set_feedback("Bank opened")
 
     def close_bank(self) -> None:
         self.hud.close_bank()
+
+    def open_shop(self) -> None:
+        self.hud.close_bank()
+        self.hud.open_shop()
+        self._update_hud()
+        self.set_feedback("Shop opened")
+
+    def close_shop(self) -> None:
+        self.hud.close_shop()
 
     def deposit_bank_item(self, item_id: str) -> None:
         deposited = self.bank.deposit(self.inventory, item_id)
@@ -263,19 +323,72 @@ class GameApp(ShowBase):
             self.set_feedback("No items to deposit")
         self._update_hud()
 
+    def sell_inventory_item(self, item_id: str) -> None:
+        sold, coins = self.shop.sell_item(self.inventory, item_id)
+        if sold:
+            self._add_coins(coins)
+            if self.interactions.selected_item_id == item_id and self.inventory.count(item_id) <= 0:
+                self.interactions.selected_item_id = None
+            self.set_feedback(f"Sold {sold} {self._item_name(item_id)} for {coins} coins")
+        else:
+            self.set_feedback(f"No sellable {self._item_name(item_id)}")
+        self._update_hud()
+
+    def buy_shop_item(self, item_id: str) -> None:
+        result = self.shop.buy(self.inventory, item_id)
+        self.set_feedback(result.feedback)
+        self._update_hud()
+
+    def sell_all_shop_items(self) -> None:
+        sold, coins = self.shop.sell_all(self.inventory)
+        if sold:
+            self._add_coins(coins)
+            if self.interactions.selected_item_id and self.inventory.count(self.interactions.selected_item_id) <= 0:
+                self.interactions.selected_item_id = None
+            self.set_feedback(f"Sold {sold} items for {coins} coins")
+        else:
+            self.set_feedback("No sellable items")
+        self._update_hud()
+
+    def select_inventory_item(self, item_id: str) -> None:
+        if self.equipment.is_equippable(item_id):
+            result = self.equipment.equip(item_id)
+            self.set_feedback(result.feedback)
+            if result.success and self.interactions.selected_item_id == item_id and self.inventory.count(item_id) <= 0:
+                self.interactions.selected_item_id = None
+        else:
+            self.interactions.select_inventory_item(item_id)
+        self._update_hud()
+
+    def unequip_slot(self, slot: str) -> None:
+        result = self.equipment.unequip(slot)
+        self.set_feedback(result.feedback)
+        self._update_hud()
+
+    def train_combat(self) -> None:
+        xp = 20
+        for skill_id in ("attack", "strength", "defence"):
+            self.skills.add_xp(skill_id, xp)
+        self.set_feedback("Trained combat: +20 attack XP, +20 strength XP, +20 defence XP")
+        self._update_hud()
+
     def _update_hud(self) -> None:
         self.hud.update(
             account=self.current_username or "",
             time_text=self.game_time.display(),
-            coins=self.coins,
-            selected_text=self.selected_text,
+            selected_item_id=self.interactions.selected_item_id,
             inventory=self.inventory.to_dict(),
             bank=self.bank.to_dict(),
+            equipment=self.equipment.to_dict(),
             skills=self.skills,
+            selected_text=self.selected_text,
+            shop_stock=self.world_map.shop_stock,
+            gather_progress=self._activity_progress(),
         )
 
     def _add_coins(self, amount: int) -> None:
-        self.coins += amount
+        if amount > 0:
+            self.inventory.add(COINS_ITEM_ID, amount)
 
     def _item_name(self, item_id: str) -> str:
         definition = self.items_data.get(item_id, {})
@@ -320,24 +433,98 @@ class GameApp(ShowBase):
             for resource_id in self._depleted_resources_from_save(state, world_state)
         }
 
+    def _combat_state_from_save(
+        self,
+        state: dict[str, Any],
+        world_state: dict[str, Any],
+    ) -> dict[str, Any]:
+        combat_state = state.get("combat", world_state.get("combat", {}))
+        return combat_state if isinstance(combat_state, dict) else {}
+
     def _configure_window(self) -> None:
         props = WindowProperties()
         props.setTitle(settings.WINDOW_TITLE)
         props.setSize(*settings.WINDOW_SIZE)
-        self.win.requestProperties(props)
+        if hasattr(self.win, "requestProperties"):
+            self.win.requestProperties(props)
 
     def _configure_lighting(self) -> None:
         ambient = AmbientLight("ambient")
-        ambient.setColor((0.7, 0.7, 0.7, 1))
+        ambient.setColor((0.62, 0.58, 0.50, 1))
         ambient_np = self.render.attachNewNode(ambient)
         self.render.setLight(ambient_np)
 
         sun = DirectionalLight("sun")
-        sun.setColor((0.8, 0.78, 0.65, 1))
+        sun.setColor((0.92, 0.82, 0.62, 1))
         sun_np = self.render.attachNewNode(sun)
         sun_np.setHpr(45, -60, 0)
         self.render.setLight(sun_np)
 
+    def _create_world_markers(self) -> None:
+        self.hover_marker = visuals.make_tile_marker("hover_marker", (1.0, 0.88, 0.46, 1.0), radius=0.43)
+        self.selection_marker = visuals.make_tile_marker("selection_marker", Palette.RESOURCE_RING, radius=0.48)
+        self.destination_marker = visuals.make_tile_marker("destination_marker", (0.48, 0.78, 1.0, 1.0), radius=0.38)
+        for marker in (self.hover_marker, self.selection_marker, self.destination_marker):
+            marker.reparentTo(self.render)
+
+    def _update_hover_marker(self) -> None:
+        if not hasattr(self, "hover_marker"):
+            return
+        tile, _ = ground_tile_from_mouse(self, self.world_map.grid)
+        if tile is None:
+            self.hover_marker.hide()
+            self.hud.set_hover_text("")
+            return
+        self._show_marker(self.hover_marker, tile)
+        self.hud.set_hover_text(self._hover_label(tile))
+
+    def _show_marker(self, marker, tile: tuple[int, int]) -> None:
+        x, y = self.world_map.grid.to_world(tile)
+        marker.setPos(x, y, 0.045)
+        marker.show()
+
+    def _update_world_tint(self) -> None:
+        tint, sky = visuals.world_tint(self.game_time.minute)
+        self.render.setColorScale(*tint)
+        self.setBackgroundColor(*sky)
+
+    def _activity_progress(self) -> float | None:
+        pending = self.gathering.pending
+        remaining_seconds = self.gathering.remaining_seconds
+        if pending is None:
+            pending = self.cooking.pending
+            remaining_seconds = self.cooking.remaining_seconds
+        if pending is None:
+            pending = self.combat.pending
+            remaining_seconds = self.combat.remaining_seconds
+        if pending is None or pending.duration <= 0:
+            return None
+        remaining = remaining_seconds()
+        return max(0.0, min(1.0, (pending.duration - remaining) / pending.duration))
+
+    def _hover_label(self, tile: tuple[int, int]) -> str:
+        obj = self.world_map.object_at(tile)
+        if obj is not None:
+            if obj.is_resource_node and obj.depleted:
+                return _display_label(obj.kind)
+            node = self.world_map.resource_node_for_object(obj)
+            if node is not None:
+                return node.display_name or _display_label(node.node_type)
+            if obj.kind == "ground_item":
+                return f"{obj.quantity} {self._item_name(obj.item_id)}"
+            if obj.kind == "mob":
+                return f"{obj.display_name} (level {obj.level})"
+            return obj.display_name or _display_label(obj.kind)
+
+        decoration = self.world_map.decoration_at(tile)
+        if decoration is not None:
+            return _display_label(decoration.kind)
+        return self.world_map.terrain_label(tile)
+
 
 def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _display_label(value: str) -> str:
+    return value.replace("_", " ").title()

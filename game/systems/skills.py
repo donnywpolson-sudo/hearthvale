@@ -1,10 +1,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from typing import Any
 
 
 XP_PER_LEVEL = 100
+OSRS_MAX_LEVEL = 99
+STANDARD_SKILL_IDS = (
+    "woodcutting",
+    "mining",
+    "fishing",
+    "cooking",
+    "attack",
+    "strength",
+    "defence",
+)
 
 
 @dataclass
@@ -91,11 +102,35 @@ def level_for_xp(xp: int) -> int:
     return 1 + xp // XP_PER_LEVEL
 
 
+def osrs_xp_thresholds(max_level: int = OSRS_MAX_LEVEL) -> dict[str, int]:
+    if max_level < 1:
+        raise ValueError("max_level must be positive")
+
+    points = 0
+    thresholds = {"1": 0}
+    for level in range(1, max_level):
+        points += math.floor(level + 300 * (2 ** (level / 7)))
+        thresholds[str(level + 1)] = math.floor(points / 4)
+    return thresholds
+
+
 def _normalize_definitions(
     definitions: dict[str, Any] | list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
     if definitions is None:
-        return {}
-    if isinstance(definitions, dict):
-        return definitions
-    return {str(definition["id"]): definition for definition in definitions}
+        normalized: dict[str, Any] = {}
+    elif isinstance(definitions, dict):
+        normalized = dict(definitions)
+    else:
+        normalized = {str(definition["id"]): definition for definition in definitions}
+    for skill_id in STANDARD_SKILL_IDS:
+        normalized.setdefault(skill_id, _standard_definition(skill_id))
+    return normalized
+
+
+def _standard_definition(skill_id: str) -> dict[str, Any]:
+    return {
+        "display_name": skill_id,
+        "starting_level": 1,
+        "xp_thresholds": osrs_xp_thresholds(),
+    }

@@ -39,6 +39,7 @@ def validate_all(
     issues: list[ValidationIssue] = []
     issues.extend(validate_items(items))
     issues.extend(validate_skills(skills))
+    issues.extend(validate_item_skill_refs(items, skills))
     issues.extend(validate_world(world, items, skills))
     if issues:
         raise DataValidationError(issues)
@@ -49,7 +50,8 @@ def validate_items(items: dict[str, Any]) -> list[ValidationIssue]:
     if not isinstance(items, dict) or not items:
         return [ValidationIssue("items.json", "must contain at least one item")]
 
-    valid_categories = {"wood", "fish", "ore"}
+    valid_categories = {"armor", "currency", "fish", "misc", "ore", "tool", "weapon", "wood"}
+    cooking_keys = {"cook_result", "cooking_required_level", "cooking_xp", "base_cook_seconds"}
     for item_id, definition in items.items():
         source = f"items.json:{item_id}"
         if not isinstance(item_id, str) or not item_id:
@@ -64,7 +66,68 @@ def validate_items(items: dict[str, Any]) -> list[ValidationIssue]:
             issues.append(ValidationIssue(source, "'sell_price' must be a non-negative integer"))
         category = definition.get("category")
         if category not in valid_categories:
-            issues.append(ValidationIssue(source, "'category' must be one of: fish, ore, wood"))
+            issues.append(
+                ValidationIssue(
+                    source,
+                    "'category' must be one of: armor, currency, fish, misc, ore, tool, weapon, wood",
+                )
+            )
+        equip_slot = definition.get("equip_slot")
+        if equip_slot is not None and equip_slot not in {"weapon", "shield"}:
+            issues.append(ValidationIssue(source, "'equip_slot' must be one of: shield, weapon"))
+        required_skills = definition.get("required_skills")
+        if required_skills is not None:
+            if not isinstance(required_skills, dict) or not required_skills:
+                issues.append(ValidationIssue(source, "'required_skills' must be a non-empty object"))
+            else:
+                for required_skill, required_level in required_skills.items():
+                    if not isinstance(required_skill, str) or not required_skill:
+                        issues.append(ValidationIssue(source, "required skill IDs must be non-empty strings"))
+                    if not isinstance(required_level, int) or not 1 <= required_level <= 99:
+                        issues.append(ValidationIssue(source, "required skill levels must be between 1 and 99"))
+        present_cooking_keys = cooking_keys & set(definition)
+        if present_cooking_keys and present_cooking_keys != cooking_keys:
+            issues.append(
+                ValidationIssue(
+                    source,
+                    "cooking items must include cook_result, cooking_required_level, cooking_xp, and base_cook_seconds",
+                )
+            )
+            continue
+        if present_cooking_keys:
+            cook_result = definition.get("cook_result")
+            if not isinstance(cook_result, str) or not cook_result:
+                issues.append(ValidationIssue(source, "'cook_result' must be a non-empty string"))
+            elif cook_result not in items:
+                issues.append(ValidationIssue(source, f"unknown cook_result '{cook_result}'"))
+            elif items.get(cook_result, {}).get("category") != "fish":
+                issues.append(ValidationIssue(source, "'cook_result' must refer to a fish item"))
+            if category != "fish":
+                issues.append(ValidationIssue(source, "cookable items must use category 'fish'"))
+            required_level = definition.get("cooking_required_level")
+            if not isinstance(required_level, int) or not 1 <= required_level <= 99:
+                issues.append(ValidationIssue(source, "'cooking_required_level' must be between 1 and 99"))
+            cooking_xp = definition.get("cooking_xp")
+            if not isinstance(cooking_xp, int) or cooking_xp <= 0:
+                issues.append(ValidationIssue(source, "'cooking_xp' must be a positive integer"))
+            base_cook_seconds = definition.get("base_cook_seconds")
+            if not isinstance(base_cook_seconds, (int, float)) or base_cook_seconds <= 0:
+                issues.append(ValidationIssue(source, "'base_cook_seconds' must be a positive number"))
+    return issues
+
+
+def validate_item_skill_refs(items: dict[str, Any], skills: dict[str, Any]) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+    valid_skill_ids = set(skills) | {"attack", "strength", "defence"}
+    for item_id, definition in items.items():
+        if not isinstance(definition, dict):
+            continue
+        required_skills = definition.get("required_skills")
+        if not isinstance(required_skills, dict):
+            continue
+        for skill_id in required_skills:
+            if skill_id not in valid_skill_ids:
+                issues.append(ValidationIssue(f"items.json:{item_id}", f"unknown required skill '{skill_id}'"))
     return issues
 
 
@@ -72,6 +135,11 @@ def validate_skills(skills: dict[str, Any]) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
     if not isinstance(skills, dict) or not skills:
         return [ValidationIssue("skills.json", "must contain at least one skill")]
+
+    required_skills = {"woodcutting", "mining", "fishing", "cooking"}
+    missing_skills = sorted(required_skills - set(skills))
+    for skill_id in missing_skills:
+        issues.append(ValidationIssue("skills.json", f"missing required skill '{skill_id}'"))
 
     for skill_id, definition in skills.items():
         source = f"skills.json:{skill_id}"
@@ -101,10 +169,13 @@ def validate_skills(skills: dict[str, Any]) -> list[ValidationIssue]:
         parsed.sort()
         if not parsed or parsed[0] != (1, 0):
             issues.append(ValidationIssue(source, "XP thresholds must start with level 1 at 0 XP"))
+        parsed_levels = [level for level, _xp in parsed]
+        if parsed_levels != list(range(1, 100)):
+            issues.append(ValidationIssue(source, "XP thresholds must include every level from 1 to 99"))
         previous_xp = -1
         for level, xp in parsed:
-            if level < 1 or xp < 0:
-                issues.append(ValidationIssue(source, "XP thresholds must be positive levels and non-negative XP"))
+            if not 1 <= level <= 99 or xp < 0:
+                issues.append(ValidationIssue(source, "XP thresholds must be levels 1-99 and non-negative XP"))
             if xp <= previous_xp:
                 issues.append(ValidationIssue(source, "XP thresholds must strictly increase"))
             previous_xp = xp
@@ -178,6 +249,8 @@ def validate_world(
         for key in ("required_level", "xp_reward", "quantity_reward"):
             if not isinstance(node.get(key), int) or int(node.get(key)) < (1 if key != "xp_reward" else 0):
                 issues.append(ValidationIssue(source, f"'{key}' must be a valid integer"))
+        if isinstance(node.get("required_level"), int) and int(node["required_level"]) > 99:
+            issues.append(ValidationIssue(source, "'required_level' must be between 1 and 99"))
         if not isinstance(node.get("blocks_movement"), bool):
             issues.append(ValidationIssue(source, "'blocks_movement' must be a boolean"))
         if not isinstance(node.get("depleted_state"), str) or not node.get("depleted_state"):
@@ -197,19 +270,176 @@ def validate_world(
         if position is not None and player_start == position and node.get("blocks_movement"):
             issues.append(ValidationIssue(source, "blocking resource cannot overlap player spawn"))
         if position is not None:
+            if node.get("skill_id") == "fishing":
+                if position not in water_tiles:
+                    issues.append(ValidationIssue(source, "fishing resource must be placed on a water tile"))
+                elif not _has_adjacent_walkable_tile(position, width, height, blocked_tiles | water_tiles):
+                    issues.append(ValidationIssue(source, "fishing resource needs adjacent walkable land"))
+            elif position in water_tiles:
+                issues.append(ValidationIssue(source, "non-fishing resource cannot overlap water tile"))
             resource_positions.add(position)
 
-    _validate_optional_world_object(
+    world_object_positions: set[tuple[int, int]] = set()
+    invalid_object_tiles = blocked_tiles | water_tiles
+    for key in ("shop", "bank", "cooking_range", "combat_dummy"):
+        _validate_optional_world_object(
+            world,
+            key,
+            width,
+            height,
+            invalid_object_tiles,
+            player_start,
+            resource_positions,
+            world_object_positions,
+            seen_ids,
+            issues,
+        )
+    _validate_shop_stock(world, items, issues)
+    mob_positions = _validate_mobs(
         world,
-        "bank",
+        items,
         width,
         height,
-        blocked_tiles | water_tiles,
+        invalid_object_tiles,
         player_start,
         resource_positions,
+        world_object_positions,
+        seen_ids,
+        issues,
+    )
+    _validate_decorations(
+        world,
+        width,
+        height,
+        invalid_object_tiles,
+        player_start,
+        resource_positions | mob_positions,
+        world_object_positions,
+        seen_ids,
         issues,
     )
     return issues
+
+
+def _validate_shop_stock(
+    world: dict[str, Any],
+    items: dict[str, Any],
+    issues: list[ValidationIssue],
+) -> None:
+    raw_shop = world.get("shop")
+    if raw_shop is None or not isinstance(raw_shop, dict):
+        return
+    stock = raw_shop.get("stock", [])
+    if stock is None:
+        return
+    if not isinstance(stock, list):
+        issues.append(ValidationIssue("world.json:shop.stock", "must be a list"))
+        return
+    for index, raw_stock_item in enumerate(stock):
+        source = f"world.json:shop.stock[{index}]"
+        if not isinstance(raw_stock_item, dict):
+            issues.append(ValidationIssue(source, "stock item must be an object"))
+            continue
+        item_id = raw_stock_item.get("item_id")
+        if not isinstance(item_id, str) or not item_id:
+            issues.append(ValidationIssue(source, "missing required string 'item_id'"))
+        elif item_id not in items:
+            issues.append(ValidationIssue(source, f"unknown item_id '{item_id}'"))
+        price = raw_stock_item.get("price")
+        if not isinstance(price, int) or price <= 0:
+            issues.append(ValidationIssue(source, "'price' must be a positive integer"))
+
+
+def _validate_mobs(
+    world: dict[str, Any],
+    items: dict[str, Any],
+    width: int,
+    height: int,
+    blocked_tiles: set[tuple[int, int]],
+    player_start: tuple[int, int] | None,
+    resource_positions: set[tuple[int, int]],
+    world_object_positions: set[tuple[int, int]],
+    seen_ids: set[str],
+    issues: list[ValidationIssue],
+) -> set[tuple[int, int]]:
+    raw_mobs = world.get("mobs", [])
+    mob_positions: set[tuple[int, int]] = set()
+    if raw_mobs is None:
+        return mob_positions
+    if not isinstance(raw_mobs, list):
+        issues.append(ValidationIssue("world.json:mobs", "must be a list"))
+        return mob_positions
+
+    required = {
+        "mob_id",
+        "display_name",
+        "level",
+        "hitpoints",
+        "attack_seconds",
+        "respawn_seconds",
+        "position",
+        "drops",
+    }
+    for index, mob in enumerate(raw_mobs):
+        source = f"world.json:mobs[{index}]"
+        if not isinstance(mob, dict):
+            issues.append(ValidationIssue(source, "mob must be an object"))
+            continue
+        missing = sorted(required - set(mob))
+        if missing:
+            issues.append(ValidationIssue(source, f"missing required keys: {', '.join(missing)}"))
+            continue
+
+        mob_id = mob.get("mob_id")
+        if not isinstance(mob_id, str) or not mob_id:
+            issues.append(ValidationIssue(source, "'mob_id' must be a non-empty string"))
+        elif mob_id in seen_ids:
+            issues.append(ValidationIssue(source, f"duplicate object ID '{mob_id}'"))
+        else:
+            seen_ids.add(mob_id)
+
+        display_name = mob.get("display_name")
+        if not isinstance(display_name, str) or not display_name:
+            issues.append(ValidationIssue(source, "'display_name' must be a non-empty string"))
+        for key in ("level", "hitpoints"):
+            if not isinstance(mob.get(key), int) or int(mob.get(key)) <= 0:
+                issues.append(ValidationIssue(source, f"'{key}' must be a positive integer"))
+        for key in ("attack_seconds", "respawn_seconds"):
+            if not isinstance(mob.get(key), (int, float)) or float(mob.get(key)) <= 0:
+                issues.append(ValidationIssue(source, f"'{key}' must be a positive number"))
+
+        tile = _tile(mob.get("position"), f"{source}.position", width, height, issues)
+        if tile is not None:
+            if tile in blocked_tiles:
+                issues.append(ValidationIssue(source, "position cannot overlap blocked or water tile"))
+            if tile == player_start:
+                issues.append(ValidationIssue(source, "position cannot overlap player spawn"))
+            if tile in resource_positions:
+                issues.append(ValidationIssue(source, "position cannot overlap a resource node"))
+            if tile in world_object_positions:
+                issues.append(ValidationIssue(source, "position cannot overlap another world object"))
+            if tile in mob_positions:
+                issues.append(ValidationIssue(source, "position cannot overlap another mob"))
+            mob_positions.add(tile)
+
+        drops = mob.get("drops")
+        if not isinstance(drops, list):
+            issues.append(ValidationIssue(source, "'drops' must be a list"))
+            continue
+        for drop_index, drop in enumerate(drops):
+            drop_source = f"{source}.drops[{drop_index}]"
+            if not isinstance(drop, dict):
+                issues.append(ValidationIssue(drop_source, "drop must be an object"))
+                continue
+            item_id = drop.get("item_id")
+            if not isinstance(item_id, str) or not item_id:
+                issues.append(ValidationIssue(drop_source, "missing required string 'item_id'"))
+            elif item_id not in items:
+                issues.append(ValidationIssue(drop_source, f"unknown item_id '{item_id}'"))
+            quantity = drop.get("quantity", 1)
+            if not isinstance(quantity, int) or quantity <= 0:
+                issues.append(ValidationIssue(drop_source, "'quantity' must be a positive integer"))
+    return mob_positions
 
 
 def _validate_optional_world_object(
@@ -220,6 +450,8 @@ def _validate_optional_world_object(
     blocked_tiles: set[tuple[int, int]],
     player_start: tuple[int, int] | None,
     resource_positions: set[tuple[int, int]],
+    world_object_positions: set[tuple[int, int]],
+    seen_ids: set[str],
     issues: list[ValidationIssue],
 ) -> None:
     raw_object = world.get(key)
@@ -234,6 +466,10 @@ def _validate_optional_world_object(
     object_id = raw_object.get("id")
     if not isinstance(object_id, str) or not object_id:
         issues.append(ValidationIssue(source, "missing required string 'id'"))
+    elif object_id in seen_ids:
+        issues.append(ValidationIssue(source, f"duplicate object ID '{object_id}'"))
+    else:
+        seen_ids.add(object_id)
 
     tile = _tile(raw_object.get("tile"), f"{source}.tile", width, height, issues)
     if tile is None:
@@ -244,6 +480,67 @@ def _validate_optional_world_object(
         issues.append(ValidationIssue(source, "tile cannot overlap player spawn"))
     if tile in resource_positions:
         issues.append(ValidationIssue(source, "tile cannot overlap a resource node"))
+    if tile in world_object_positions:
+        issues.append(ValidationIssue(source, "tile cannot overlap another world object"))
+    world_object_positions.add(tile)
+
+
+def _validate_decorations(
+    world: dict[str, Any],
+    width: int,
+    height: int,
+    blocked_tiles: set[tuple[int, int]],
+    player_start: tuple[int, int] | None,
+    resource_positions: set[tuple[int, int]],
+    world_object_positions: set[tuple[int, int]],
+    seen_ids: set[str],
+    issues: list[ValidationIssue],
+) -> None:
+    raw_decorations = world.get("decorations", [])
+    if raw_decorations is None:
+        return
+    if not isinstance(raw_decorations, list):
+        issues.append(ValidationIssue("world.json:decorations", "must be a list"))
+        return
+
+    invalid_blocking_tiles = blocked_tiles | resource_positions | world_object_positions
+    if player_start is not None:
+        invalid_blocking_tiles.add(player_start)
+
+    for index, decoration in enumerate(raw_decorations):
+        source = f"world.json:decorations[{index}]"
+        if not isinstance(decoration, dict):
+            issues.append(ValidationIssue(source, "decoration must be an object"))
+            continue
+
+        decoration_id = decoration.get("id")
+        if not isinstance(decoration_id, str) or not decoration_id:
+            issues.append(ValidationIssue(source, "missing required string 'id'"))
+        elif decoration_id in seen_ids:
+            issues.append(ValidationIssue(source, f"duplicate object ID '{decoration_id}'"))
+        else:
+            seen_ids.add(decoration_id)
+
+        kind = decoration.get("kind")
+        if not isinstance(kind, str) or not kind:
+            issues.append(ValidationIssue(source, "missing required string 'kind'"))
+
+        tile = _tile(decoration.get("position"), f"{source}.position", width, height, issues)
+        rotation = decoration.get("rotation", 0)
+        if not isinstance(rotation, (int, float)):
+            issues.append(ValidationIssue(source, "'rotation' must be a number"))
+
+        blocking = decoration.get("blocking", False)
+        if not isinstance(blocking, bool):
+            issues.append(ValidationIssue(source, "'blocking' must be a boolean"))
+            continue
+        if blocking and tile in invalid_blocking_tiles:
+            issues.append(
+                ValidationIssue(
+                    source,
+                    "blocking decoration cannot overlap blocked, water, spawn, resource, or world object tiles",
+                )
+            )
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -269,6 +566,23 @@ def _tile_set(
         if tile is not None:
             tiles.add(tile)
     return tiles
+
+
+def _has_adjacent_walkable_tile(
+    tile: tuple[int, int],
+    width: int,
+    height: int,
+    blocked_tiles: set[tuple[int, int]],
+) -> bool:
+    x, y = tile
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            if dx == 0 and dy == 0:
+                continue
+            candidate = (x + dx, y + dy)
+            if 0 <= candidate[0] < width and 0 <= candidate[1] < height and candidate not in blocked_tiles:
+                return True
+    return False
 
 
 def _tile(

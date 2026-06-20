@@ -9,6 +9,11 @@ from game.world.pathfinding import find_path
 
 
 TimeProvider = Callable[[], float]
+REQUIRED_TOOLS = {
+    "woodcutting": ("bronze_axe", "woodcutting axe"),
+    "mining": ("bronze_pickaxe", "pickaxe"),
+    "fishing": ("fishing_rod", "fishing rod"),
+}
 
 
 @dataclass(frozen=True)
@@ -178,6 +183,16 @@ class GatheringSystem:
             return GatheringResult(False, "No path" if allow_movement else "Too far away", node_id=node.node_id)
 
         current_level = _skill_level(self.skills, node.skill_id)
+        tool_id, tool_name = REQUIRED_TOOLS.get(node.skill_id, ("", ""))
+        if tool_id and self.inventory.count(tool_id) <= 0:
+            article = "an" if tool_name[:1].lower() in {"a", "e", "i", "o", "u"} else "a"
+            return GatheringResult(
+                False,
+                f"You need {article} {tool_name}",
+                node_id=node.node_id,
+                new_player_tile=destination if destination != player_tile else None,
+            )
+
         if current_level < node.required_level:
             return GatheringResult(
                 False,

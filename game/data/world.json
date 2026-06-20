@@ -1,6 +1,6 @@
 {
-  "width": 30,
-  "height": 30,
+  "width": 100,
+  "height": 100,
   "player_start": [15, 15],
   "camera": {
     "center_x": 15,
@@ -51,7 +51,7 @@
       "node_type": "oak_tree",
       "display_name": "Oak tree",
       "skill_id": "woodcutting",
-      "required_level": 2,
+      "required_level": 15,
       "xp_reward": 38,
       "item_reward": "oak_logs",
       "quantity_reward": 1,
@@ -66,8 +66,8 @@
       "node_type": "willow_tree",
       "display_name": "Willow tree",
       "skill_id": "woodcutting",
-      "required_level": 3,
-      "xp_reward": 55,
+      "required_level": 30,
+      "xp_reward": 68,
       "item_reward": "willow_logs",
       "quantity_reward": 1,
       "depleted_state": "stump",
@@ -81,8 +81,8 @@
       "node_type": "maple_tree",
       "display_name": "Maple tree",
       "skill_id": "woodcutting",
-      "required_level": 4,
-      "xp_reward": 75,
+      "required_level": 45,
+      "xp_reward": 100,
       "item_reward": "maple_logs",
       "quantity_reward": 1,
       "depleted_state": "stump",
@@ -96,8 +96,8 @@
       "node_type": "yew_tree",
       "display_name": "Yew tree",
       "skill_id": "woodcutting",
-      "required_level": 5,
-      "xp_reward": 100,
+      "required_level": 60,
+      "xp_reward": 175,
       "item_reward": "yew_logs",
       "quantity_reward": 1,
       "depleted_state": "stump",
@@ -105,6 +105,36 @@
       "base_gather_seconds": 4.6,
       "blocks_movement": true,
       "position": [18, 13]
+    },
+    {
+      "node_id": "magic_tree_01",
+      "node_type": "magic_tree",
+      "display_name": "Magic tree",
+      "skill_id": "woodcutting",
+      "required_level": 75,
+      "xp_reward": 250,
+      "item_reward": "magic_logs",
+      "quantity_reward": 1,
+      "depleted_state": "stump",
+      "respawn_seconds": 45,
+      "base_gather_seconds": 5.8,
+      "blocks_movement": true,
+      "position": [19, 13]
+    },
+    {
+      "node_id": "redwood_tree_01",
+      "node_type": "redwood_tree",
+      "display_name": "Redwood tree",
+      "skill_id": "woodcutting",
+      "required_level": 90,
+      "xp_reward": 380,
+      "item_reward": "redwood_logs",
+      "quantity_reward": 1,
+      "depleted_state": "stump",
+      "respawn_seconds": 60,
+      "base_gather_seconds": 7.0,
+      "blocks_movement": true,
+      "position": [20, 12]
     },
     {
       "node_id": "copper_rock_01",
@@ -126,7 +156,7 @@
       "node_type": "iron_rock",
       "display_name": "Iron rock",
       "skill_id": "mining",
-      "required_level": 2,
+      "required_level": 15,
       "xp_reward": 35,
       "item_reward": "iron_ore",
       "quantity_reward": 1,
@@ -141,7 +171,7 @@
       "node_type": "coal_rock",
       "display_name": "Coal rock",
       "skill_id": "mining",
-      "required_level": 3,
+      "required_level": 30,
       "xp_reward": 50,
       "item_reward": "coal",
       "quantity_reward": 1,
@@ -156,8 +186,8 @@
       "node_type": "mithril_rock",
       "display_name": "Mithril rock",
       "skill_id": "mining",
-      "required_level": 4,
-      "xp_reward": 70,
+      "required_level": 55,
+      "xp_reward": 80,
       "item_reward": "mithril_ore",
       "quantity_reward": 1,
       "depleted_state": "depleted_rock",
@@ -171,8 +201,8 @@
       "node_type": "adamant_rock",
       "display_name": "Adamant rock",
       "skill_id": "mining",
-      "required_level": 5,
-      "xp_reward": 95,
+      "required_level": 70,
+      "xp_reward": 120,
       "item_reward": "adamant_ore",
       "quantity_reward": 1,
       "depleted_state": "depleted_rock",
@@ -180,6 +210,21 @@
       "base_gather_seconds": 5.0,
       "blocks_movement": true,
       "position": [22, 19]
+    },
+    {
+      "node_id": "runite_rock_01",
+      "node_type": "runite_rock",
+      "display_name": "Runite rock",
+      "skill_id": "mining",
+      "required_level": 85,
+      "xp_reward": 200,
+      "item_reward": "runite_ore",
+      "quantity_reward": 1,
+      "depleted_state": "depleted_rock",
+      "respawn_seconds": 60,
+      "base_gather_seconds": 6.5,
+      "blocks_movement": true,
+      "position": [23, 19]
     },
     {
       "node_id": "shrimp_spot_01",
@@ -194,77 +239,274 @@
       "respawn_seconds": 15,
       "base_gather_seconds": 1.8,
       "blocks_movement": false,
-      "position": [10, 18]
+      "position": [9, 18]
     },
     {
       "node_id": "trout_spot_01",
       "node_type": "trout_spot",
       "display_name": "Raw trout",
       "skill_id": "fishing",
-      "required_level": 2,
-      "xp_reward": 25,
+      "required_level": 20,
+      "xp_reward": 50,
       "item_reward": "raw_trout",
       "quantity_reward": 1,
       "depleted_state": "quiet_water",
       "respawn_seconds": 18,
       "base_gather_seconds": 2.2,
       "blocks_movement": false,
-      "position": [10, 19]
+      "position": [9, 19]
     },
     {
       "node_id": "salmon_spot_01",
       "node_type": "salmon_spot",
       "display_name": "Raw salmon",
       "skill_id": "fishing",
-      "required_level": 3,
-      "xp_reward": 35,
+      "required_level": 30,
+      "xp_reward": 70,
       "item_reward": "raw_salmon",
       "quantity_reward": 1,
       "depleted_state": "quiet_water",
       "respawn_seconds": 21,
       "base_gather_seconds": 2.7,
       "blocks_movement": false,
-      "position": [10, 20]
+      "position": [9, 20]
     },
     {
       "node_id": "lobster_spot_01",
       "node_type": "lobster_spot",
       "display_name": "Raw lobster",
       "skill_id": "fishing",
-      "required_level": 4,
-      "xp_reward": 50,
+      "required_level": 40,
+      "xp_reward": 90,
       "item_reward": "raw_lobster",
       "quantity_reward": 1,
       "depleted_state": "quiet_water",
       "respawn_seconds": 24,
       "base_gather_seconds": 3.3,
       "blocks_movement": false,
-      "position": [9, 21]
+      "position": [8, 17]
     },
     {
       "node_id": "swordfish_spot_01",
       "node_type": "swordfish_spot",
       "display_name": "Raw swordfish",
       "skill_id": "fishing",
-      "required_level": 5,
-      "xp_reward": 70,
+      "required_level": 50,
+      "xp_reward": 110,
       "item_reward": "raw_swordfish",
       "quantity_reward": 1,
       "depleted_state": "quiet_water",
       "respawn_seconds": 28,
       "base_gather_seconds": 4.0,
       "blocks_movement": false,
-      "position": [6, 21]
+      "position": [7, 17]
+    },
+    {
+      "node_id": "monkfish_spot_01",
+      "node_type": "monkfish_spot",
+      "display_name": "Raw monkfish",
+      "skill_id": "fishing",
+      "required_level": 62,
+      "xp_reward": 130,
+      "item_reward": "raw_monkfish",
+      "quantity_reward": 1,
+      "depleted_state": "quiet_water",
+      "respawn_seconds": 32,
+      "base_gather_seconds": 4.5,
+      "blocks_movement": false,
+      "position": [6, 18]
+    },
+    {
+      "node_id": "shark_spot_01",
+      "node_type": "shark_spot",
+      "display_name": "Raw shark",
+      "skill_id": "fishing",
+      "required_level": 76,
+      "xp_reward": 180,
+      "item_reward": "raw_shark",
+      "quantity_reward": 1,
+      "depleted_state": "quiet_water",
+      "respawn_seconds": 40,
+      "base_gather_seconds": 5.5,
+      "blocks_movement": false,
+      "position": [6, 19]
+    },
+    {
+      "node_id": "anglerfish_spot_01",
+      "node_type": "anglerfish_spot",
+      "display_name": "Raw anglerfish",
+      "skill_id": "fishing",
+      "required_level": 82,
+      "xp_reward": 220,
+      "item_reward": "raw_anglerfish",
+      "quantity_reward": 1,
+      "depleted_state": "quiet_water",
+      "respawn_seconds": 48,
+      "base_gather_seconds": 6.2,
+      "blocks_movement": false,
+      "position": [6, 20]
+    }
+  ],
+  "decorations": [
+    {
+      "id": "fence_bank_01",
+      "kind": "fence",
+      "position": [12, 14],
+      "rotation": 90,
+      "blocking": true
+    },
+    {
+      "id": "fence_bank_02",
+      "kind": "fence",
+      "position": [14, 13],
+      "rotation": 0,
+      "blocking": true
+    },
+    {
+      "id": "signpost_crossroads",
+      "kind": "signpost",
+      "position": [16, 16],
+      "rotation": 45
+    },
+    {
+      "id": "lamp_crossroads",
+      "kind": "lamp",
+      "position": [14, 15],
+      "rotation": 0
+    },
+    {
+      "id": "crate_shop_01",
+      "kind": "crate",
+      "position": [22, 14],
+      "rotation": 12
+    },
+    {
+      "id": "barrel_shop_01",
+      "kind": "barrel",
+      "position": [24, 15],
+      "rotation": 0
+    },
+    {
+      "id": "barrel_shop_02",
+      "kind": "barrel",
+      "position": [21, 14],
+      "rotation": 0
+    },
+    {
+      "id": "dock_fishing_01",
+      "kind": "dock",
+      "position": [8, 20],
+      "rotation": 0
+    },
+    {
+      "id": "dock_fishing_02",
+      "kind": "dock",
+      "position": [7, 20],
+      "rotation": 0
+    },
+    {
+      "id": "mushroom_grove_01",
+      "kind": "mushroom",
+      "position": [9, 12],
+      "rotation": 0
+    },
+    {
+      "id": "mushroom_grove_02",
+      "kind": "mushroom",
+      "position": [17, 10],
+      "rotation": 0
+    },
+    {
+      "id": "bush_grove_01",
+      "kind": "bush",
+      "position": [8, 10],
+      "rotation": 30
+    },
+    {
+      "id": "bush_grove_02",
+      "kind": "bush",
+      "position": [17, 14],
+      "rotation": -15
+    },
+    {
+      "id": "ruins_mine_01",
+      "kind": "ruins",
+      "position": [24, 20],
+      "rotation": 20,
+      "blocking": true
+    },
+    {
+      "id": "lamp_mine_01",
+      "kind": "lamp",
+      "position": [20, 16],
+      "rotation": 0
     }
   ],
   "shop": {
     "id": "shop_01",
     "name": "General Buyer",
-    "tile": [23, 15]
+    "tile": [23, 15],
+    "stock": [
+      {"item_id": "bronze_axe", "price": 25},
+      {"item_id": "bronze_pickaxe", "price": 25},
+      {"item_id": "small_fishing_net", "price": 18},
+      {"item_id": "cooking_pot", "price": 15}
+    ]
   },
   "bank": {
     "id": "bank_01",
     "name": "Bank",
     "tile": [13, 14]
-  }
+  },
+  "cooking_range": {
+    "id": "cooking_range_01",
+    "name": "Cooking range",
+    "tile": [14, 14]
+  },
+  "combat_dummy": {
+    "id": "combat_dummy_01",
+    "name": "Training dummy",
+    "tile": [16, 14]
+  },
+  "mobs": [
+    {
+      "mob_id": "worn_dummy_01",
+      "display_name": "Worn dummy",
+      "level": 1,
+      "hitpoints": 2,
+      "attack_seconds": 1.2,
+      "respawn_seconds": 12,
+      "position": [17, 16],
+      "drops": [
+        {"item_id": "coins", "quantity": 3},
+        {"item_id": "wooden_splinters", "quantity": 1}
+      ]
+    },
+    {
+      "mob_id": "rusty_sentry_01",
+      "display_name": "Rusty sentry",
+      "level": 2,
+      "hitpoints": 3,
+      "attack_seconds": 1.4,
+      "respawn_seconds": 16,
+      "position": [20, 18],
+      "drops": [
+        {"item_id": "coins", "quantity": 5},
+        {"item_id": "rusty_scrap", "quantity": 1}
+      ]
+    },
+    {
+      "mob_id": "cave_wisp_01",
+      "display_name": "Cave wisp",
+      "level": 3,
+      "hitpoints": 4,
+      "attack_seconds": 1.6,
+      "respawn_seconds": 20,
+      "position": [24, 19],
+      "drops": [
+        {"item_id": "coins", "quantity": 8},
+        {"item_id": "glow_dust", "quantity": 1}
+      ]
+    }
+  ]
 }

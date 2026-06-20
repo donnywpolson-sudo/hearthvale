@@ -7,25 +7,25 @@ from pathlib import Path
 from game.engine.save import load_game, save_game
 from game.systems.gathering import GatheringSystem, ResourceNode
 from game.systems.inventory import Inventory
-from game.systems.skills import Skills
+from game.systems.skills import Skills, osrs_xp_thresholds
 from game.world.grid import TileGrid
 
 
 SKILLS = {
     "woodcutting": {
-        "display_name": "Woodcutting",
+        "display_name": "woodcutting",
         "starting_level": 1,
-        "xp_thresholds": {"1": 0, "2": 100, "3": 250},
+        "xp_thresholds": osrs_xp_thresholds(),
     },
     "mining": {
-        "display_name": "Mining",
+        "display_name": "mining",
         "starting_level": 1,
-        "xp_thresholds": {"1": 0, "2": 100, "3": 250},
+        "xp_thresholds": osrs_xp_thresholds(),
     },
     "fishing": {
-        "display_name": "Fishing",
+        "display_name": "fishing",
         "starting_level": 1,
-        "xp_thresholds": {"1": 0, "2": 100, "3": 250},
+        "xp_thresholds": osrs_xp_thresholds(),
     },
 }
 
@@ -57,7 +57,7 @@ class GatheringTests(unittest.TestCase):
         self.assertTrue(completed.success)
         self.assertEqual(inventory.count("logs"), 1)
         self.assertEqual(skills.xp("woodcutting"), 25)
-        self.assertEqual(completed.feedback, "Chopped Tree: +1 logs, +25 Woodcutting XP")
+        self.assertEqual(completed.feedback, "Chopped Tree: +1 logs, +25 woodcutting XP")
 
     def test_diagonal_adjacency_can_start_gathering(self) -> None:
         system, _, _, grid, _ = _system([_tree()])
@@ -70,9 +70,9 @@ class GatheringTests(unittest.TestCase):
 
     def test_required_level_blocks_each_skill(self) -> None:
         for node, start_tile, feedback in [
-            (_tree(required_level=2), (1, 2), "You need Woodcutting level 2"),
-            (_rock(required_level=2), (1, 3), "You need Mining level 2"),
-            (_fish(required_level=2), (4, 4), "You need Fishing level 2"),
+            (_tree(required_level=2), (1, 2), "You need woodcutting level 2"),
+            (_rock(required_level=2), (1, 3), "You need mining level 2"),
+            (_fish(required_level=2), (4, 4), "You need fishing level 2"),
         ]:
             system, inventory, skills, grid, _ = _system([node])
 
@@ -80,8 +80,17 @@ class GatheringTests(unittest.TestCase):
 
             self.assertFalse(result.success)
             self.assertEqual(result.feedback, feedback)
-            self.assertEqual(inventory.to_dict(), {})
+            self.assertEqual(inventory.count(node.item_reward), 0)
             self.assertEqual(skills.xp(node.skill_id), 0)
+
+    def test_required_tool_blocks_gathering(self) -> None:
+        system, inventory, _, grid, _ = _system([_rock()], starter_tools=False)
+
+        result = system.start_gather("copper_rock_01", (1, 3), grid, system.blocking_tiles())
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.feedback, "You need a pickaxe")
+        self.assertEqual(inventory.to_dict(), {})
 
     def test_depleted_node_cannot_be_gathered_until_respawn(self) -> None:
         system, inventory, skills, grid, clock = _system([_tree(respawn_seconds=10)])
@@ -190,8 +199,13 @@ def _system(
     nodes: list[ResourceNode],
     *,
     clock: FakeClock | None = None,
+    starter_tools: bool = True,
 ) -> tuple[GatheringSystem, Inventory, Skills, TileGrid, FakeClock]:
     inventory = Inventory()
+    if starter_tools:
+        inventory.add("bronze_axe")
+        inventory.add("bronze_pickaxe")
+        inventory.add("fishing_rod")
     skills = Skills(SKILLS)
     grid = TileGrid(6, 6)
     clock = clock or FakeClock()

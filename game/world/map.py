@@ -1,55 +1,39 @@
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Iterable
 
 from panda3d.core import NodePath
 
-from game import settings
+from game.systems.combat import DropStack, MobState, mobs_from_data
 from game.systems.gathering import ResourceNode, ResourceNodeState, resource_nodes_from_data
+from game.world import visuals
 from game.world.grid import Tile, TileGrid
-from game.world.objects import WorldObject, make_box, make_cone, make_cylinder, make_quad
+from game.world.objects import WorldObject
 
-GRASS_PALETTE = (
-    (0.29, 0.47, 0.20, 1.0),
-    (0.33, 0.53, 0.24, 1.0),
-    (0.24, 0.42, 0.18, 1.0),
-    (0.38, 0.56, 0.25, 1.0),
-)
-DIRT_PALETTE = (
-    (0.46, 0.32, 0.16, 1.0),
-    (0.55, 0.39, 0.20, 1.0),
-    (0.39, 0.27, 0.14, 1.0),
-)
-WATER_PALETTE = (
-    (0.08, 0.30, 0.50, 1.0),
-    (0.10, 0.38, 0.62, 1.0),
-    (0.06, 0.25, 0.44, 1.0),
-)
-BLOCKED = (0.34, 0.34, 0.35, 1.0)
-BLOCKED_DARK = (0.22, 0.22, 0.23, 1.0)
-TRUNK = (0.36, 0.19, 0.08, 1.0)
-TRUNK_DARK = (0.24, 0.12, 0.05, 1.0)
-LEAVES_DARK = (0.07, 0.27, 0.12, 1.0)
-LEAVES = (0.10, 0.38, 0.15, 1.0)
-LEAVES_LIGHT = (0.15, 0.47, 0.20, 1.0)
-STUMP = (0.44, 0.25, 0.10, 1.0)
-STUMP_TOP = (0.68, 0.47, 0.25, 1.0)
-ROCK = (0.45, 0.45, 0.43, 1.0)
-ROCK_DARK = (0.29, 0.30, 0.31, 1.0)
-COPPER = (0.78, 0.40, 0.18, 1.0)
-DEPLETED_ROCK = (0.20, 0.21, 0.22, 1.0)
-FISHING_MARKER = (0.93, 0.86, 0.56, 1.0)
-FISHING_RIPPLE = (0.65, 0.82, 0.82, 1.0)
-QUIET_WATER = (0.04, 0.18, 0.32, 1.0)
-SHOP_DARK = (0.36, 0.23, 0.12, 1.0)
-SHOP_LIGHT = (0.72, 0.56, 0.28, 1.0)
-SHOP_CANOPY = (0.70, 0.22, 0.12, 1.0)
-NPC_BODY = (0.24, 0.38, 0.70, 1.0)
-NPC_HEAD = (0.82, 0.62, 0.42, 1.0)
-BANK_DARK = (0.21, 0.18, 0.14, 1.0)
-BANK_WOOD = (0.50, 0.31, 0.14, 1.0)
-BANK_TRIM = (0.86, 0.70, 0.34, 1.0)
-BANK_CLOTH = (0.18, 0.36, 0.52, 1.0)
+
+TERRAIN_CHUNK_SIZE = 16
+
+
+@dataclass
+class Decoration:
+    decoration_id: str
+    kind: str
+    tile: Tile
+    rotation: float = 0.0
+    blocking: bool = False
+    node: NodePath | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Decoration":
+        position = data["position"]
+        return cls(
+            decoration_id=str(data["id"]),
+            kind=str(data["kind"]),
+            tile=(int(position[0]), int(position[1])),
+            rotation=float(data.get("rotation", 0.0)),
+            blocking=bool(data.get("blocking", False)),
+        )
 
 
 class WorldMap:
@@ -61,9 +45,23 @@ class WorldMap:
         self.static_blocked = {_tile(tile) for tile in data.get("blocked_tiles", [])}
         self.resource_nodes = resource_nodes_from_data(data.get("resource_nodes", []))
         self.resource_states: dict[str, ResourceNodeState] = {}
+        self.mob_definitions = mobs_from_data(data.get("mobs", []) or [])
+        self.mob_states: dict[str, MobState] = {}
+        self.ground_item_counter = 0
         self.objects: dict[str, WorldObject] = {}
         self.objects_by_tile: dict[Tile, WorldObject] = {}
+        self.shop_stock = [
+            dict(raw_stock_item)
+            for raw_stock_item in (data.get("shop", {}) or {}).get("stock", []) or []
+            if isinstance(raw_stock_item, dict)
+        ]
+        self.decorations = [
+            Decoration.from_dict(raw_decoration)
+            for raw_decoration in data.get("decorations", []) or []
+            if isinstance(raw_decoration, dict)
+        ]
         self.root: NodePath | None = None
+        self.terrain_chunks: list[NodePath] = []
 
         for resource_node in self.resource_nodes.values():
             obj = WorldObject(
@@ -71,6 +69,7 @@ class WorldMap:
                 resource_node.node_type,
                 resource_node.position,
                 blocking=resource_node.blocks_movement,
+                display_name=resource_node.display_name,
                 node_type=resource_node.node_type,
                 skill_id=resource_node.skill_id,
                 required_level=resource_node.required_level,
@@ -84,12 +83,46 @@ class WorldMap:
 
         shop = data.get("shop")
         if shop:
-            obj = WorldObject(shop["id"], "shop", _tile(shop["tile"]), blocking=True)
+            obj = WorldObject(shop["id"], "shop", _tile(shop["tile"]), blocking=True, display_name=str(shop.get("name") or "Shop"))
             self.objects[obj.object_id] = obj
 
         bank = data.get("bank")
         if bank:
-            obj = WorldObject(bank["id"], "bank", _tile(bank["tile"]), blocking=True)
+            obj = WorldObject(bank["id"], "bank", _tile(bank["tile"]), blocking=True, display_name=str(bank.get("name") or "Bank"))
+            self.objects[obj.object_id] = obj
+
+        cooking_range = data.get("cooking_range")
+        if cooking_range:
+            obj = WorldObject(
+                cooking_range["id"],
+                "cooking_range",
+                _tile(cooking_range["tile"]),
+                blocking=True,
+                display_name=str(cooking_range.get("name") or "Cooking range"),
+            )
+            self.objects[obj.object_id] = obj
+
+        combat_dummy = data.get("combat_dummy")
+        if combat_dummy:
+            obj = WorldObject(
+                combat_dummy["id"],
+                "combat_dummy",
+                _tile(combat_dummy["tile"]),
+                blocking=True,
+                display_name=str(combat_dummy.get("name") or "Training dummy"),
+            )
+            self.objects[obj.object_id] = obj
+
+        for mob in self.mob_definitions.values():
+            obj = WorldObject(
+                mob.mob_id,
+                "mob",
+                mob.position,
+                blocking=True,
+                display_name=mob.display_name,
+                level=mob.level,
+                hitpoints=mob.hitpoints,
+            )
             self.objects[obj.object_id] = obj
 
         self._reindex_objects()
@@ -124,23 +157,14 @@ class WorldMap:
             self.root.removeNode()
 
         self.root = parent.attachNewNode("world")
-        for y in range(self.grid.height):
-            for x in range(self.grid.width):
-                tile = (x, y)
-                if tile in self.water_tiles:
-                    color = _palette_color(tile, WATER_PALETTE)
-                elif tile in self.dirt_tiles:
-                    color = _palette_color(tile, DIRT_PALETTE)
-                else:
-                    color = _palette_color(tile, GRASS_PALETTE)
-                node = make_quad(f"tile_{x}_{y}", settings.TILE_SIZE, color)
-                node.reparentTo(self.root)
-                node.setPos(x, y, 0)
-                if tile in self.water_tiles:
-                    node.setZ(-0.035)
+        self.terrain_chunks = []
+        self._render_terrain_chunks()
 
         for tile in self.static_blocked:
             self._add_obstacle(tile)
+
+        for decoration in self.decorations:
+            self._render_decoration(decoration)
 
         for obj in self.objects.values():
             self._render_object(obj)
@@ -149,18 +173,134 @@ class WorldMap:
         blocked = set(self.static_blocked)
         blocked.update(self.water_tiles)
         for obj in self.objects.values():
-            if obj.blocking:
+            if obj.active and obj.blocking:
                 blocked.add(obj.tile)
+        blocked.update(decoration.tile for decoration in self.decorations if decoration.blocking)
         return blocked
 
     def object_at(self, tile: Tile) -> WorldObject | None:
         return self.objects_by_tile.get(tile)
+
+    def decoration_at(self, tile: Tile) -> Decoration | None:
+        return self.decorations_by_tile.get(tile)
 
     def get_object(self, object_id: str) -> WorldObject | None:
         return self.objects.get(object_id)
 
     def resource_node_for_object(self, obj: WorldObject) -> ResourceNode | None:
         return self.resource_nodes.get(obj.object_id)
+
+    def apply_mob_states(self, states: dict[str, MobState]) -> None:
+        previous_active = {
+            mob_id
+            for mob_id in self.mob_definitions
+            if self.objects.get(mob_id) is not None and self.objects[mob_id].active
+        }
+        self.mob_states = {
+            mob_id: state for mob_id, state in states.items() if mob_id in self.mob_definitions
+        }
+        for mob_id in self.mob_definitions:
+            self._sync_mob_object(mob_id)
+        current_active = {
+            mob_id
+            for mob_id in self.mob_definitions
+            if self.objects.get(mob_id) is not None and self.objects[mob_id].active
+        }
+        for mob_id in previous_active | current_active:
+            obj = self.objects.get(mob_id)
+            if obj is not None:
+                self._render_object(obj)
+        self._reindex_objects()
+
+    def spawn_ground_drops(self, origin: Tile, drops: Iterable[DropStack]) -> list[WorldObject]:
+        created: list[WorldObject] = []
+        used_tiles: set[Tile] = set()
+        for drop in drops:
+            if drop.quantity <= 0:
+                continue
+            tile = self._next_ground_drop_tile(origin, used_tiles)
+            if tile is None:
+                continue
+            used_tiles.add(tile)
+            created.append(self.add_ground_item(drop.item_id, drop.quantity, tile))
+        return created
+
+    def add_ground_item(
+        self,
+        item_id: str,
+        quantity: int,
+        tile: Tile,
+        *,
+        object_id: str | None = None,
+    ) -> WorldObject:
+        if quantity <= 0:
+            raise ValueError("quantity must be positive")
+        if object_id is None:
+            self.ground_item_counter += 1
+            object_id = f"ground_item_{self.ground_item_counter:04d}"
+        else:
+            self._sync_ground_item_counter(object_id)
+        obj = WorldObject(
+            object_id,
+            "ground_item",
+            tile,
+            blocking=False,
+            display_name=item_id.replace("_", " ").title(),
+            item_id=item_id,
+            quantity=quantity,
+        )
+        self.objects[obj.object_id] = obj
+        self._render_object(obj)
+        self._reindex_objects()
+        return obj
+
+    def pickup_ground_item(self, object_id: str) -> tuple[str, int] | None:
+        obj = self.objects.get(object_id)
+        if obj is None or obj.kind != "ground_item":
+            return None
+        if obj.node is not None:
+            obj.node.removeNode()
+        self.objects.pop(object_id, None)
+        self._reindex_objects()
+        return obj.item_id, obj.quantity
+
+    def ground_items_to_dict(self) -> list[dict[str, object]]:
+        return [
+            {
+                "object_id": obj.object_id,
+                "item_id": obj.item_id,
+                "quantity": obj.quantity,
+                "tile": list(obj.tile),
+            }
+            for obj in sorted(self.objects.values(), key=lambda world_object: world_object.object_id)
+            if obj.kind == "ground_item"
+        ]
+
+    def load_ground_items(self, data: list[dict[str, Any]]) -> None:
+        for object_id, obj in list(self.objects.items()):
+            if obj.kind != "ground_item":
+                continue
+            if obj.node is not None:
+                obj.node.removeNode()
+            self.objects.pop(object_id, None)
+        for raw_item in data:
+            if not isinstance(raw_item, dict):
+                continue
+            raw_tile = raw_item.get("tile")
+            if not isinstance(raw_tile, list) or len(raw_tile) != 2:
+                continue
+            item_id = str(raw_item.get("item_id", ""))
+            quantity = int(raw_item.get("quantity", 0))
+            object_id = raw_item.get("object_id")
+            if not item_id or quantity <= 0:
+                continue
+            self.add_ground_item(
+                item_id,
+                quantity,
+                (int(raw_tile[0]), int(raw_tile[1])),
+                object_id=str(object_id) if object_id else None,
+            )
+        self._reindex_objects()
 
     def apply_resource_states(self, states: dict[str, ResourceNodeState]) -> None:
         previous_depleted = {
@@ -245,25 +385,71 @@ class WorldMap:
         obj.kind = node.depleted_state if state.depleted else node.node_type
         obj.blocking = False if state.depleted else node.blocks_movement
 
+    def _sync_mob_object(self, mob_id: str) -> None:
+        mob = self.mob_definitions[mob_id]
+        obj = self.objects.get(mob_id)
+        if obj is None:
+            return
+        state = self.mob_states.get(mob_id, MobState(hitpoints=mob.hitpoints))
+        obj.kind = "mob"
+        obj.tile = mob.position
+        obj.display_name = mob.display_name
+        obj.level = mob.level
+        obj.hitpoints = state.hitpoints
+        obj.active = not state.dead
+        obj.blocking = not state.dead
+
+    def _next_ground_drop_tile(self, origin: Tile, used_tiles: set[Tile]) -> Tile | None:
+        candidates = [origin]
+        candidates.extend(self.grid.neighbors(origin, diagonals=True))
+        blocked = self.blocked_tiles()
+        occupied = {
+            obj.tile
+            for obj in self.objects.values()
+            if obj.active and obj.kind != "mob"
+        }
+        for tile in candidates:
+            if tile in used_tiles or tile in blocked or tile in occupied:
+                continue
+            if self.grid.in_bounds(tile):
+                return tile
+        return None
+
+    def _sync_ground_item_counter(self, object_id: str) -> None:
+        prefix = "ground_item_"
+        if not object_id.startswith(prefix):
+            return
+        try:
+            value = int(object_id[len(prefix):])
+        except ValueError:
+            return
+        self.ground_item_counter = max(self.ground_item_counter, value)
+
+    def _render_terrain_chunks(self) -> None:
+        if self.root is None:
+            return
+        for chunk_y in range(0, self.grid.height, TERRAIN_CHUNK_SIZE):
+            for chunk_x in range(0, self.grid.width, TERRAIN_CHUNK_SIZE):
+                chunk = self.root.attachNewNode(
+                    f"terrain_chunk_{chunk_x // TERRAIN_CHUNK_SIZE}_{chunk_y // TERRAIN_CHUNK_SIZE}"
+                )
+                max_y = min(chunk_y + TERRAIN_CHUNK_SIZE, self.grid.height)
+                max_x = min(chunk_x + TERRAIN_CHUNK_SIZE, self.grid.width)
+                for y in range(chunk_y, max_y):
+                    for x in range(chunk_x, max_x):
+                        tile = (x, y)
+                        terrain = self._terrain_at(tile)
+                        visuals.render_terrain_tile(chunk, tile, terrain, self._terrain_edges(tile, terrain))
+                chunk.flattenStrong()
+                self.terrain_chunks.append(chunk)
+
     def _add_obstacle(self, tile: Tile) -> None:
         if self.root is None:
             return
         x, y = self.grid.to_world(tile)
         holder = self.root.attachNewNode(f"blocked_{tile[0]}_{tile[1]}")
         holder.setPos(x, y, 0)
-
-        base = make_box(f"blocked_{tile[0]}_{tile[1]}_base", (0.72, 0.68, 0.30), BLOCKED_DARK)
-        base.reparentTo(holder)
-        base.setH(18)
-
-        crest = make_cone(f"blocked_{tile[0]}_{tile[1]}_crest", 0.40, 0.40, 5, BLOCKED)
-        crest.reparentTo(holder)
-        crest.setZ(0.24)
-        crest.setH(-12)
-
-        chip = make_box(f"blocked_{tile[0]}_{tile[1]}_chip", (0.22, 0.20, 0.12), ROCK)
-        chip.reparentTo(holder)
-        chip.setPos(0.25, -0.18, 0.02)
+        visuals.render_static_obstacle(holder, f"blocked_{tile[0]}_{tile[1]}")
 
     def _render_object(self, obj: WorldObject) -> None:
         if self.root is None:
@@ -271,186 +457,66 @@ class WorldMap:
 
         if obj.node is not None:
             obj.node.removeNode()
+            obj.node = None
+
+        if not obj.active:
+            return
 
         holder = self.root.attachNewNode(obj.object_id)
         x, y = self.grid.to_world(obj.tile)
         holder.setPos(x, y, 0)
-
-        resource_node = self.resource_nodes.get(obj.object_id)
-        render_kind = obj.kind
-        resource_tier = 1
-        if resource_node is not None:
-            resource_tier = resource_node.required_level
-            if self.resource_states.get(obj.object_id, ResourceNodeState()).depleted:
-                render_kind = resource_node.depleted_state
-            elif resource_node.skill_id == "woodcutting":
-                render_kind = "tree"
-            elif resource_node.skill_id == "mining":
-                render_kind = "ore_rock"
-            elif resource_node.skill_id == "fishing":
-                render_kind = "fishing_spot"
-
-        if render_kind == "tree":
-            leaf_dark, leaf, leaf_light = _tree_colors(resource_tier)
-            trunk = make_cylinder(f"{obj.object_id}_trunk", 0.12, 0.92, 7, TRUNK)
-            trunk.reparentTo(holder)
-            trunk_shadow = make_cylinder(f"{obj.object_id}_trunk_shadow", 0.08, 0.94, 7, TRUNK_DARK)
-            trunk_shadow.reparentTo(holder)
-            trunk_shadow.setPos(-0.05, -0.04, 0.0)
-
-            lower = make_cone(f"{obj.object_id}_leaves_lower", 0.62, 0.75, 7, leaf_dark)
-            lower.reparentTo(holder)
-            lower.setZ(0.55)
-            lower.setH(18)
-
-            middle = make_cone(f"{obj.object_id}_leaves_middle", 0.50, 0.70, 7, leaf)
-            middle.reparentTo(holder)
-            middle.setZ(0.92)
-            middle.setH(-10)
-
-            top = make_cone(f"{obj.object_id}_leaves_top", 0.34, 0.52, 7, leaf_light)
-            top.reparentTo(holder)
-            top.setZ(1.24)
-            top.setH(8)
-        elif render_kind == "stump":
-            stump = make_cylinder(f"{obj.object_id}_stump", 0.20, 0.24, 8, STUMP)
-            stump.reparentTo(holder)
-            cut = make_cylinder(f"{obj.object_id}_cut", 0.17, 0.03, 8, STUMP_TOP)
-            cut.reparentTo(holder)
-            cut.setZ(0.24)
-        elif render_kind == "ore_rock":
-            rock_dark, rock_light, vein_color = _rock_colors(resource_tier)
-            base = make_box(f"{obj.object_id}_rock_base", (0.72, 0.66, 0.36), rock_dark)
-            base.reparentTo(holder)
-            base.setH(15)
-
-            cap = make_cone(f"{obj.object_id}_cap", 0.47, 0.42, 5, rock_light)
-            cap.reparentTo(holder)
-            cap.setZ(0.30)
-            cap.setH(-8)
-
-            vein = make_box(f"{obj.object_id}_ore_vein", (0.16, 0.22, 0.10), vein_color)
-            vein.reparentTo(holder)
-            vein.setPos(0.15, -0.18, 0.30)
-            vein.setH(30)
-        elif render_kind == "depleted_rock":
-            rock = make_box(f"{obj.object_id}_depleted_rock", (0.64, 0.56, 0.24), DEPLETED_ROCK)
-            rock.reparentTo(holder)
-            rock.setH(-18)
-        elif render_kind == "fishing_spot":
-            marker_color, ripple_color = _fishing_colors(resource_tier)
-            ripple = make_cylinder(f"{obj.object_id}_ripple", 0.28, 0.02, 12, ripple_color)
-            ripple.reparentTo(holder)
-            ripple.setZ(0.02)
-
-            marker = make_cylinder(f"{obj.object_id}_marker", 0.08, 0.16, 8, marker_color)
-            marker.reparentTo(holder)
-            marker.setZ(0.04)
-        elif render_kind == "quiet_water":
-            marker = make_cylinder(f"{obj.object_id}_quiet", 0.20, 0.02, 10, QUIET_WATER)
-            marker.reparentTo(holder)
-            marker.setZ(0.04)
-        elif render_kind == "shop":
-            counter = make_box(f"{obj.object_id}_counter", (0.85, 0.62, 0.34), SHOP_DARK)
-            counter.reparentTo(holder)
-            counter.setPos(0.0, 0.06, 0.0)
-
-            counter_top = make_box(f"{obj.object_id}_counter_top", (0.95, 0.72, 0.08), SHOP_LIGHT)
-            counter_top.reparentTo(holder)
-            counter_top.setPos(0.0, 0.06, 0.34)
-
-            canopy = make_box(f"{obj.object_id}_canopy", (0.95, 0.38, 0.10), SHOP_CANOPY)
-            canopy.reparentTo(holder)
-            canopy.setPos(0.0, -0.24, 0.92)
-
-            post_left = make_cylinder(f"{obj.object_id}_post_left", 0.04, 0.88, 6, TRUNK)
-            post_left.reparentTo(holder)
-            post_left.setPos(-0.40, -0.24, 0.04)
-
-            post_right = make_cylinder(f"{obj.object_id}_post_right", 0.04, 0.88, 6, TRUNK)
-            post_right.reparentTo(holder)
-            post_right.setPos(0.40, -0.24, 0.04)
-
-            npc = make_cylinder(f"{obj.object_id}_npc", 0.16, 0.62, 8, NPC_BODY)
-            npc.reparentTo(holder)
-            npc.setPos(0.0, -0.35, 0.0)
-
-            head = make_cylinder(f"{obj.object_id}_npc_head", 0.17, 0.18, 8, NPC_HEAD)
-            head.reparentTo(holder)
-            head.setPos(0.0, -0.35, 0.64)
-        elif render_kind == "bank":
-            counter = make_box(f"{obj.object_id}_counter", (0.92, 0.72, 0.42), BANK_DARK)
-            counter.reparentTo(holder)
-            counter.setPos(0.0, 0.06, 0.0)
-
-            chest = make_box(f"{obj.object_id}_chest", (0.64, 0.42, 0.34), BANK_WOOD)
-            chest.reparentTo(holder)
-            chest.setPos(0.0, 0.02, 0.40)
-
-            trim = make_box(f"{obj.object_id}_trim", (0.70, 0.48, 0.06), BANK_TRIM)
-            trim.reparentTo(holder)
-            trim.setPos(0.0, 0.02, 0.58)
-
-            cloth = make_box(f"{obj.object_id}_cloth", (0.98, 0.22, 0.08), BANK_CLOTH)
-            cloth.reparentTo(holder)
-            cloth.setPos(0.0, -0.30, 0.86)
-
-            lock = make_box(f"{obj.object_id}_lock", (0.12, 0.05, 0.14), BANK_TRIM)
-            lock.reparentTo(holder)
-            lock.setPos(0.0, -0.22, 0.43)
-
+        visuals.render_world_object(
+            holder,
+            obj,
+            self.resource_nodes.get(obj.object_id),
+            self.resource_states.get(obj.object_id, ResourceNodeState()),
+        )
         obj.node = holder
 
+    def _render_decoration(self, decoration: Decoration) -> None:
+        if self.root is None:
+            return
+
+        if decoration.node is not None:
+            decoration.node.removeNode()
+
+        holder = self.root.attachNewNode(decoration.decoration_id)
+        x, y = self.grid.to_world(decoration.tile)
+        holder.setPos(x, y, 0)
+        holder.setH(decoration.rotation)
+        visuals.render_decoration(holder, decoration.decoration_id, decoration.kind)
+        decoration.node = holder
+
     def _reindex_objects(self) -> None:
-        self.objects_by_tile = {obj.tile: obj for obj in self.objects.values()}
+        self.objects_by_tile = {
+            obj.tile: obj
+            for obj in self.objects.values()
+            if obj.active and obj.is_interactable
+        }
+        self.decorations_by_tile = {decoration.tile: decoration for decoration in self.decorations}
+
+    def terrain_label(self, tile: Tile) -> str:
+        return {
+            "dirt": "Dirt path",
+            "grass": "Grass",
+            "water": "Water",
+        }.get(self._terrain_at(tile), "Ground")
+
+    def _terrain_at(self, tile: Tile) -> str:
+        if tile in self.water_tiles:
+            return "water"
+        if tile in self.dirt_tiles:
+            return "dirt"
+        return "grass"
+
+    def _terrain_edges(self, tile: Tile, terrain: str) -> set[str]:
+        edges: set[str] = set()
+        for direction, (dx, dy) in visuals.CARDINAL_DIRECTIONS.items():
+            neighbor = (tile[0] + dx, tile[1] + dy)
+            if not self.grid.in_bounds(neighbor) or self._terrain_at(neighbor) != terrain:
+                edges.add(direction)
+        return edges
 
 
 def _tile(value: list[int] | tuple[int, int]) -> Tile:
     return int(value[0]), int(value[1])
-
-
-def _palette_color(tile: Tile, palette: tuple[tuple[float, float, float, float], ...]) -> tuple[float, float, float, float]:
-    x, y = tile
-    index = (x * 17 + y * 31 + x * y * 7) % len(palette)
-    return palette[index]
-
-
-def _tree_colors(level: int) -> tuple[
-    tuple[float, float, float, float],
-    tuple[float, float, float, float],
-    tuple[float, float, float, float],
-]:
-    palette = {
-        1: (LEAVES_DARK, LEAVES, LEAVES_LIGHT),
-        2: ((0.12, 0.32, 0.10, 1.0), (0.20, 0.44, 0.14, 1.0), (0.34, 0.56, 0.20, 1.0)),
-        3: ((0.12, 0.34, 0.20, 1.0), (0.20, 0.48, 0.30, 1.0), (0.38, 0.62, 0.42, 1.0)),
-        4: ((0.26, 0.34, 0.13, 1.0), (0.43, 0.48, 0.18, 1.0), (0.64, 0.58, 0.24, 1.0)),
-        5: ((0.05, 0.22, 0.14, 1.0), (0.08, 0.32, 0.22, 1.0), (0.15, 0.42, 0.31, 1.0)),
-    }
-    return palette.get(level, palette[1])
-
-
-def _rock_colors(level: int) -> tuple[
-    tuple[float, float, float, float],
-    tuple[float, float, float, float],
-    tuple[float, float, float, float],
-]:
-    palette = {
-        1: (ROCK_DARK, ROCK, COPPER),
-        2: ((0.25, 0.25, 0.27, 1.0), (0.52, 0.51, 0.48, 1.0), (0.76, 0.64, 0.46, 1.0)),
-        3: ((0.12, 0.12, 0.13, 1.0), (0.25, 0.25, 0.26, 1.0), (0.07, 0.07, 0.08, 1.0)),
-        4: ((0.20, 0.27, 0.29, 1.0), (0.34, 0.48, 0.51, 1.0), (0.18, 0.58, 0.64, 1.0)),
-        5: ((0.18, 0.25, 0.20, 1.0), (0.34, 0.44, 0.34, 1.0), (0.28, 0.74, 0.36, 1.0)),
-    }
-    return palette.get(level, palette[1])
-
-
-def _fishing_colors(level: int) -> tuple[tuple[float, float, float, float], tuple[float, float, float, float]]:
-    palette = {
-        1: (FISHING_MARKER, FISHING_RIPPLE),
-        2: ((0.98, 0.62, 0.35, 1.0), (0.64, 0.82, 0.86, 1.0)),
-        3: ((0.94, 0.42, 0.30, 1.0), (0.58, 0.76, 0.86, 1.0)),
-        4: ((0.48, 0.26, 0.66, 1.0), (0.56, 0.72, 0.86, 1.0)),
-        5: ((0.78, 0.76, 0.82, 1.0), (0.50, 0.66, 0.84, 1.0)),
-    }
-    return palette.get(level, palette[1])

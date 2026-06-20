@@ -5,14 +5,8 @@ import math
 from panda3d.core import NodePath, Vec3
 
 from game import settings
+from game.world import visuals
 from game.world.grid import Tile, TileGrid
-from game.world.objects import make_box, make_cone, make_cylinder
-
-TUNIC = (0.22, 0.38, 0.62, 1.0)
-SLEEVE = (0.16, 0.24, 0.38, 1.0)
-TROUSERS = (0.24, 0.18, 0.14, 1.0)
-SKIN = (0.88, 0.67, 0.46, 1.0)
-HAIR = (0.24, 0.13, 0.05, 1.0)
 
 
 class Player:
@@ -22,39 +16,13 @@ class Player:
         self.x, self.y = grid.to_world(start_tile)
         self.path: list[Tile] = []
         self.node: NodePath | None = None
+        self.parts: dict[str, NodePath] = {}
         self.heading = 0.0
+        self.walk_time = 0.0
 
     def render(self, parent: NodePath) -> None:
         self.node = parent.attachNewNode("player")
-
-        left_leg = make_box("player_left_leg", (0.11, 0.12, 0.34), TROUSERS)
-        left_leg.reparentTo(self.node)
-        left_leg.setPos(-0.08, 0.0, 0.02)
-
-        right_leg = make_box("player_right_leg", (0.11, 0.12, 0.34), TROUSERS)
-        right_leg.reparentTo(self.node)
-        right_leg.setPos(0.08, 0.0, 0.02)
-
-        body = make_box("player_body", (0.34, 0.24, 0.44), TUNIC)
-        body.reparentTo(self.node)
-        body.setZ(0.34)
-
-        left_arm = make_box("player_left_arm", (0.09, 0.10, 0.34), SLEEVE)
-        left_arm.reparentTo(self.node)
-        left_arm.setPos(-0.25, 0.0, 0.38)
-
-        right_arm = make_box("player_right_arm", (0.09, 0.10, 0.34), SLEEVE)
-        right_arm.reparentTo(self.node)
-        right_arm.setPos(0.25, 0.0, 0.38)
-
-        head = make_cylinder("player_head", 0.16, 0.20, 8, SKIN)
-        head.reparentTo(self.node)
-        head.setZ(0.80)
-
-        hair = make_cone("player_hair", 0.17, 0.12, 8, HAIR)
-        hair.reparentTo(self.node)
-        hair.setZ(0.99)
-
+        self.parts = visuals.render_player_model(self.node)
         self._sync_node()
 
     @property
@@ -68,8 +36,11 @@ class Player:
 
     def update(self, dt: float) -> None:
         if not self.path:
+            self.walk_time = 0.0
+            self._sync_node()
             return
 
+        self.walk_time += dt * 9.0
         target_tile = self.path[0]
         target_x, target_y = self.grid.to_world(target_tile)
         dx = target_x - self.x
@@ -114,5 +85,17 @@ class Player:
 
     def _sync_node(self) -> None:
         if self.node is not None:
-            self.node.setPos(Vec3(self.x, self.y, 0.02))
+            bob = 0.0
+            if self.path:
+                bob = abs(math.sin(self.walk_time)) * 0.035
+                sway = math.sin(self.walk_time) * 6.0
+                self.parts.get("left_leg", self.node).setP(sway)
+                self.parts.get("right_leg", self.node).setP(-sway)
+                self.parts.get("left_arm", self.node).setP(-sway * 0.6)
+                self.parts.get("right_arm", self.node).setP(sway * 0.6)
+            else:
+                for key in ("left_leg", "right_leg", "left_arm", "right_arm"):
+                    if key in self.parts:
+                        self.parts[key].setP(0)
+            self.node.setPos(Vec3(self.x, self.y, 0.02 + bob))
             self.node.setH(self.heading)

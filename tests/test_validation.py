@@ -5,6 +5,7 @@ from copy import deepcopy
 import pytest
 
 from game.engine.validation import DataValidationError, validate_all
+from game.systems.skills import osrs_xp_thresholds
 
 
 def test_data_validation_success() -> None:
@@ -29,6 +30,16 @@ def test_data_validation_missing_item_category() -> None:
         validate_all(items, _skills(), _world())
 
     assert "'category' must be one of" in str(exc.value)
+
+
+def test_data_validation_incomplete_cooking_metadata() -> None:
+    items = _items()
+    items["raw_shrimp"].pop("base_cook_seconds")
+
+    with pytest.raises(DataValidationError) as exc:
+        validate_all(items, _skills(), _world())
+
+    assert "cooking items must include" in str(exc.value)
 
 
 def test_data_validation_invalid_resource_display_name() -> None:
@@ -83,30 +94,143 @@ def test_data_validation_invalid_bank_tile() -> None:
     assert "world.json:bank.tile" in str(exc.value)
 
 
+def test_data_validation_invalid_cooking_range_tile() -> None:
+    world = _world()
+    world["cooking_range"] = {"id": "cooking_range_01", "tile": [10, 11]}
+
+    with pytest.raises(DataValidationError) as exc:
+        validate_all(_items(), _skills(), world)
+
+    assert "world.json:cooking_range" in str(exc.value)
+
+
+def test_data_validation_accepts_decorations() -> None:
+    world = _world()
+    world["decorations"] = [
+        {"id": "dock_01", "kind": "dock", "position": [1, 1], "rotation": 90},
+        {"id": "fence_01", "kind": "fence", "position": [12, 12], "blocking": True},
+    ]
+
+    validate_all(_items(), _skills(), world)
+
+
+def test_data_validation_rejects_blocking_decoration_on_resource() -> None:
+    world = _world()
+    world["decorations"] = [
+        {"id": "fence_01", "kind": "fence", "position": [10, 11], "blocking": True}
+    ]
+
+    with pytest.raises(DataValidationError) as exc:
+        validate_all(_items(), _skills(), world)
+
+    assert "blocking decoration cannot overlap" in str(exc.value)
+
+
+def test_data_validation_rejects_duplicate_decoration_id() -> None:
+    world = _world()
+    world["decorations"] = [
+        {"id": "tree_01", "kind": "signpost", "position": [1, 1]}
+    ]
+
+    with pytest.raises(DataValidationError) as exc:
+        validate_all(_items(), _skills(), world)
+
+    assert "duplicate object ID 'tree_01'" in str(exc.value)
+
+
+def test_data_validation_accepts_shop_stock_fishing_water_and_mobs() -> None:
+    world = _world()
+    world["water_tiles"] = [[4, 4]]
+    world["resource_nodes"].append(_fish_node([4, 4]))
+    world["shop"] = {
+        "id": "shop_01",
+        "tile": [11, 11],
+        "stock": [{"item_id": "bronze_axe", "price": 25}],
+    }
+    world["mobs"] = [_mob()]
+
+    validate_all(_items(), _skills(), world)
+
+
+def test_data_validation_rejects_fishing_node_off_water() -> None:
+    world = _world()
+    world["water_tiles"] = [[4, 4]]
+    world["resource_nodes"].append(_fish_node([5, 5]))
+
+    with pytest.raises(DataValidationError) as exc:
+        validate_all(_items(), _skills(), world)
+
+    assert "fishing resource must be placed on a water tile" in str(exc.value)
+
+
+def test_data_validation_rejects_bad_shop_stock_item() -> None:
+    world = _world()
+    world["shop"] = {
+        "id": "shop_01",
+        "tile": [11, 11],
+        "stock": [{"item_id": "missing_tool", "price": 25}],
+    }
+
+    with pytest.raises(DataValidationError) as exc:
+        validate_all(_items(), _skills(), world)
+
+    assert "unknown item_id 'missing_tool'" in str(exc.value)
+
+
+def test_data_validation_rejects_unknown_mob_drop() -> None:
+    world = _world()
+    mob = _mob()
+    mob["drops"] = [{"item_id": "missing_drop", "quantity": 1}]
+    world["mobs"] = [mob]
+
+    with pytest.raises(DataValidationError) as exc:
+        validate_all(_items(), _skills(), world)
+
+    assert "unknown item_id 'missing_drop'" in str(exc.value)
+
+
 def _items() -> dict[str, dict[str, object]]:
     return {
+        "coins": {"name": "Coins", "category": "currency", "sell_price": 0},
+        "bronze_axe": {"name": "Bronze axe", "category": "tool", "sell_price": 8},
         "logs": {"name": "Logs", "category": "wood", "sell_price": 3},
         "copper_ore": {"name": "Copper ore", "category": "ore", "sell_price": 5},
-        "raw_shrimp": {"name": "Raw shrimp", "category": "fish", "sell_price": 4},
+        "raw_shrimp": {
+            "name": "Raw shrimp",
+            "category": "fish",
+            "sell_price": 4,
+            "cook_result": "cooked_shrimp",
+            "cooking_required_level": 1,
+            "cooking_xp": 30,
+            "base_cook_seconds": 1.8,
+        },
+        "cooked_shrimp": {"name": "Cooked shrimp", "category": "fish", "sell_price": 7},
+        "wooden_splinters": {"name": "Wooden splinters", "category": "misc", "sell_price": 1},
     }
 
 
 def _skills() -> dict[str, dict[str, object]]:
+    thresholds = osrs_xp_thresholds()
     return {
         "woodcutting": {
             "display_name": "Woodcutting",
             "starting_level": 1,
-            "xp_thresholds": {"1": 0, "2": 100},
+            "xp_thresholds": thresholds,
         },
         "mining": {
             "display_name": "Mining",
             "starting_level": 1,
-            "xp_thresholds": {"1": 0, "2": 100},
+            "xp_thresholds": thresholds,
         },
         "fishing": {
             "display_name": "Fishing",
             "starting_level": 1,
-            "xp_thresholds": {"1": 0, "2": 100},
+            "xp_thresholds": thresholds,
+        },
+        "cooking": {
+            "display_name": "Cooking",
+            "starting_level": 1,
+            "xp_thresholds": thresholds,
         },
     }
 
@@ -134,4 +258,35 @@ def _world() -> dict[str, object]:
             }
         ],
         "bank": {"id": "bank_01", "tile": [13, 14]},
+        "cooking_range": {"id": "cooking_range_01", "tile": [14, 14]},
+    }
+
+
+def _fish_node(position: list[int]) -> dict[str, object]:
+    return {
+        "node_id": "shrimp_spot_01",
+        "node_type": "shrimp_spot",
+        "display_name": "Raw shrimp",
+        "skill_id": "fishing",
+        "required_level": 1,
+        "xp_reward": 15,
+        "item_reward": "raw_shrimp",
+        "quantity_reward": 1,
+        "position": position,
+        "blocks_movement": False,
+        "depleted_state": "quiet_water",
+        "base_gather_seconds": 1.0,
+    }
+
+
+def _mob() -> dict[str, object]:
+    return {
+        "mob_id": "mob_01",
+        "display_name": "Worn dummy",
+        "level": 1,
+        "hitpoints": 2,
+        "attack_seconds": 1.0,
+        "respawn_seconds": 5.0,
+        "position": [12, 12],
+        "drops": [{"item_id": "wooden_splinters", "quantity": 1}],
     }

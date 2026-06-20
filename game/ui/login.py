@@ -5,27 +5,30 @@ import logging
 from typing import Any
 
 from direct.gui.DirectGui import DirectButton, DirectEntry, DirectFrame, DirectLabel
+from direct.showbase.DirectObject import DirectObject
 
 from game import settings
 from game.engine import auth, save
+from game.style import UiPalette as UI
 
 
 LOGGER = logging.getLogger(__name__)
 
-PANEL = (0.22, 0.15, 0.08, 0.94)
-PANEL_DARK = (0.10, 0.07, 0.04, 1.0)
-BUTTON = (0.48, 0.34, 0.16, 1.0)
-BUTTON_HOVER = (0.60, 0.43, 0.21, 1.0)
-TEXT = (0.96, 0.88, 0.68, 1.0)
-GOLD = (1.0, 0.78, 0.28, 1.0)
+PANEL = UI.PANEL
+PANEL_DARK = UI.PANEL_DARK
+BUTTON = UI.BUTTON
+BUTTON_HOVER = UI.BUTTON_HOVER
+TEXT = UI.TEXT
+GOLD = UI.GOLD
 
 
-class LoginScreen:
+class LoginScreen(DirectObject):
     def __init__(
         self,
         app: Any,
         on_success: Callable[[str, dict[str, Any], str], None],
     ) -> None:
+        DirectObject.__init__(self)
         self.app = app
         self.on_success = on_success
         self.widgets: list[Any] = []
@@ -35,14 +38,27 @@ class LoginScreen:
         self.status["text"] = message
 
     def destroy(self) -> None:
+        self.ignoreAll()
         for widget in self.widgets:
             widget.destroy()
         self.widgets.clear()
 
     def _build(self) -> None:
         frame = DirectFrame(
-            frameColor=PANEL,
+            frameColor=UI.STONE,
             frameSize=(-0.62, 0.62, -0.38, 0.38),
+            pos=(0, 0, 0),
+        )
+        inset = DirectFrame(
+            parent=frame,
+            frameColor=PANEL,
+            frameSize=(-0.59, 0.59, -0.35, 0.35),
+            pos=(0, 0, 0),
+        )
+        title_strip = DirectFrame(
+            parent=frame,
+            frameColor=UI.PARCHMENT,
+            frameSize=(-0.45, 0.45, 0.205, 0.315),
             pos=(0, 0, 0),
         )
         title = DirectLabel(
@@ -128,6 +144,8 @@ class LoginScreen:
         )
         self.widgets.extend([
             frame,
+            inset,
+            title_strip,
             title,
             username_label,
             self.username,
@@ -138,6 +156,22 @@ class LoginScreen:
             quit_button,
             self.status,
         ])
+        self._bind_tab_navigation()
+
+    def _bind_tab_navigation(self) -> None:
+        self.accept("tab", self._focus_password)
+        self.accept("shift-tab", self._focus_username)
+
+    def _focus_username(self) -> None:
+        self._focus_entry(self.username, self.password)
+
+    def _focus_password(self) -> None:
+        self._focus_entry(self.password, self.username)
+
+    @staticmethod
+    def _focus_entry(focused: Any, blurred: Any) -> None:
+        blurred["focus"] = 0
+        focused["focus"] = 1
 
     def _credentials(self) -> tuple[str, str] | None:
         username = self.username.get().strip()

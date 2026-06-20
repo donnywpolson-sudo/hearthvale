@@ -8,10 +8,11 @@ from game.world.grid import Tile, TileGrid
 
 
 def ground_point_from_mouse(base) -> Optional[Point3]:
-    if not base.mouseWatcherNode.hasMouse():
+    mouse_watcher = getattr(base, "mouseWatcherNode", None)
+    if mouse_watcher is None or not mouse_watcher.hasMouse():
         return None
 
-    mouse_pos = base.mouseWatcherNode.getMouse()
+    mouse_pos = mouse_watcher.getMouse()
     near = Point3()
     far = Point3()
     base.camLens.extrude(mouse_pos, near, far)

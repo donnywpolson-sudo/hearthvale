@@ -18,14 +18,14 @@ def test_deposit_stack_moves_items_from_inventory_to_bank() -> None:
 
 
 def test_deposit_all_moves_every_inventory_stack() -> None:
-    inventory = Inventory({"logs": 2, "copper_ore": 4})
+    inventory = Inventory({"logs": 2, "copper_ore": 4, "coins": 18})
     bank = Bank({"raw_fish": 1})
 
     deposited = bank.deposit_all(inventory)
 
-    assert deposited == {"logs": 2, "copper_ore": 4}
+    assert deposited == {"logs": 2, "copper_ore": 4, "coins": 18}
     assert inventory.to_dict() == {}
-    assert bank.to_dict() == {"raw_fish": 1, "logs": 2, "copper_ore": 4}
+    assert bank.to_dict() == {"raw_fish": 1, "logs": 2, "copper_ore": 4, "coins": 18}
 
 
 def test_withdraw_stack_moves_items_from_bank_to_inventory() -> None:

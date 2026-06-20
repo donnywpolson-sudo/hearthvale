@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+from game.systems.combat import CombatSystem, DropStack, MobDefinition
+from game.world.grid import TileGrid
+
+
+class FakeClock:
+    def __init__(self, now: float = 100.0) -> None:
+        self.now = now
+
+    def __call__(self) -> float:
+        return self.now
+
+
+def test_combat_auto_attacks_until_mob_dies_and_respawns() -> None:
+    clock = FakeClock()
+    system = CombatSystem([_mob()], time_provider=clock)
+    grid = TileGrid(5, 5)
+
+    started = system.start_attack("mob_01", (1, 2), grid, set())
+
+    assert started.success is True
+    assert started.pending is True
+
+    clock.now += 1.0
+    first_hit = system.update()
+
+    assert first_hit is not None
+    assert first_hit.pending is True
+    assert first_hit.killed is False
+    assert system.states["mob_01"].hitpoints == 1
+
+    clock.now += 1.0
+    killed = system.update()
+
+    assert killed is not None
+    assert killed.killed is True
+    assert killed.drops == (DropStack("coins", 3), DropStack("wooden_splinters", 1))
+    assert system.is_dead("mob_01") is True
+
+    clock.now += 5.0
+    system.refresh_all()
+
+    assert system.is_dead("mob_01") is False
+    assert system.to_dict() == {}
+
+
+def test_combat_state_round_trip_preserves_dead_mob() -> None:
+    clock = FakeClock()
+    system = CombatSystem([_mob()], time_provider=clock)
+    grid = TileGrid(5, 5)
+    system.start_attack("mob_01", (1, 2), grid, set())
+    clock.now += 2.0
+    assert system.update() is not None
+    clock.now += 2.0
+    assert system.update() is not None
+
+    loaded = CombatSystem([_mob()], time_provider=clock)
+    loaded.load_dict(system.to_dict())
+
+    assert loaded.is_dead("mob_01") is True
+
+
+def _mob() -> MobDefinition:
+    return MobDefinition(
+        mob_id="mob_01",
+        display_name="Worn dummy",
+        level=1,
+        hitpoints=2,
+        attack_seconds=1.0,
+        respawn_seconds=5.0,
+        position=(2, 2),
+        drops=(DropStack("coins", 3), DropStack("wooden_splinters", 1)),
+    )

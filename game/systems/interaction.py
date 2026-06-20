@@ -4,6 +4,8 @@ from collections.abc import Callable
 
 from game import settings
 from game.entities.player import Player
+from game.systems.combat import CombatSystem
+from game.systems.cooking import CookingSystem
 from game.systems.gathering import GatheringSystem
 from game.systems.inventory import Inventory
 from game.systems.shop import Shop
@@ -25,7 +27,11 @@ class InteractionManager:
         add_coins: Callable[[int], None],
         feedback: Callable[[str], None],
         gathering: GatheringSystem | None = None,
+        cooking: CookingSystem | None = None,
+        combat: CombatSystem | None = None,
         open_bank: Callable[[], None] | None = None,
+        open_shop: Callable[[], None] | None = None,
+        train_combat: Callable[[], None] | None = None,
     ) -> None:
         self.world_map = world_map
         self.player = player
@@ -35,22 +41,30 @@ class InteractionManager:
         self.add_coins = add_coins
         self.feedback = feedback
         self.gathering = gathering
+        self.cooking = cooking
+        self.combat = combat
         self.open_bank = open_bank
+        self.open_shop = open_shop
+        self.train_combat = train_combat
         self.pending_object_id: str | None = None
+        self.selected_item_id: str | None = None
 
     def move_to_tile(self, tile: Tile) -> None:
         self._cancel_gathering()
+        self._cancel_cooking()
+        self._cancel_combat()
         path = find_path(self.world_map.grid, self.player.tile, tile, self.world_map.blocked_tiles())
         if path is None:
             self.feedback("No path")
             return
         self.pending_object_id = None
         self.player.set_path(path)
-        self.feedback(f"Moving to {tile[0]}, {tile[1]}")
 
     def interact_with(self, obj: WorldObject | None) -> None:
         if obj is None:
             self._cancel_gathering()
+            self._cancel_cooking()
+            self._cancel_combat()
             self.feedback("Nothing to interact with")
             return
         if self._is_gatherable(obj):
@@ -58,6 +72,8 @@ class InteractionManager:
                 self._perform(obj)
                 return
             self._cancel_gathering()
+            self._cancel_cooking()
+            self._cancel_combat()
             path = self._path_to_adjacent(obj.tile)
             if path is None:
                 self.feedback("No path")
@@ -66,8 +82,26 @@ class InteractionManager:
             self.player.set_path(path)
             self.feedback(f"Walking to {obj.kind}")
             return
+        if self._is_combatable(obj) or obj.kind == "ground_item":
+            if self._in_range_for(obj):
+                self._perform(obj)
+                return
+            self._cancel_gathering()
+            self._cancel_cooking()
+            self._cancel_combat()
+            path = self._path_to_object(obj)
+            if path is None:
+                self.feedback("No path")
+                return
+            self.pending_object_id = obj.object_id
+            self.player.set_path(path)
+            self.feedback(f"Walking to {obj.kind}")
+            return
         self._cancel_gathering()
-        if self._in_range(obj.tile):
+        self._cancel_combat()
+        if obj.kind != "cooking_range":
+            self._cancel_cooking()
+        if self._in_range_for(obj):
             self._perform(obj)
             return
 
@@ -79,6 +113,17 @@ class InteractionManager:
         self.player.set_path(path)
         self.feedback(f"Walking to {obj.kind}")
 
+    def select_inventory_item(self, item_id: str) -> None:
+        self._cancel_gathering()
+        self._cancel_cooking()
+        self._cancel_combat()
+        if self.inventory.count(item_id) <= 0:
+            self.selected_item_id = None
+            self.feedback(f"No {self._item_name(item_id)}")
+            return
+        self.selected_item_id = item_id
+        self.feedback(f"Selected item: {self._item_name(item_id)}")
+
     def update(self) -> None:
         if self.gathering is not None:
             result = self.gathering.update()
@@ -86,13 +131,37 @@ class InteractionManager:
                 self.world_map.apply_resource_states(self.gathering.states)
                 self.feedback(result.feedback)
 
+        if self.cooking is not None:
+            result = self.cooking.update()
+            if result is not None:
+                if (
+                    result.raw_item_id is not None
+                    and result.raw_item_id == self.selected_item_id
+                    and self.inventory.count(result.raw_item_id) <= 0
+                ):
+                    self.selected_item_id = None
+                self.feedback(result.feedback)
+
+        if self.combat is not None:
+            result = self.combat.update()
+            if result is not None:
+                self.world_map.apply_mob_states(self.combat.states)
+                feedback = result.feedback
+                if result.killed and result.mob_id is not None:
+                    mob = self.combat.mobs.get(result.mob_id)
+                    if mob is not None:
+                        created = self.world_map.spawn_ground_drops(mob.position, result.drops)
+                        if created:
+                            feedback = f"{feedback}; drops appeared"
+                self.feedback(feedback)
+
         if self.pending_object_id is None or self.player.is_moving:
             return
         obj = self.world_map.get_object(self.pending_object_id)
         self.pending_object_id = None
         if obj is None:
             return
-        if self._in_range(obj.tile):
+        if self._in_range_for(obj):
             self._perform(obj)
         else:
             self.feedback("Too far away")
@@ -100,18 +169,27 @@ class InteractionManager:
     def _perform(self, obj: WorldObject) -> None:
         if self._is_gatherable(obj):
             self._perform_gathering(obj)
+        elif obj.kind == "cooking_range":
+            self._perform_cooking()
         elif obj.kind == "bank":
             if self.open_bank is None:
                 self.feedback("Bank unavailable")
                 return
             self.open_bank()
         elif obj.kind == "shop":
-            sold, coins = self.shop.sell_all(self.inventory)
-            if sold == 0:
-                self.feedback("No sellable items")
+            if self.open_shop is None:
+                self.feedback("Shop unavailable")
                 return
-            self.add_coins(coins)
-            self.feedback(f"Sold {sold} items for {coins} coins")
+            self.open_shop()
+        elif self._is_combatable(obj):
+            self._perform_combat(obj)
+        elif obj.kind == "ground_item":
+            self._perform_ground_item(obj)
+        elif obj.kind == "combat_dummy":
+            if self.train_combat is None:
+                self.feedback("Nothing happens")
+                return
+            self.train_combat()
         else:
             self.feedback("Nothing happens")
 
@@ -119,6 +197,8 @@ class InteractionManager:
         if self.gathering is None:
             self.feedback("Nothing happens")
             return
+        self._cancel_cooking()
+        self._cancel_combat()
         result = self.gathering.start_gather(
             obj.object_id,
             self.player.tile,
@@ -128,6 +208,48 @@ class InteractionManager:
         )
         self.world_map.apply_resource_states(self.gathering.states)
         self.feedback(result.feedback)
+
+    def _perform_cooking(self) -> None:
+        if self.cooking is None:
+            self.feedback("Select a raw fish first")
+            return
+        self._cancel_gathering()
+        self._cancel_combat()
+        result = self.cooking.start_cooking(self.selected_item_id)
+        self.feedback(result.feedback)
+
+    def _perform_combat(self, obj: WorldObject) -> None:
+        if self.combat is None:
+            self.feedback("Nothing happens")
+            return
+        self._cancel_gathering()
+        self._cancel_cooking()
+        result = self.combat.start_attack(
+            obj.object_id,
+            self.player.tile,
+            self.world_map.grid,
+            self.world_map.blocked_tiles(),
+        )
+        self.world_map.apply_mob_states(self.combat.states)
+        self.feedback(result.feedback)
+
+    def _perform_ground_item(self, obj: WorldObject) -> None:
+        picked_up = self.world_map.pickup_ground_item(obj.object_id)
+        if picked_up is None:
+            self.feedback("Nothing to pick up")
+            return
+        item_id, quantity = picked_up
+        self.inventory.add(item_id, quantity)
+        self.feedback(f"Picked up {quantity} {self._item_name(item_id)}")
+
+    def _path_to_object(self, obj: WorldObject) -> list[Tile] | None:
+        if obj.kind == "ground_item":
+            blocked = self.world_map.blocked_tiles()
+            if obj.tile not in blocked:
+                path = find_path(self.world_map.grid, self.player.tile, obj.tile, blocked)
+                if path is not None:
+                    return path
+        return self._path_to_adjacent(obj.tile)
 
     def _path_to_adjacent(self, target: Tile) -> list[Tile] | None:
         blocked = self.world_map.blocked_tiles()
@@ -144,9 +266,34 @@ class InteractionManager:
         distance = max(abs(self.player.tile[0] - tile[0]), abs(self.player.tile[1] - tile[1]))
         return 0 < distance <= settings.INTERACTION_RANGE
 
+    def _in_range_for(self, obj: WorldObject) -> bool:
+        distance = max(abs(self.player.tile[0] - obj.tile[0]), abs(self.player.tile[1] - obj.tile[1]))
+        if obj.kind == "ground_item":
+            return distance <= settings.INTERACTION_RANGE
+        return 0 < distance <= settings.INTERACTION_RANGE
+
     def _is_gatherable(self, obj: WorldObject) -> bool:
         return self.gathering is not None and obj.object_id in self.gathering.nodes
+
+    def _is_combatable(self, obj: WorldObject) -> bool:
+        return self.combat is not None and obj.active and obj.object_id in self.combat.mobs
 
     def _cancel_gathering(self) -> None:
         if self.gathering is not None:
             self.gathering.cancel_pending()
+
+    def _cancel_cooking(self) -> None:
+        if self.cooking is not None:
+            self.cooking.cancel_pending()
+
+    def _cancel_combat(self) -> None:
+        if self.combat is not None:
+            self.combat.cancel_pending()
+
+    def _item_name(self, item_id: str) -> str:
+        if self.cooking is not None:
+            return str(self.cooking.item_definitions.get(item_id, {}).get("name") or item_id.replace("_", " "))
+        definition = self.shop.item_definitions.get(item_id)
+        if definition is not None:
+            return str(definition.get("name") or item_id.replace("_", " "))
+        return item_id.replace("_", " ")
