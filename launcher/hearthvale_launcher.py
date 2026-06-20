@@ -10,6 +10,7 @@ from pathlib import Path
 
 ENV_PROJECT_ROOT = "HEARTHVALE_PROJECT_ROOT"
 LAUNCHER_TITLE = "Hearthvale Launcher"
+DESKTOP_PROJECT_FOLDER_NAMES = ("hearthvale", "Hearthvale", "runescape")
 
 
 def append_log(message: str, project_root: Path | None = None) -> None:
@@ -42,7 +43,10 @@ def project_root_candidates(
         frozen = bool(getattr(sys, "frozen", False))
     if frozen:
         executable = Path(executable_path or sys.executable)
-        candidates.append(executable.resolve().parent.parent)
+        executable_dir = executable.resolve().parent
+        candidates.append(executable_dir.parent)
+        for folder_name in DESKTOP_PROJECT_FOLDER_NAMES:
+            candidates.append(executable_dir / folder_name)
 
     source = Path(source_file or __file__)
     candidates.append(source.resolve().parent.parent)
@@ -96,7 +100,8 @@ def main() -> int:
             LAUNCHER_TITLE,
             "Project folder was not found.\n\n"
             f"Set {ENV_PROJECT_ROOT} to the project folder, or run the launcher "
-            "from this repo's dist folder.",
+            "from this repo's dist folder. A Desktop launcher also checks for "
+            "hearthvale or runescape folders next to it.",
         )
         return 1
 

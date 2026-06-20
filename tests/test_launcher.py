@@ -48,6 +48,38 @@ def test_frozen_launcher_resolves_project_root_from_dist_exe(tmp_path: Path) -> 
     assert resolved == project_root.resolve()
 
 
+def test_frozen_desktop_launcher_resolves_hearthvale_folder(tmp_path: Path) -> None:
+    desktop = tmp_path / "Desktop"
+    project_root = _project_root(desktop, "hearthvale")
+    executable_path = desktop / "Hearthvale.exe"
+
+    resolved = launcher.resolve_project_root(
+        environ={},
+        executable_path=executable_path,
+        source_file=tmp_path / "missing" / "launcher" / "hearthvale_launcher.py",
+        cwd=tmp_path,
+        frozen=True,
+    )
+
+    assert resolved == project_root.resolve()
+
+
+def test_frozen_desktop_launcher_resolves_legacy_project_folder(tmp_path: Path) -> None:
+    desktop = tmp_path / "Desktop"
+    project_root = _project_root(desktop, "runescape")
+    executable_path = desktop / "Hearthvale.exe"
+
+    resolved = launcher.resolve_project_root(
+        environ={},
+        executable_path=executable_path,
+        source_file=tmp_path / "missing" / "launcher" / "hearthvale_launcher.py",
+        cwd=tmp_path,
+        frozen=True,
+    )
+
+    assert resolved == project_root.resolve()
+
+
 def test_candidate_python_paths_prefer_venv_pythonw_then_python(tmp_path: Path) -> None:
     project_root = _project_root(tmp_path, "project")
 

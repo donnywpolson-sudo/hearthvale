@@ -30,9 +30,11 @@ Then run the built launcher from the project folder:
 .\dist\Hearthvale.exe
 ```
 
-If you move the launcher outside the project folder, set `HEARTHVALE_PROJECT_ROOT`
-to this checkout before running it. `Launch Game.bat`, if present, is only an
-optional manual fallback for running `python -m game.main`.
+If you move the launcher to the Desktop, it will look for a `hearthvale`,
+`Hearthvale`, or legacy `runescape` project folder next to it. For other
+locations, set `HEARTHVALE_PROJECT_ROOT` to this checkout before running it.
+`Launch Game.bat`, if present, is only an optional manual fallback for running
+`python -m game.main`.
 
 ## Test
 
