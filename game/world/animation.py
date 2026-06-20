@@ -248,6 +248,179 @@ class SceneAnimator:
             )
         )
 
+    def start_impact(
+        self,
+        key: str,
+        node: Any,
+        *,
+        direction: Vec3Tuple = (0.0, -1.0, 0.0),
+        distance: float = 0.07,
+        color: Vec4Tuple = (1.35, 0.92, 0.55, 1.0),
+        duration: float = 0.18,
+    ) -> None:
+        base = _capture(node)
+        direction = _normalize(direction)
+
+        def apply(track: _Track) -> None:
+            progress = _progress(track)
+            pulse = math.sin(math.pi * progress)
+            eased = progress * progress * (3.0 - 2.0 * progress)
+            _set_pos(
+                track.node,
+                (
+                    track.base.pos[0] + direction[0] * pulse * distance,
+                    track.base.pos[1] + direction[1] * pulse * distance,
+                    track.base.pos[2] + 0.035 * pulse,
+                ),
+            )
+            _set_hpr(
+                track.node,
+                (
+                    track.base.hpr[0],
+                    track.base.hpr[1] + 5.0 * pulse,
+                    track.base.hpr[2] + 7.0 * pulse,
+                ),
+            )
+            _set_color(track.node, _lerp4(track.base.color_scale, color, 1.0 - eased))
+
+        self._replace(
+            _Track(
+                key,
+                node,
+                base,
+                apply,
+                duration=duration,
+                reset_pos=True,
+                reset_hpr=True,
+                reset_color=True,
+            )
+        )
+
+    def start_burst(
+        self,
+        key: str,
+        node: Any,
+        *,
+        amplitude: float = 0.12,
+        color: Vec4Tuple = (1.25, 1.12, 0.74, 1.0),
+        duration: float = 0.24,
+    ) -> None:
+        base = _capture(node)
+
+        def apply(track: _Track) -> None:
+            progress = _progress(track)
+            pulse = math.sin(math.pi * progress)
+            scale = 1.0 + amplitude * pulse
+            _set_scale(
+                track.node,
+                (
+                    track.base.scale[0] * scale,
+                    track.base.scale[1] * scale,
+                    track.base.scale[2] * scale,
+                ),
+            )
+            _set_color(track.node, _lerp4(track.base.color_scale, color, pulse))
+
+        self._replace(
+            _Track(
+                key,
+                node,
+                base,
+                apply,
+                duration=duration,
+                reset_scale=True,
+                reset_color=True,
+            )
+        )
+
+    def start_ripple(
+        self,
+        key: str,
+        node: Any,
+        *,
+        amplitude: float = 0.18,
+        color: Vec4Tuple = (0.70, 0.90, 0.95, 0.95),
+        duration: float = 0.40,
+    ) -> None:
+        base = _capture(node)
+
+        def apply(track: _Track) -> None:
+            progress = _progress(track)
+            eased = 1.0 - (1.0 - progress) * (1.0 - progress)
+            scale = 1.0 + amplitude * eased
+            _set_scale(
+                track.node,
+                (
+                    track.base.scale[0] * scale,
+                    track.base.scale[1] * scale,
+                    track.base.scale[2],
+                ),
+            )
+            _set_color(track.node, _lerp4(track.base.color_scale, color, 1.0 - progress))
+
+        self._replace(
+            _Track(
+                key,
+                node,
+                base,
+                apply,
+                duration=duration,
+                reset_scale=True,
+                reset_color=True,
+            )
+        )
+
+    def start_spark(
+        self,
+        key: str,
+        node: Any,
+        *,
+        lift: float = 0.12,
+        color: Vec4Tuple = (1.45, 1.10, 0.45, 1.0),
+        duration: float = 0.20,
+        remove_on_finish: bool = False,
+    ) -> None:
+        base = _capture(node)
+
+        def apply(track: _Track) -> None:
+            progress = _progress(track)
+            pulse = math.sin(math.pi * progress)
+            _set_pos(
+                track.node,
+                (
+                    track.base.pos[0],
+                    track.base.pos[1],
+                    track.base.pos[2] + lift * pulse,
+                ),
+            )
+            scale = 1.0 + 0.22 * pulse
+            _set_scale(
+                track.node,
+                (
+                    track.base.scale[0] * scale,
+                    track.base.scale[1] * scale,
+                    track.base.scale[2] * scale,
+                ),
+            )
+            _set_color(track.node, _lerp4(track.base.color_scale, color, pulse))
+
+        self._replace(
+            _Track(
+                key,
+                node,
+                base,
+                apply,
+                duration=duration,
+                reset_pos=True,
+                reset_scale=True,
+                reset_color=True,
+                restore_on_finish=not remove_on_finish,
+                cleanup=lambda: node.removeNode()
+                if remove_on_finish and hasattr(node, "removeNode")
+                else None,
+            )
+        )
+
     def start_defeat(self, key: str, node: Any, *, duration: float = 0.55) -> None:
         base = _capture(node)
 

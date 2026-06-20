@@ -156,7 +156,7 @@ def test_left_click_ground_item_uses_pickup_interaction(monkeypatch) -> None:
         _show_marker=lambda marker, tile: shown.append((marker, tile)),
         set_feedback=lambda message: None,
     )
-    monkeypatch.setattr(app_module, "object_from_mouse", lambda _base, _world_map: ground_item)
+    monkeypatch.setattr(app_module, "target_from_mouse", lambda _base, _world_map: ground_item)
     monkeypatch.setattr(app_module, "ground_tile_from_mouse", lambda _base, _grid: ((3, 3), None))
 
     app_module.GameApp.on_left_click(fake_app)
@@ -165,6 +165,93 @@ def test_left_click_ground_item_uses_pickup_interaction(monkeypatch) -> None:
     assert shown == [(fake_app.destination_marker, (2, 2))]
     assert interactions.interacted == [ground_item]
     assert interactions.moved == []
+
+
+def test_left_click_gameplay_object_uses_default_interaction(monkeypatch) -> None:
+    from game.engine import app as app_module
+
+    tree = WorldObject("tree_01", "tree", (2, 2), display_name="Tree")
+    interactions = _ClickInteractions()
+    shown: list[tuple[object, tuple[int, int]]] = []
+    fake_app = SimpleNamespace(
+        hud=SimpleNamespace(hide_context_menu=lambda: None),
+        world_map=SimpleNamespace(grid=object()),
+        destination_marker=object(),
+        interactions=interactions,
+        selected_text="",
+        _show_marker=lambda marker, tile: shown.append((marker, tile)),
+        set_feedback=lambda message: None,
+    )
+    monkeypatch.setattr(app_module, "target_from_mouse", lambda _base, _world_map: tree)
+    monkeypatch.setattr(app_module, "ground_tile_from_mouse", lambda _base, _grid: ((3, 3), None))
+
+    app_module.GameApp.on_left_click(fake_app)
+
+    assert shown == [(fake_app.destination_marker, (2, 2))]
+    assert interactions.interacted == [tree]
+    assert interactions.moved == []
+
+
+def test_right_click_ground_opens_walk_here_menu(monkeypatch) -> None:
+    from game.engine import app as app_module
+
+    menu_calls: list[tuple[list[tuple[str, str]], tuple[float, float, float]]] = []
+    moved: list[tuple[int, int]] = []
+    fake_app = SimpleNamespace(
+        hud=SimpleNamespace(
+            show_context_menu=lambda actions, _command, pos: menu_calls.append((actions, pos)),
+        ),
+        world_map=SimpleNamespace(grid=object()),
+        selection_marker=object(),
+        interactions=SimpleNamespace(move_to_tile=moved.append),
+        selected_text="",
+        _show_marker=lambda marker, tile: None,
+        _context_menu_pos=lambda: (0.25, 0, 0.30),
+        set_feedback=lambda message: None,
+    )
+    monkeypatch.setattr(app_module, "target_from_mouse", lambda _base, _world_map: None)
+    monkeypatch.setattr(app_module, "ground_tile_from_mouse", lambda _base, _grid: ((3, 3), None))
+
+    app_module.GameApp.on_right_click(fake_app)
+
+    assert menu_calls == [([("walk", "Walk here"), ("cancel", "Cancel")], (0.25, 0, 0.30))]
+    assert moved == []
+
+
+def test_scenery_actions_walk_and_examine() -> None:
+    world = WorldMap(
+        {
+            "width": 4,
+            "height": 4,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [],
+            "decorations": [
+                {"id": "sign_01", "kind": "signpost", "position": [2, 2]},
+            ],
+        }
+    )
+    player = _Player(tile=(0, 0))
+    feedback: list[str] = []
+    manager = InteractionManager(
+        world,
+        player,
+        Inventory(),
+        Skills(_skills()),
+        Shop(_items()),
+        lambda amount: None,
+        feedback.append,
+    )
+    scenery = world.target_at((2, 2))
+    assert scenery is not None
+
+    assert [action.action_id for action in manager.get_actions(scenery)] == ["walk", "examine", "cancel"]
+
+    manager.perform_action("examine", scenery)
+    manager.perform_action("walk", scenery)
+
+    assert feedback[-2:] == ["Signpost", "Walking here"]
+    assert player.path[-1] == (2, 2)
 
 
 def test_perform_action_separates_examine_from_npc_talk() -> None:

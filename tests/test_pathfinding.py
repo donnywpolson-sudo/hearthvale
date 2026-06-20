@@ -95,7 +95,7 @@ class PathfindingTests(unittest.TestCase):
         self.assertEqual(path[0], (0, 0))
         self.assertEqual(path[-1], (3, 0))
 
-    def test_blocking_decoration_blocks_movement_without_becoming_interactable(self) -> None:
+    def test_blocking_decoration_blocks_movement_and_becomes_scenery_target(self) -> None:
         world = WorldMap(
             {
                 "width": 4,
@@ -112,6 +112,8 @@ class PathfindingTests(unittest.TestCase):
         self.assertIn((1, 1), world.blocked_tiles())
         self.assertNotIn((2, 2), world.blocked_tiles())
         self.assertIsNone(world.object_at((1, 1)))
+        self.assertEqual(world.target_at((1, 1)).object_id, "fence_01")
+        self.assertEqual(world.target_at((2, 2)).object_id, "sign_01")
 
 
 if __name__ == "__main__":

@@ -36,11 +36,14 @@ class WorldObject:
     respawn_seconds: float | None = None
     depleted: bool = False
     node: Any = None
+    scenery: bool = False
 
     @property
     def is_interactable(self) -> bool:
         if not self.active:
             return False
+        if self.scenery:
+            return True
         return (
             self.kind in {
                 "shop",

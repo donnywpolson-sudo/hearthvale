@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from typing import TypeVar
 
 from panda3d.core import LineSegs, NodePath
@@ -12,6 +13,8 @@ from game.world.grid import Tile
 from game.world.objects import WorldObject, make_box, make_cone, make_cylinder, make_quad
 
 T = TypeVar("T")
+AssetRenderer = Callable[[NodePath, WorldObject, ResourceNode | None, ResourceNodeState, int], None]
+ASSET_RENDERERS: dict[str, AssetRenderer] = {}
 
 
 CARDINAL_DIRECTIONS: dict[str, tuple[int, int]] = {
@@ -72,6 +75,9 @@ def render_world_object(
         elif resource_node.skill_id == "fishing":
             render_kind = "fishing_spot"
 
+    if _render_asset_override(holder, obj, resource_node, resource_state, render_kind, tier):
+        return
+
     if resource_node is not None and not resource_state.depleted:
         ring = make_ground_ring(f"{obj.object_id}_ready_ring", 0.43, C.RESOURCE_RING, thickness=1.4)
         ring.reparentTo(holder)
@@ -107,6 +113,28 @@ def render_world_object(
         _render_mob(holder, obj)
     elif render_kind == "ground_item":
         _render_ground_item(holder, obj)
+
+
+def register_asset_renderer(render_kind: str, renderer: AssetRenderer | None) -> None:
+    if renderer is None:
+        ASSET_RENDERERS.pop(render_kind, None)
+        return
+    ASSET_RENDERERS[render_kind] = renderer
+
+
+def _render_asset_override(
+    holder: NodePath,
+    obj: WorldObject,
+    resource_node: ResourceNode | None,
+    resource_state: ResourceNodeState,
+    render_kind: str,
+    tier: int,
+) -> bool:
+    renderer = ASSET_RENDERERS.get(render_kind)
+    if renderer is None:
+        return False
+    renderer(holder, obj, resource_node, resource_state, tier)
+    return True
 
 
 def render_decoration(holder: NodePath, decoration_id: str, kind: str) -> None:
@@ -161,6 +189,14 @@ def render_player_model(parent: NodePath) -> dict[str, NodePath]:
     body.setZ(0.44)
     parts["body"] = body
 
+    collar = make_box("player_collar", (0.28, 0.27, 0.045), C.PLAYER_SLEEVE)
+    collar.reparentTo(parent)
+    collar.setZ(0.66)
+
+    shoulder = make_box("player_shoulders", (0.52, 0.18, 0.09), C.PLAYER_SLEEVE)
+    shoulder.reparentTo(parent)
+    shoulder.setZ(0.61)
+
     belt = make_box("player_belt", (0.40, 0.27, 0.055), C.WOOD_DARK)
     belt.reparentTo(parent)
     belt.setZ(0.42)
@@ -196,6 +232,10 @@ def render_player_model(parent: NodePath) -> dict[str, NodePath]:
     nose = make_box("player_nose", (0.05, 0.08, 0.04), C.SKIN)
     nose.reparentTo(parent)
     nose.setPos(0.0, -0.15, 0.89)
+    for index, x in enumerate((-0.055, 0.055)):
+        eye = make_box(f"player_eye_{index}", (0.025, 0.025, 0.018), C.OUTLINE)
+        eye.reparentTo(parent)
+        eye.setPos(x, -0.145, 0.92)
     parts["head"] = head
     return parts
 
@@ -347,6 +387,11 @@ def _render_tree(holder: NodePath, name: str, tier: int) -> None:
     bark_mark.reparentTo(holder)
     bark_mark.setPos(0.09, -0.11, 0.32)
     bark_mark.setH(8)
+    for index, (x, y, h) in enumerate(((-0.13, 0.08, -24), (0.15, 0.05, 30), (0.03, -0.14, 8))):
+        root = make_box(f"{name}_root_{index}", (0.22, 0.07, 0.06), C.TRUNK_DARK)
+        root.reparentTo(holder)
+        root.setPos(x, y, 0.05)
+        root.setH(h)
 
     lower = make_cone(f"{name}_leaves_lower", 0.66, 0.62, 7, leaf_dark)
     lower.reparentTo(holder)
@@ -367,6 +412,10 @@ def _render_tree(holder: NodePath, name: str, tier: int) -> None:
     top.reparentTo(holder)
     top.setZ(1.30)
     top.setH(8)
+    glint = make_box(f"{name}_leaf_highlight", (0.18, 0.08, 0.055), leaf_light)
+    glint.reparentTo(holder)
+    glint.setPos(0.18, -0.24, 1.18)
+    glint.setH(-22)
 
 
 def _render_stump(holder: NodePath, name: str, state: ResourceNodeState) -> None:
@@ -415,6 +464,14 @@ def _render_ore_rock(holder: NodePath, name: str, tier: int) -> None:
     chip.reparentTo(holder)
     chip.setPos(0.30, 0.05, 0.20)
     chip.setH(14)
+    crack = make_box(f"{name}_crack", (0.34, 0.035, 0.040), C.OUTLINE)
+    crack.reparentTo(holder)
+    crack.setPos(-0.03, -0.25, 0.18)
+    crack.setH(-24)
+    glint = make_box(f"{name}_ore_glint", (0.075, 0.022, 0.040), C.SPARK)
+    glint.reparentTo(holder)
+    glint.setPos(0.12, -0.28, 0.37)
+    glint.setH(32)
 
 
 def _render_depleted_rock(holder: NodePath, name: str, state: ResourceNodeState) -> None:
@@ -457,6 +514,14 @@ def _render_fishing_spot(holder: NodePath, name: str, tier: int) -> None:
     wake.reparentTo(holder)
     wake.setPos(0.02, 0.16, 0.038)
     wake.setH(-8)
+    splash = make_box(f"{name}_splash", (0.08, 0.022, 0.065), C.WATER_SHIMMER)
+    splash.reparentTo(holder)
+    splash.setPos(-0.06, 0.04, 0.060)
+    splash.setH(16)
+    far_wake = make_box(f"{name}_far_wake", (0.22, 0.018, 0.010), ripple_color)
+    far_wake.reparentTo(holder)
+    far_wake.setPos(-0.20, -0.12, 0.039)
+    far_wake.setH(28)
 
     buoy = make_cylinder(f"{name}_buoy", 0.045, 0.09, 6, C.FISH_BUOY)
     buoy.reparentTo(holder)
@@ -690,6 +755,12 @@ def _render_mob(holder: NodePath, obj: WorldObject) -> None:
     shoulder.setPos(0.0, -0.02, 0.50)
     shoulder.setH(-10)
 
+    for index, x in enumerate((-0.26, 0.26)):
+        arm = make_box(f"{obj.object_id}_arm_{index}", (0.09, 0.10, 0.30), C.STONE)
+        arm.reparentTo(holder)
+        arm.setPos(x, -0.02, 0.34)
+        arm.setR(-14 if index == 0 else 14)
+
     for index, x in enumerate((-0.13, 0.13)):
         foot = make_box(f"{obj.object_id}_foot_{index}", (0.16, 0.20, 0.08), C.STONE_DARK)
         foot.reparentTo(holder)
@@ -699,14 +770,24 @@ def _render_mob(holder: NodePath, obj: WorldObject) -> None:
     ring = make_ground_ring(f"{obj.object_id}_combat_ring", 0.34, accent, thickness=1.4)
     ring.reparentTo(holder)
     ring.setZ(0.034)
+    max_hitpoints = max(1, obj.hitpoints)
+    for index in range(min(5, max_hitpoints)):
+        pip = make_box(f"{obj.object_id}_hp_pip_{index}", (0.055, 0.020, 0.035), C.CLOTH_RED)
+        pip.reparentTo(holder)
+        pip.setPos(-0.12 + index * 0.06, -0.20, 0.82)
 
 
 def _render_ground_item(holder: NodePath, obj: WorldObject) -> None:
     if obj.item_id == "coins":
+        _shadow(holder, f"{obj.object_id}_shadow", 0.22, 0.14)
         for index in range(min(3, max(1, obj.quantity))):
             coin = make_cylinder(f"{obj.object_id}_coin_{index}", 0.10, 0.025, 10, C.GOLD)
             coin.reparentTo(holder)
             coin.setPos((index - 1) * 0.07, 0.0, 0.035 + index * 0.020)
+        sparkle = make_box(f"{obj.object_id}_sparkle", (0.05, 0.014, 0.035), C.SPARK)
+        sparkle.reparentTo(holder)
+        sparkle.setPos(0.11, -0.07, 0.12)
+        sparkle.setH(35)
         return
 
     _shadow(holder, f"{obj.object_id}_shadow", 0.24, 0.16)

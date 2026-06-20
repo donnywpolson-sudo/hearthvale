@@ -49,7 +49,9 @@ class WorldMap:
         self.mob_states: dict[str, MobState] = {}
         self.ground_item_counter = 0
         self.objects: dict[str, WorldObject] = {}
+        self.scenery_objects: dict[str, WorldObject] = {}
         self.objects_by_tile: dict[Tile, WorldObject] = {}
+        self.scenery_by_tile: dict[Tile, WorldObject] = {}
         self.shop_stock = [
             dict(raw_stock_item)
             for raw_stock_item in (data.get("shop", {}) or {}).get("stock", []) or []
@@ -62,6 +64,27 @@ class WorldMap:
         ]
         self.root: NodePath | None = None
         self.terrain_chunks: list[NodePath] = []
+
+        for tile in self.static_blocked:
+            object_id = _static_scenery_id(tile)
+            self.scenery_objects[object_id] = WorldObject(
+                object_id,
+                "blocked_rocks",
+                tile,
+                blocking=True,
+                display_name="Rocks",
+                scenery=True,
+            )
+
+        for decoration in self.decorations:
+            self.scenery_objects[decoration.decoration_id] = WorldObject(
+                decoration.decoration_id,
+                decoration.kind,
+                decoration.tile,
+                blocking=decoration.blocking,
+                display_name=_display_label(decoration.kind),
+                scenery=True,
+            )
 
         for resource_node in self.resource_nodes.values():
             obj = WorldObject(
@@ -216,11 +239,20 @@ class WorldMap:
     def object_at(self, tile: Tile) -> WorldObject | None:
         return self.objects_by_tile.get(tile)
 
+    def scenery_at(self, tile: Tile) -> WorldObject | None:
+        return self.scenery_by_tile.get(tile)
+
+    def target_at(self, tile: Tile) -> WorldObject | None:
+        return self.object_at(tile) or self.scenery_at(tile)
+
     def decoration_at(self, tile: Tile) -> Decoration | None:
         return self.decorations_by_tile.get(tile)
 
     def get_object(self, object_id: str) -> WorldObject | None:
         return self.objects.get(object_id)
+
+    def get_target(self, object_id: str) -> WorldObject | None:
+        return self.objects.get(object_id) or self.scenery_objects.get(object_id)
 
     def resource_node_for_object(self, obj: WorldObject) -> ResourceNode | None:
         return self.resource_nodes.get(obj.object_id)
@@ -478,9 +510,13 @@ class WorldMap:
         if self.root is None:
             return
         x, y = self.grid.to_world(tile)
-        holder = self.root.attachNewNode(f"blocked_{tile[0]}_{tile[1]}")
+        object_id = _static_scenery_id(tile)
+        holder = self.root.attachNewNode(object_id)
         holder.setPos(x, y, 0)
-        visuals.render_static_obstacle(holder, f"blocked_{tile[0]}_{tile[1]}")
+        visuals.render_static_obstacle(holder, object_id)
+        obj = self.scenery_objects.get(object_id)
+        if obj is not None:
+            obj.node = holder
 
     def _render_object(self, obj: WorldObject) -> None:
         if self.root is None:
@@ -517,11 +553,19 @@ class WorldMap:
         holder.setH(decoration.rotation)
         visuals.render_decoration(holder, decoration.decoration_id, decoration.kind)
         decoration.node = holder
+        obj = self.scenery_objects.get(decoration.decoration_id)
+        if obj is not None:
+            obj.node = holder
 
     def _reindex_objects(self) -> None:
         self.objects_by_tile = {
             obj.tile: obj
             for obj in self.objects.values()
+            if obj.active and obj.is_interactable
+        }
+        self.scenery_by_tile = {
+            obj.tile: obj
+            for obj in self.scenery_objects.values()
             if obj.active and obj.is_interactable
         }
         self.decorations_by_tile = {decoration.tile: decoration for decoration in self.decorations}
@@ -551,6 +595,14 @@ class WorldMap:
 
 def _tile(value: list[int] | tuple[int, int]) -> Tile:
     return int(value[0]), int(value[1])
+
+
+def _static_scenery_id(tile: Tile) -> str:
+    return f"blocked_{tile[0]}_{tile[1]}"
+
+
+def _display_label(value: str) -> str:
+    return value.replace("_", " ").title()
 
 
 def _object_render_state(obj: WorldObject | None) -> tuple[bool, Tile, int, bool] | None:

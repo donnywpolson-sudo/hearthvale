@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from game.engine import app as app_module
 from game.ui import login
 
 
@@ -63,3 +64,17 @@ def test_tab_navigation_switches_between_login_entries(monkeypatch) -> None:
     screen.destroy()
 
     assert ignored == [screen]
+
+
+def test_startup_account_loads_configured_username(tmp_path) -> None:
+    username, state, message = app_module._load_startup_account(" donny101 ", tmp_path)
+
+    assert username == "donny101"
+    assert state["username"] == "donny101"
+    assert message == "New character created"
+
+    username, state, message = app_module._load_startup_account("donny101", tmp_path)
+
+    assert username == "donny101"
+    assert state["username"] == "donny101"
+    assert message == "Logged in"

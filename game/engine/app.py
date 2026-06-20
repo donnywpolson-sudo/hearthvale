@@ -14,7 +14,7 @@ from game.engine.camera import CameraState, GameCamera
 from game.engine.game_state import GameState
 from game.engine.input import InputManager
 from game.engine.logging_config import configure_logging
-from game.engine.picking import ground_tile_from_mouse, object_from_mouse
+from game.engine.picking import ground_tile_from_mouse, target_from_mouse
 from game.engine import save
 from game.engine.validation import validate_data_dir
 from game.entities.player import Player
@@ -69,7 +69,23 @@ class GameApp(ShowBase):
         self.current_username: str | None = None
         self.current_state: dict[str, Any] | None = None
         self.state = GameState.LOGIN
+        auto_login_error: str | None = None
+        if settings.AUTO_LOGIN_USERNAME:
+            try:
+                username, state, message = _load_startup_account(
+                    settings.AUTO_LOGIN_USERNAME,
+                    settings.SAVES_DIR,
+                )
+            except (OSError, ValueError):
+                LOGGER.exception("Auto-login failed for %s", settings.AUTO_LOGIN_USERNAME)
+                auto_login_error = "Auto-login failed"
+            else:
+                self.enter_world(username, state, message)
+                return
+
         self.login_screen = LoginScreen(self, self.enter_world)
+        if auto_login_error is not None:
+            self.login_screen.set_status(auto_login_error)
 
     def enter_world(self, username: str, state: dict[str, Any], message: str) -> None:
         self.state = GameState.LOADING
@@ -96,6 +112,7 @@ class GameApp(ShowBase):
         self.quest = QuestSystem(self.quests_data)
         self.shop = Shop(self.items_data, self.world_map.shop_stock)
         self.game_time = GameTime()
+        self._apply_world_light()
         self.animator = SceneAnimator()
 
         self.player = Player(self.world_map.grid, self.world_map.player_start)
@@ -172,6 +189,7 @@ class GameApp(ShowBase):
         self.interactions.update()
         self.animator.update(dt)
         self.game_time.update(dt)
+        self._apply_world_light()
         self._update_hover_marker()
         self._update_hud()
         self.hud.tick(dt)
@@ -183,8 +201,8 @@ class GameApp(ShowBase):
     def on_left_click(self) -> None:
         if hasattr(self, "hud"):
             self.hud.hide_context_menu()
-        obj = object_from_mouse(self, self.world_map)
-        if obj is not None and obj.kind == "ground_item":
+        obj = target_from_mouse(self, self.world_map)
+        if obj is not None:
             self.selected_text = f"Selected object: {obj.kind} ({obj.object_id})"
             self._show_marker(self.destination_marker, obj.tile)
             self.interactions.interact_with(obj)
@@ -198,25 +216,53 @@ class GameApp(ShowBase):
         self.interactions.move_to_tile(tile)
 
     def on_right_click(self) -> None:
-        obj = object_from_mouse(self, self.world_map)
+        obj = target_from_mouse(self, self.world_map)
         if obj is None:
             tile, _ = ground_tile_from_mouse(self, self.world_map.grid)
             if tile is not None:
                 self.selected_text = f"Selected tile: {tile[0]}, {tile[1]}"
                 self._show_marker(self.selection_marker, tile)
-            self.set_feedback("No object selected")
+                self.hud.show_context_menu(
+                    [("walk", "Walk here"), ("cancel", "Cancel")],
+                    lambda action_id, tile=tile: self._perform_ground_context_action(tile, action_id),
+                    pos=self._context_menu_pos(),
+                )
+                return
+            self.set_feedback("No ground selected")
             return
         self.selected_text = f"Selected object: {obj.kind} ({obj.object_id})"
         self._show_marker(self.selection_marker, obj.tile)
         actions = [(action.action_id, action.label) for action in self.interactions.get_actions(obj)]
-        self.hud.show_context_menu(actions, lambda action_id, object_id=obj.object_id: self._perform_context_action(object_id, action_id))
+        self.hud.show_context_menu(
+            actions,
+            lambda action_id, object_id=obj.object_id: self._perform_context_action(object_id, action_id),
+            pos=self._context_menu_pos(),
+        )
 
     def _perform_context_action(self, object_id: str, action_id: str) -> None:
-        obj = self.world_map.get_object(object_id)
+        get_target = getattr(self.world_map, "get_target", None)
+        obj = get_target(object_id) if callable(get_target) else self.world_map.get_object(object_id)
         if obj is None:
             self.set_feedback("Nothing to interact with")
             return
         self.interactions.perform_action(action_id, obj)
+
+    def _perform_ground_context_action(self, tile: tuple[int, int], action_id: str) -> None:
+        if action_id == "cancel":
+            return
+        if action_id == "walk":
+            self._show_marker(self.destination_marker, tile)
+            self.interactions.move_to_tile(tile)
+
+    def _context_menu_pos(self) -> tuple[float, float, float]:
+        mouse_watcher = getattr(self, "mouseWatcherNode", None)
+        if mouse_watcher is None or not mouse_watcher.hasMouse():
+            return (0.0, 0, 0.20)
+        mouse = mouse_watcher.getMouse()
+        aspect = float(self.getAspectRatio()) if hasattr(self, "getAspectRatio") else 1.33
+        x = max(-aspect + 0.22, min(aspect - 0.22, float(mouse.x) * aspect + 0.04))
+        z = max(-0.64, min(0.88, float(mouse.y) - 0.02))
+        return (x, 0, z)
 
     def show_smithing_choices(self, action_type: str, recipes: list[SmithingRecipe]) -> None:
         actions = [(recipe.recipe_id, recipe.display_name) for recipe in recipes]
@@ -636,6 +682,11 @@ class GameApp(ShowBase):
         self.render.setColorScale(*DAYLIGHT_TINT)
         self.setBackgroundColor(*DAYLIGHT_SKY)
 
+    def _apply_world_light(self) -> None:
+        tint, sky = visuals.world_tint(self.game_time.minute)
+        self.render.setColorScale(*tint)
+        self.setBackgroundColor(*sky)
+
     def _activity_progress(self) -> float | None:
         pending = self.gathering.pending
         remaining_seconds = self.gathering.remaining_seconds
@@ -654,7 +705,7 @@ class GameApp(ShowBase):
         return max(0.0, min(1.0, (pending.duration - remaining) / pending.duration))
 
     def _hover_label(self, tile: tuple[int, int]) -> str:
-        obj = self.world_map.object_at(tile)
+        obj = self.world_map.target_at(tile)
         if obj is not None:
             if obj.is_resource_node and obj.depleted:
                 return _display_label(obj.kind)
@@ -665,6 +716,8 @@ class GameApp(ShowBase):
                 return f"{obj.quantity} {self._item_name(obj.item_id)}"
             if obj.kind == "mob":
                 return f"{obj.display_name} (level {obj.level})"
+            if obj.scenery:
+                return obj.display_name or _display_label(obj.kind)
             return obj.display_name or _display_label(obj.kind)
 
         decoration = self.world_map.decoration_at(tile)
@@ -675,6 +728,19 @@ class GameApp(ShowBase):
 
 def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _load_startup_account(
+    username: str,
+    save_dir: str | Path,
+) -> tuple[str, dict[str, Any], str]:
+    username = username.strip()
+    if not username:
+        raise ValueError("Auto-login username is required")
+
+    state, created = save.load_or_create_save(username, save_dir)
+    message = "New character created" if created else "Logged in"
+    return username, state, message
 
 
 def _display_label(value: str) -> str:

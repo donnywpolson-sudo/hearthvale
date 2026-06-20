@@ -47,6 +47,34 @@ def test_shake_animation_cancels_and_restores_position() -> None:
     assert node.pos == (0.0, 0.0, 0.0)
 
 
+def test_burst_animation_finishes_and_restores_scale_and_color() -> None:
+    animator = SceneAnimator()
+    node = _FakeNode()
+
+    animator.start_burst("fx:burst", node, amplitude=0.50, color=(1.5, 1.2, 0.8, 1.0), duration=0.2)
+    animator.update(0.1)
+
+    assert node.scale == (1.5, 1.5, 1.5)
+    assert node.color_scale != (1.0, 1.0, 1.0, 1.0)
+
+    animator.update(0.1)
+
+    assert node.scale == (1.0, 1.0, 1.0)
+    assert node.color_scale == (1.0, 1.0, 1.0, 1.0)
+    assert animator.active_keys() == set()
+
+
+def test_spark_animation_can_remove_temporary_node() -> None:
+    animator = SceneAnimator()
+    node = _FakeNode()
+
+    animator.start_spark("fx:spark", node, duration=0.1, remove_on_finish=True)
+    animator.update(0.1)
+
+    assert node.removed is True
+    assert animator.active_keys() == set()
+
+
 def test_defeat_animation_removes_temporary_node() -> None:
     animator = SceneAnimator()
     node = _FakeNode()

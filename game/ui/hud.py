@@ -328,7 +328,7 @@ class Hud:
         self.hide_context_menu()
         if not actions:
             return
-        self.context_panel.setPos(*pos)
+        self.context_panel.setPos(*_clamp_context_menu_pos(pos))
         self.context_panel.show()
         for index, (action_id, label) in enumerate(actions[:9]):
             button = _button(
@@ -873,6 +873,11 @@ def _button(parent: Any, text: str, pos: tuple[float, float, float], scale: floa
         text_fg=TEXT,
         command=command,
     )
+
+
+def _clamp_context_menu_pos(pos: tuple[float, float, float]) -> tuple[float, float, float]:
+    x, y, z = pos
+    return (max(-1.24, min(1.24, x)), y, max(-0.62, min(0.88, z)))
 
 
 def _slot_button(parent: Any, pos: tuple[float, float, float], command: Callable[[], None]) -> DirectButton:

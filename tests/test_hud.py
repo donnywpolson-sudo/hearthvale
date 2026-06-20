@@ -333,6 +333,19 @@ def test_context_menu_dispatches_selected_action_and_hides(monkeypatch) -> None:
     assert ui.context_buttons == []
 
 
+def test_context_menu_position_is_clamped(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    ui = hud.Hud(_items())
+
+    ui.show_context_menu(
+        [("walk", "Walk here")],
+        lambda action_id: None,
+        pos=(9.0, 0, -9.0),
+    )
+
+    assert ui.context_panel.pos == (1.24, 0, -0.62)
+
+
 def test_side_tabs_switch_visible_content(monkeypatch) -> None:
     _install_hud_fakes(monkeypatch)
     ui = hud.Hud(_items())

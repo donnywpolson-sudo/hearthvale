@@ -43,3 +43,12 @@ def object_from_mouse(base, world_map) -> object | None:
     if tile is None:
         return None
     return world_map.object_at(tile)
+
+
+def target_from_mouse(base, world_map) -> object | None:
+    tile, _ = ground_tile_from_mouse(base, world_map.grid)
+    if tile is None:
+        return None
+    if hasattr(world_map, "target_at"):
+        return world_map.target_at(tile)
+    return world_map.object_at(tile)

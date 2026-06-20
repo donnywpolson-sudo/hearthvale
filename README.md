@@ -42,7 +42,8 @@ python -m game.tools.validate_data
 
 ## Controls
 
-- Start at the local login screen.
+- This checkout auto-loads the local `donny101` save at startup. Clear
+  `AUTO_LOGIN_USERNAME` in `game/settings.py` to return to the local login screen.
 - Enter a username and password, then select `Register` to create a local account.
 - Select `Login` to enter the game with an existing local account.
 - Press Tab in the username field to move focus to the password field.
@@ -51,10 +52,11 @@ python -m game.tools.validate_data
 - `WASD`: pan camera
 - `Q` / `E`: rotate camera
 - Mouse wheel: zoom camera
-- Hover tiles and objects to show their name in the top-center status box.
+- Hover tiles, objects, and scenery to show their name in the top-center status box.
 - Left click ground: move player to a tile
-- Left click ground item: walk to it and pick it up
-- Right click resource/shop/bank/cooking range/training dummy/ground item: choose an action
+- Left click gameplay objects: perform the default action
+- Left click scenery: walk to that tile or adjacent to blocked scenery
+- Right click ground, gameplay objects, or scenery: choose an action
 - Bottom event log `Up` / `Down`: scroll through previous messages
 - In-game `File` menu: save, load, or quit
 - `F5`: save the currently logged-in account
@@ -80,7 +82,7 @@ automatically when needed.
 - 100x100 scalable tile world with the current starter area, grass, dirt paths, blocked rocks, trees, copper rocks, fishing spots, stumps, depleted rocks, shop, bank, cooking range, and training dummy markers.
 - Angled top-down camera independent from player movement.
 - Left-click movement with grid A* pathfinding.
-- Right-click interactions that walk adjacent before gathering, opening bank/shop panels, or training combat.
+- Classic-style left/right click interactions for ground, gameplay objects, and scenery, including default actions, walk-to behavior, context menus, and examine options.
 - Shared gathering system for woodcutting, mining, and fishing with JSON-defined XP, level requirements, item rewards, depletion, respawn state, and required starter tools.
 - Data-driven inventory display, bottom-right skills/equipment tabs, bankable coin item stack, simple day/time clock, compact account/time HUD, File menu, and per-account save/load.
 - Bank booth with an in-game bank panel for depositing and withdrawing inventory stacks.
@@ -90,6 +92,6 @@ automatically when needed.
 
 ## Next Recommended Systems
 
-- Replace placeholder geometry with art assets.
-- Add basic character/object animations.
+- Add optional imported art assets through the procedural renderer hook.
+- Continue expanding character/object animation variety.
 - Expand the map data and object definitions.
