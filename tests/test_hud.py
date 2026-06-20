@@ -131,6 +131,35 @@ def test_inventory_grid_has_fixed_slots_and_populates_in_category_order(monkeypa
     assert ui.inventory_slots[5].icon.label.hidden is True
 
 
+def test_inventory_expands_gear_and_tools_without_quantity_labels(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    ui = hud.Hud(_items())
+
+    ui.update(
+        account="test",
+        time_text="Day 1 12:00",
+        selected_text="Selected: none",
+        inventory={"logs": 3, "bronze_axe": 2, "bronze_sword": 2, "bronze_shield": 2},
+        bank={},
+        skills=FakeSkills(),
+    )
+
+    assert [slot.item_id for slot in ui.inventory_slots[:7]] == [
+        "bronze_axe",
+        "bronze_axe",
+        "bronze_sword",
+        "bronze_sword",
+        "bronze_shield",
+        "bronze_shield",
+        "logs",
+    ]
+    assert [slot.button.text for slot in ui.inventory_slots[:6]] == ["", "", "", "", "", ""]
+    assert ui.inventory_slots[6].button.text == "3"
+    assert ui.inventory_slots[0].icon.label.text == "AXE"
+    assert ui.inventory_slots[2].icon.label.text == "SWD"
+    assert ui.inventory_slots[4].icon.label.text == "SHD"
+
+
 def test_inventory_slot_hover_shows_item_name_without_world_hover_override(monkeypatch) -> None:
     _install_hud_fakes(monkeypatch)
     ui = hud.Hud(_items())
@@ -203,7 +232,9 @@ def test_stats_panel_omits_selected_tile_and_item_text(monkeypatch) -> None:
         skills=FakeSkills(),
     )
 
-    assert ui.stats.text == "Account: test\nDay 1 08:00\nHP: 10/10"
+    assert ui.stats.text == "Account: test"
+    assert "Day" not in ui.stats.text
+    assert "HP" not in ui.stats.text
     assert "Selected" not in ui.stats.text
     assert ui.file_button.pos == (0.37, 0, -0.155)
 
@@ -346,6 +377,26 @@ def test_context_menu_position_is_clamped(monkeypatch) -> None:
     assert ui.context_panel.pos == (1.24, 0, -0.62)
 
 
+def test_pointer_over_blocking_ui_covers_rail_and_overlays(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    ui = hud.Hud(_items())
+
+    assert ui.pointer_over_blocking_ui((1.48, 0.0)) is True
+    assert ui.pointer_over_blocking_ui((0.0, 0.91)) is True
+    assert ui.pointer_over_blocking_ui((-0.20, 0.0)) is False
+
+    ui.open_bank()
+    assert ui.pointer_over_blocking_ui((0.0, 0.0)) is True
+    ui.close_bank()
+
+    ui.open_shop()
+    assert ui.pointer_over_blocking_ui((0.0, 0.0)) is True
+    ui.close_shop()
+
+    ui.show_context_menu([("walk", "Walk here")], lambda action_id: None, pos=(0.10, 0, 0.20))
+    assert ui.pointer_over_blocking_ui((0.10, 0.20)) is True
+
+
 def test_side_tabs_switch_visible_content(monkeypatch) -> None:
     _install_hud_fakes(monkeypatch)
     ui = hud.Hud(_items())
@@ -362,6 +413,33 @@ def test_side_tabs_switch_visible_content(monkeypatch) -> None:
     assert ui.tab_frames[hud.CLOTHES_TAB].hidden is True
     assert ui.tab_frames[hud.SKILLS_TAB].hidden is False
     assert ui.tab_buttons[hud.SKILLS_TAB].options["frameColor"][0] == hud.SLOT_HILITE
+
+
+def test_clothes_tab_shows_equipped_item_icons(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    ui = hud.Hud(_items())
+
+    ui.update(
+        account="test",
+        time_text="Day 1 12:00",
+        selected_text="Selected: none",
+        inventory={},
+        bank={},
+        equipment={"weapon": "bronze_sword", "shield": "bronze_shield"},
+        skills=FakeSkills(),
+    )
+
+    weapon_slot = ui.equipment_slots["weapon"]
+    shield_slot = ui.equipment_slots["shield"]
+    head_slot = ui.equipment_slots["head"]
+
+    assert weapon_slot.button.text == ""
+    assert weapon_slot.icon.label.text == "SWD"
+    assert any(not part.hidden for part in weapon_slot.icon.parts)
+    assert shield_slot.button.text == ""
+    assert shield_slot.icon.label.text == "SHD"
+    assert head_slot.button.text == "Head"
+    assert head_slot.icon.label.hidden is True
 
 
 def test_skills_tab_uses_larger_two_line_skill_rows(monkeypatch) -> None:
@@ -430,6 +508,15 @@ def test_starsteel_icons_use_high_tier_palette() -> None:
     )
 
 
+def test_bronze_tool_icons_use_bronze_metal() -> None:
+    items = {"bronze_axe": {"name": "Bronze axe", "category": "tool", "tool_for": "woodcutting"}}
+
+    specs = hud._item_icon_specs(items, "bronze_axe")
+
+    assert specs[1][2] == hud._metal_color("bronze_axe")
+    assert specs[2][2] == hud._metal_shadow_color("bronze_axe")
+
+
 def test_bank_rows_show_positive_inventory_or_bank_stacks(monkeypatch) -> None:
     _install_hud_fakes(monkeypatch)
 
@@ -480,6 +567,26 @@ def test_bank_rows_show_positive_inventory_or_bank_stacks(monkeypatch) -> None:
     assert list(ui.bank_rows) == ["copper_ore"]
     assert row.bank_label.destroyed is True
     assert ui.empty_bank_label.hidden is True
+
+
+def test_bank_rows_use_larger_text_and_buttons(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    ui = hud.Hud({"logs": {"name": "Logs", "category": "wood"}})
+
+    ui.update(
+        account="test",
+        time_text="Day 1 12:00",
+        selected_text="Selected: none",
+        inventory={"logs": 3},
+        bank={"logs": 2},
+        skills=FakeSkills(),
+    )
+
+    row = ui.bank_rows["logs"]
+    assert row.item_label.options["scale"] == hud.BANK_ROW_TEXT_SCALE
+    assert row.bank_label.options["scale"] == hud.BANK_ROW_TEXT_SCALE
+    assert row.deposit_button.options["scale"] == hud.BANK_ROW_BUTTON_TEXT_SCALE
+    assert row.withdraw_button.options["scale"] == hud.BANK_ROW_BUTTON_TEXT_SCALE
 
 
 def test_shop_rows_show_stock_and_buy_callback(monkeypatch) -> None:
@@ -565,6 +672,21 @@ def _items() -> dict[str, dict[str, object]]:
             "name": "Raw shrimp",
             "category": "fish",
             "cook_result": "cooked_shrimp",
+        },
+        "bronze_axe": {
+            "name": "Bronze axe",
+            "category": "tool",
+            "tool_for": "woodcutting",
+        },
+        "bronze_sword": {
+            "name": "Bronze sword",
+            "category": "weapon",
+            "equip_slot": "weapon",
+        },
+        "bronze_shield": {
+            "name": "Bronze shield",
+            "category": "armor",
+            "equip_slot": "shield",
         },
         "mystery_item": {"name": "Mystery item"},
     }

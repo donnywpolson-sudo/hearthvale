@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import random
 import time
 from typing import Any, Callable, Iterable
 
+from game.systems.inventory import INVENTORY_SLOT_LIMIT, inventory_can_add
 from game.world.grid import Tile, TileGrid
 from game.world.pathfinding import find_path
 
@@ -74,17 +76,23 @@ class ResourceNode:
 class ResourceNodeState:
     depleted: bool = False
     respawn_at: float | None = None
+    uses_remaining: int | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ResourceNodeState":
         respawn_at = data.get("respawn_at")
+        uses_remaining = data.get("uses_remaining")
         return cls(
             depleted=bool(data.get("depleted", False)),
             respawn_at=float(respawn_at) if respawn_at is not None else None,
+            uses_remaining=int(uses_remaining) if uses_remaining is not None else None,
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {"depleted": self.depleted, "respawn_at": self.respawn_at}
+        data: dict[str, Any] = {"depleted": self.depleted, "respawn_at": self.respawn_at}
+        if self.uses_remaining is not None:
+            data["uses_remaining"] = self.uses_remaining
+        return data
 
 
 @dataclass(frozen=True)
@@ -117,6 +125,9 @@ class GatheringSystem:
         *,
         time_provider: TimeProvider = time.time,
         states: dict[str, ResourceNodeState] | None = None,
+        item_definitions: dict[str, dict[str, object]] | None = None,
+        slot_limit: int = INVENTORY_SLOT_LIMIT,
+        rng: random.Random | None = None,
     ) -> None:
         self.nodes = dict(nodes) if isinstance(nodes, dict) else {node.node_id: node for node in nodes}
         self.inventory = inventory
@@ -124,6 +135,9 @@ class GatheringSystem:
         self.time_provider = time_provider
         self.states: dict[str, ResourceNodeState] = states or {}
         self.pending: PendingGather | None = None
+        self.item_definitions = item_definitions or {}
+        self.slot_limit = slot_limit
+        self.rng = rng or random.Random()
 
     def gather(
         self,
@@ -211,12 +225,10 @@ class GatheringSystem:
                 new_player_tile=destination,
             )
 
-        duration = self.gather_duration(node)
-        self.pending = PendingGather(
-            node_id=node.node_id,
-            complete_at=self.time_provider() + duration,
-            duration=duration,
-        )
+        if not self._inventory_can_accept(node):
+            return GatheringResult(False, "Inventory is full", node_id=node.node_id, skill_id=node.skill_id)
+
+        duration = self._schedule_next_attempt(node)
 
         return GatheringResult(
             True,
@@ -239,10 +251,36 @@ class GatheringSystem:
             return GatheringResult(False, "No object selected")
         if self.is_depleted(node.node_id):
             return GatheringResult(False, f"{_node_label(node)} is depleted", node_id=node.node_id)
+        requirement = self._requirement_failure(node)
+        if requirement is not None:
+            return requirement
+        if not self._inventory_can_accept(node):
+            return GatheringResult(False, "Inventory is full", node_id=node.node_id, skill_id=node.skill_id)
+
+        if self.rng.random() > self.success_chance(node):
+            duration = self._schedule_next_attempt(node)
+            return GatheringResult(
+                True,
+                _failure_feedback(node, duration),
+                node_id=node.node_id,
+                skill_id=node.skill_id,
+                item_id=node.item_reward,
+                pending=True,
+                duration=duration,
+            )
 
         self.inventory.add(node.item_reward, node.quantity_reward)
         self.skills.add_xp(node.skill_id, node.xp_reward)
-        self._deplete(node)
+        uses_remaining = self._consume_node_use(node)
+        should_continue = False
+        duration = 0.0
+        if uses_remaining <= 0:
+            self._deplete(node)
+        elif self._inventory_can_accept(node):
+            should_continue = True
+            duration = self._schedule_next_attempt(node)
+        else:
+            duration = 0.0
 
         return GatheringResult(
             True,
@@ -252,6 +290,8 @@ class GatheringSystem:
             item_id=node.item_reward,
             quantity=node.quantity_reward,
             xp=node.xp_reward,
+            pending=should_continue,
+            duration=duration if should_continue else 0.0,
         )
 
     def cancel_pending(self) -> bool:
@@ -268,8 +308,26 @@ class GatheringSystem:
     def gather_duration(self, node: ResourceNode) -> float:
         current_level = _skill_level(self.skills, node.skill_id)
         level_advantage = max(0, current_level - node.required_level)
-        speed_bonus = min(0.50, 0.10 * level_advantage)
+        speed_bonus = min(0.40, 0.012 * level_advantage)
         return max(0.75, node.base_gather_seconds * (1.0 - speed_bonus))
+
+    def success_chance(self, node: ResourceNode) -> float:
+        current_level = _skill_level(self.skills, node.skill_id)
+        level_advantage = max(0, current_level - node.required_level)
+        chance = 0.45 + level_advantage * 0.015 - (resource_tier(node) - 1) * 0.04
+        return _clamp(chance, 0.20, 0.92)
+
+    def node_capacity(self, node: ResourceNode) -> int:
+        current_level = _skill_level(self.skills, node.skill_id)
+        level_advantage = max(0, current_level - node.required_level)
+        tier = resource_tier(node)
+        max_bonus = max(0, 3 - tier)
+        rng_bonus = self.rng.randint(0, max_bonus) if max_bonus > 0 else 0
+        capacity = max(1, 5 - tier) + min(2, level_advantage // 25) + rng_bonus
+        return int(_clamp(float(capacity), 1.0, 6.0))
+
+    def respawn_seconds(self, node: ResourceNode) -> float:
+        return node.respawn_seconds * (1.0 + 0.08 * (resource_tier(node) - 1))
 
     def is_depleted(self, node_id: str) -> bool:
         self._refresh_node(node_id)
@@ -291,7 +349,8 @@ class GatheringSystem:
         return {
             node_id: state.to_dict()
             for node_id, state in sorted(self.states.items())
-            if node_id in self.nodes and (state.depleted or state.respawn_at is not None)
+            if node_id in self.nodes
+            and (state.depleted or state.respawn_at is not None or state.uses_remaining is not None)
         }
 
     def load_dict(self, data: dict[str, Any]) -> None:
@@ -311,8 +370,8 @@ class GatheringSystem:
     def _deplete(self, node: ResourceNode) -> None:
         respawn_at = None
         if node.respawn_seconds > 0:
-            respawn_at = self.time_provider() + node.respawn_seconds
-        self.states[node.node_id] = ResourceNodeState(depleted=True, respawn_at=respawn_at)
+            respawn_at = self.time_provider() + self.respawn_seconds(node)
+        self.states[node.node_id] = ResourceNodeState(depleted=True, respawn_at=respawn_at, uses_remaining=0)
 
     def _refresh_node(self, node_id: str) -> None:
         state = self.states.get(node_id)
@@ -320,6 +379,48 @@ class GatheringSystem:
             return
         if self.time_provider() >= state.respawn_at:
             self.states.pop(node_id, None)
+
+    def _schedule_next_attempt(self, node: ResourceNode) -> float:
+        duration = self.gather_duration(node)
+        self.pending = PendingGather(
+            node_id=node.node_id,
+            complete_at=self.time_provider() + duration,
+            duration=duration,
+        )
+        return duration
+
+    def _requirement_failure(self, node: ResourceNode) -> GatheringResult | None:
+        tool_id, tool_name = REQUIRED_TOOLS.get(node.skill_id, ("", ""))
+        if tool_id and self.inventory.count(tool_id) <= 0:
+            article = "an" if tool_name[:1].lower() in {"a", "e", "i", "o", "u"} else "a"
+            return GatheringResult(False, f"You need {article} {tool_name}", node_id=node.node_id)
+        current_level = _skill_level(self.skills, node.skill_id)
+        if current_level < node.required_level:
+            return GatheringResult(
+                False,
+                f"You need {_skill_name(self.skills, node.skill_id)} level {node.required_level}",
+                node_id=node.node_id,
+            )
+        return None
+
+    def _inventory_can_accept(self, node: ResourceNode) -> bool:
+        return inventory_can_add(
+            self.inventory.to_dict(),
+            self.item_definitions,
+            node.item_reward,
+            node.quantity_reward,
+            slot_limit=self.slot_limit,
+        )
+
+    def _consume_node_use(self, node: ResourceNode) -> int:
+        state = self.states.get(node.node_id)
+        if state is None or state.depleted:
+            state = ResourceNodeState()
+        if state.uses_remaining is None:
+            state.uses_remaining = self.node_capacity(node)
+        state.uses_remaining = max(0, state.uses_remaining - 1)
+        self.states[node.node_id] = state
+        return state.uses_remaining
 
     def _find_interaction_tile(
         self,
@@ -369,6 +470,10 @@ def resource_nodes_from_data(data: Iterable[dict[str, Any]]) -> dict[str, Resour
     return {node.node_id: node for node in nodes}
 
 
+def resource_tier(node: ResourceNode) -> int:
+    return 1 + max(0, node.required_level // 15)
+
+
 def _skill_level(skills: Any, skill_id: str) -> int:
     if hasattr(skills, "level"):
         return int(skills.level(skill_id))
@@ -415,6 +520,15 @@ def _pending_feedback(node: ResourceNode, remaining_seconds: float) -> str:
     return f"{verb} {_node_label(node)}... {remaining_seconds:.1f}s"
 
 
+def _failure_feedback(node: ResourceNode, duration: float) -> str:
+    verb = {
+        "woodcutting": "You keep chopping",
+        "fishing": "No bite yet",
+        "mining": "The rock resists",
+    }.get(node.skill_id, "You keep gathering")
+    return f"{verb}; trying again... {duration:.1f}s"
+
+
 def _success_feedback(node: ResourceNode, skills: Any) -> str:
     prefix = {
         "woodcutting": f"Chopped {_node_label(node)}",
@@ -425,3 +539,7 @@ def _success_feedback(node: ResourceNode, skills: Any) -> str:
         f"{prefix}: +{node.quantity_reward} {_item_name(node.item_reward)}, "
         f"+{node.xp_reward} {_skill_name(skills, node.skill_id)} XP"
     )
+
+
+def _clamp(value: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(maximum, value))

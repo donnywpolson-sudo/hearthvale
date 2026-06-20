@@ -180,6 +180,7 @@ class WorldMap:
                 display_name=mob.display_name,
                 level=mob.level,
                 hitpoints=mob.hitpoints,
+                max_hitpoints=mob.hitpoints,
             )
             self.objects[obj.object_id] = obj
 
@@ -459,6 +460,7 @@ class WorldMap:
         obj.display_name = mob.display_name
         obj.level = mob.level
         obj.hitpoints = state.hitpoints
+        obj.max_hitpoints = mob.hitpoints
         obj.active = not state.dead
         obj.blocking = not state.dead
 
@@ -605,7 +607,7 @@ def _display_label(value: str) -> str:
     return value.replace("_", " ").title()
 
 
-def _object_render_state(obj: WorldObject | None) -> tuple[bool, Tile, int, bool] | None:
+def _object_render_state(obj: WorldObject | None) -> tuple[bool, Tile, int, int, bool] | None:
     if obj is None:
         return None
-    return obj.active, obj.tile, obj.hitpoints, obj.blocking
+    return obj.active, obj.tile, obj.hitpoints, obj.max_hitpoints, obj.blocking

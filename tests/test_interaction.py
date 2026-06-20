@@ -192,6 +192,23 @@ def test_left_click_gameplay_object_uses_default_interaction(monkeypatch) -> Non
     assert interactions.moved == []
 
 
+def test_left_click_over_hud_does_not_pick_world_or_move(monkeypatch) -> None:
+    from game.engine import app as app_module
+
+    interactions = _ClickInteractions()
+    fake_app = SimpleNamespace(
+        hud=SimpleNamespace(pointer_over_blocking_ui=lambda _pos: True, hide_context_menu=lambda: None),
+        interactions=interactions,
+    )
+    monkeypatch.setattr(app_module, "target_from_mouse", lambda _base, _world_map: (_ for _ in ()).throw(AssertionError("picked world")))
+    monkeypatch.setattr(app_module, "ground_tile_from_mouse", lambda _base, _grid: (_ for _ in ()).throw(AssertionError("picked ground")))
+
+    app_module.GameApp.on_left_click(fake_app)
+
+    assert interactions.interacted == []
+    assert interactions.moved == []
+
+
 def test_right_click_ground_opens_walk_here_menu(monkeypatch) -> None:
     from game.engine import app as app_module
 
@@ -216,6 +233,17 @@ def test_right_click_ground_opens_walk_here_menu(monkeypatch) -> None:
 
     assert menu_calls == [([("walk", "Walk here"), ("cancel", "Cancel")], (0.25, 0, 0.30))]
     assert moved == []
+
+
+def test_right_click_over_hud_does_not_open_world_context(monkeypatch) -> None:
+    from game.engine import app as app_module
+
+    fake_app = SimpleNamespace(
+        hud=SimpleNamespace(pointer_over_blocking_ui=lambda _pos: True),
+    )
+    monkeypatch.setattr(app_module, "target_from_mouse", lambda _base, _world_map: (_ for _ in ()).throw(AssertionError("picked world")))
+
+    app_module.GameApp.on_right_click(fake_app)
 
 
 def test_scenery_actions_walk_and_examine() -> None:
@@ -296,6 +324,106 @@ def test_move_cancels_pending_gathering() -> None:
 
     assert gathering.pending is None
     assert player.path
+
+
+def test_cancel_action_stops_pending_gathering() -> None:
+    world = WorldMap(
+        {
+            "width": 4,
+            "height": 4,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [_tree().to_dict()],
+        }
+    )
+    inventory = Inventory({"bronze_axe": 1})
+    skills = Skills(_skills())
+    gathering = GatheringSystem(world.resource_nodes, inventory, skills, time_provider=lambda: 100.0)
+    manager = InteractionManager(
+        world,
+        _Player(tile=(1, 2)),
+        inventory,
+        skills,
+        Shop(_items()),
+        lambda amount: None,
+        lambda message: None,
+        gathering=gathering,
+    )
+    tree = world.get_object("tree_01")
+
+    manager.interact_with(tree)
+    manager.perform_action("cancel", tree)
+
+    assert gathering.pending is None
+
+
+def test_combat_start_cancels_pending_gathering() -> None:
+    clock = FakeClock()
+    world = WorldMap(
+        {
+            "width": 5,
+            "height": 5,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [_tree().to_dict()],
+            "mobs": [{**_mob_data(), "position": [1, 1]}],
+        }
+    )
+    inventory = Inventory({"bronze_axe": 1})
+    skills = Skills(_skills())
+    gathering = GatheringSystem(world.resource_nodes, inventory, skills, time_provider=clock)
+    combat = CombatSystem(world.mob_definitions, time_provider=clock)
+    manager = InteractionManager(
+        world,
+        _Player(tile=(1, 2)),
+        inventory,
+        skills,
+        Shop(_items()),
+        lambda amount: None,
+        lambda message: None,
+        gathering=gathering,
+        combat=combat,
+    )
+
+    manager.interact_with(world.get_object("tree_01"))
+    assert gathering.pending is not None
+    manager.interact_with(world.get_object("mob_01"))
+
+    assert gathering.pending is None
+    assert combat.pending is not None
+
+
+def test_missing_gathering_target_stops_activity() -> None:
+    world = WorldMap(
+        {
+            "width": 4,
+            "height": 4,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [_tree().to_dict()],
+        }
+    )
+    inventory = Inventory({"bronze_axe": 1})
+    skills = Skills(_skills())
+    gathering = GatheringSystem(world.resource_nodes, inventory, skills, time_provider=lambda: 100.0)
+    feedback: list[str] = []
+    manager = InteractionManager(
+        world,
+        _Player(tile=(1, 2)),
+        inventory,
+        skills,
+        Shop(_items()),
+        lambda amount: None,
+        feedback.append,
+        gathering=gathering,
+    )
+
+    manager.interact_with(world.get_object("tree_01"))
+    world.objects.pop("tree_01")
+    manager.update()
+
+    assert gathering.pending is None
+    assert feedback[-1] == "Gathering stopped"
 
 
 def test_gathering_animation_starts_and_move_cancels_it() -> None:

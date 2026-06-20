@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 
 COINS_ITEM_ID = "coins"
+INVENTORY_SLOT_LIMIT = 28
 
 
 @dataclass
@@ -30,6 +31,25 @@ class Inventory:
     def count(self, item_id: str) -> int:
         return self.items.get(item_id, 0)
 
+    def slot_count(self, item_definitions: dict[str, dict[str, object]] | None = None) -> int:
+        return inventory_slot_count(self.items, item_definitions or {})
+
+    def can_add(
+        self,
+        item_id: str,
+        quantity: int = 1,
+        *,
+        item_definitions: dict[str, dict[str, object]] | None = None,
+        slot_limit: int = INVENTORY_SLOT_LIMIT,
+    ) -> bool:
+        return inventory_can_add(
+            self.items,
+            item_definitions or {},
+            item_id,
+            quantity,
+            slot_limit=slot_limit,
+        )
+
     def to_dict(self) -> dict[str, int]:
         return dict(self.items)
 
@@ -40,3 +60,49 @@ class Inventory:
             if int(quantity) > 0:
                 inventory.items[item_id] = int(quantity)
         return inventory
+
+
+def inventory_slot_count(
+    items: dict[str, int],
+    item_definitions: dict[str, dict[str, object]] | None = None,
+) -> int:
+    definitions = item_definitions or {}
+    slots = 0
+    for item_id, quantity in items.items():
+        quantity = int(quantity)
+        if quantity <= 0:
+            continue
+        if is_non_stackable_item(definitions, item_id):
+            slots += quantity
+        else:
+            slots += 1
+    return slots
+
+
+def inventory_can_add(
+    items: dict[str, int],
+    item_definitions: dict[str, dict[str, object]] | None,
+    item_id: str,
+    quantity: int = 1,
+    *,
+    slot_limit: int = INVENTORY_SLOT_LIMIT,
+) -> bool:
+    if quantity <= 0:
+        return True
+    definitions = item_definitions or {}
+    current = {
+        existing_item_id: int(existing_quantity)
+        for existing_item_id, existing_quantity in items.items()
+        if int(existing_quantity) > 0
+    }
+    current[item_id] = current.get(item_id, 0) + int(quantity)
+    return inventory_slot_count(current, definitions) <= slot_limit
+
+
+def is_non_stackable_item(
+    item_definitions: dict[str, dict[str, object]] | None,
+    item_id: str,
+) -> bool:
+    definition = (item_definitions or {}).get(item_id, {})
+    category = str(definition.get("category") or "")
+    return category in {"weapon", "armor", "tool"} or bool(definition.get("equip_slot") or definition.get("tool_for"))

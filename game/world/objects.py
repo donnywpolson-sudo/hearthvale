@@ -6,6 +6,7 @@ from typing import Any
 
 from panda3d.core import Geom, GeomNode, GeomTriangles, GeomVertexData, GeomVertexFormat
 from panda3d.core import GeomVertexWriter, LineSegs, NodePath
+from panda3d.core import TransparencyAttrib, Vec3
 
 from game.world.grid import Tile
 
@@ -26,6 +27,7 @@ class WorldObject:
     required_level: int = 1
     level: int = 1
     hitpoints: int = 0
+    max_hitpoints: int = 0
     xp_reward: int = 0
     item_reward: str = ""
     quantity_reward: int = 1
@@ -77,8 +79,12 @@ def make_box(name: str, size: tuple[float, float, float], color: Color) -> NodeP
         (-hx, -hy, sz), (hx, -hy, sz), (hx, hy, sz), (-hx, hy, sz),
     ]
     faces = [
-        (0, 1, 2, 3), (4, 7, 6, 5), (0, 4, 5, 1),
-        (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0),
+        (0, 3, 2, 1),
+        (4, 5, 6, 7),
+        (0, 1, 5, 4),
+        (1, 2, 6, 5),
+        (2, 3, 7, 6),
+        (3, 0, 4, 7),
     ]
     return _make_poly_node(name, vertices, faces, color)
 
@@ -147,23 +153,30 @@ def _make_poly_node(
     faces: list[tuple[int, ...]],
     color: Color,
 ) -> NodePath:
-    fmt = GeomVertexFormat.getV3c4()
+    fmt = GeomVertexFormat.getV3n3c4()
     vdata = GeomVertexData(name, fmt, Geom.UHStatic)
     vertex_writer = GeomVertexWriter(vdata, "vertex")
+    normal_writer = GeomVertexWriter(vdata, "normal")
     color_writer = GeomVertexWriter(vdata, "color")
 
-    for vertex in vertices:
-        vertex_writer.addData3f(*vertex)
-        color_writer.addData4f(*color)
-
     tris = GeomTriangles(Geom.UHStatic)
+    next_vertex = 0
     for face in faces:
+        triangles: list[tuple[int, int, int]] = []
         if len(face) == 3:
-            tris.addVertices(*face)
+            triangles.append((face[0], face[1], face[2]))
         elif len(face) == 4:
             a, b, c, d = face
-            tris.addVertices(a, b, c)
-            tris.addVertices(a, c, d)
+            triangles.append((a, b, c))
+            triangles.append((a, c, d))
+        for a, b, c in triangles:
+            normal = _triangle_normal(vertices[a], vertices[b], vertices[c])
+            for vertex_index in (a, b, c):
+                vertex_writer.addData3f(*vertices[vertex_index])
+                normal_writer.addData3f(normal[0], normal[1], normal[2])
+                color_writer.addData4f(*color)
+            tris.addVertices(next_vertex, next_vertex + 1, next_vertex + 2)
+            next_vertex += 3
     tris.closePrimitive()
 
     geom = Geom(vdata)
@@ -171,5 +184,20 @@ def _make_poly_node(
     node = GeomNode(name)
     node.addGeom(geom)
     path = NodePath(node)
-    path.setLightOff(1)
+    if color[3] < 1.0:
+        path.setTransparency(TransparencyAttrib.MAlpha)
     return path
+
+
+def _triangle_normal(
+    a: tuple[float, float, float],
+    b: tuple[float, float, float],
+    c: tuple[float, float, float],
+) -> Vec3:
+    left = Vec3(b[0] - a[0], b[1] - a[1], b[2] - a[2])
+    right = Vec3(c[0] - a[0], c[1] - a[1], c[2] - a[2])
+    normal = left.cross(right)
+    if normal.lengthSquared() <= 0.000001:
+        return Vec3(0.0, 0.0, 1.0)
+    normal.normalize()
+    return normal

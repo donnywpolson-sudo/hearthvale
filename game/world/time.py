@@ -2,21 +2,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from game import settings
-
 MINUTES_PER_DAY = 24 * 60
+FIXED_DAY = 1
+FIXED_MINUTE = 12 * 60
 
 
 @dataclass
 class GameTime:
-    day: int = settings.START_DAY
-    minute: float = float(settings.START_MINUTE)
+    day: int = FIXED_DAY
+    minute: float = float(FIXED_MINUTE)
 
-    def update(self, dt: float) -> None:
-        self.minute += dt * settings.GAME_MINUTES_PER_REAL_SECOND
-        while self.minute >= MINUTES_PER_DAY:
-            self.minute -= MINUTES_PER_DAY
-            self.day += 1
+    def update(self, _dt: float) -> None:
+        self.day = FIXED_DAY
+        self.minute = float(FIXED_MINUTE)
 
     def display(self) -> str:
         total = int(self.minute) % MINUTES_PER_DAY
@@ -25,8 +23,8 @@ class GameTime:
         return f"Day {self.day} {hour:02d}:{minute:02d}"
 
     def to_dict(self) -> dict[str, int | float]:
-        return {"day": self.day, "minute": self.minute}
+        return {"day": FIXED_DAY, "minute": float(FIXED_MINUTE)}
 
-    def load_dict(self, data: dict[str, int | float]) -> None:
-        self.day = int(data.get("day", self.day))
-        self.minute = float(data.get("minute", self.minute))
+    def load_dict(self, _data: dict[str, int | float]) -> None:
+        self.day = FIXED_DAY
+        self.minute = float(FIXED_MINUTE)

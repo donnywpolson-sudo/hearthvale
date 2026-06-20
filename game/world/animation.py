@@ -4,6 +4,8 @@ import math
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from panda3d.core import TextNode
+
 
 Vec3Tuple = tuple[float, float, float]
 Vec4Tuple = tuple[float, float, float, float]
@@ -158,13 +160,17 @@ class SceneAnimator:
         amplitude: float = 35.0,
         speed: float = 8.0,
         phase: float = 0.0,
+        steps: int | None = None,
     ) -> None:
         base = _capture(node)
         axis_index = {"h": 0, "p": 1, "r": 2}.get(axis.lower(), 1)
 
         def apply(track: _Track) -> None:
             hpr = list(track.base.hpr)
-            hpr[axis_index] += math.sin(track.elapsed * speed + phase) * amplitude
+            angle = track.elapsed * speed + phase
+            if steps is not None and steps > 0:
+                angle = round((angle % math.tau) / math.tau * steps) / steps * math.tau
+            hpr[axis_index] += math.sin(angle) * amplitude
             _set_hpr(track.node, (hpr[0], hpr[1], hpr[2]))
 
         self._replace(_Track(key, node, base, apply, reset_hpr=True))
@@ -418,6 +424,58 @@ class SceneAnimator:
                 cleanup=lambda: node.removeNode()
                 if remove_on_finish and hasattr(node, "removeNode")
                 else None,
+            )
+        )
+
+    def start_float_text(
+        self,
+        key: str,
+        node: Any,
+        *,
+        text: str,
+        color: Vec4Tuple = (1.0, 0.25, 0.12, 1.0),
+        duration: float = 0.70,
+        lift: float = 0.42,
+    ) -> None:
+        if not hasattr(node, "attachNewNode"):
+            return
+        text_node = TextNode(f"{key}:text")
+        text_node.setText(text)
+        text_node.setAlign(TextNode.ACenter)
+        text_node.setTextColor(*color)
+        text_node.setCardColor(0.07, 0.04, 0.02, 0.72)
+        text_node.setCardAsMargin(0.18, 0.18, 0.06, 0.08)
+        path = node.attachNewNode(text_node)
+        path.setPos(0.0, -0.36, 0.92)
+        path.setScale(0.22)
+        if hasattr(path, "setBillboardPointEye"):
+            path.setBillboardPointEye()
+        base = _capture(path)
+
+        def apply(track: _Track) -> None:
+            progress = _progress(track)
+            eased = progress * progress * (3.0 - 2.0 * progress)
+            _set_pos(
+                track.node,
+                (
+                    track.base.pos[0],
+                    track.base.pos[1],
+                    track.base.pos[2] + lift * eased,
+                ),
+            )
+            _set_color(track.node, (color[0], color[1], color[2], max(0.0, 1.0 - progress)))
+
+        self._replace(
+            _Track(
+                key,
+                path,
+                base,
+                apply,
+                duration=duration,
+                reset_pos=True,
+                reset_color=True,
+                restore_on_finish=False,
+                cleanup=lambda: path.removeNode() if hasattr(path, "removeNode") else None,
             )
         )
 

@@ -86,6 +86,22 @@ def test_defeat_animation_removes_temporary_node() -> None:
     assert animator.active_keys() == set()
 
 
+def test_float_text_animation_creates_and_removes_temporary_text() -> None:
+    from panda3d.core import NodePath
+
+    animator = SceneAnimator()
+    target = NodePath("target")
+
+    animator.start_float_text("fx:damage", target, text="-2", duration=0.1)
+
+    assert target.find("**/fx:damage:text").isEmpty() is False
+
+    animator.update(0.1)
+
+    assert target.find("**/fx:damage:text").isEmpty() is True
+    assert animator.active_keys() == set()
+
+
 class _FakeNode:
     def __init__(self) -> None:
         self.pos = (0.0, 0.0, 0.0)

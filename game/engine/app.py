@@ -7,7 +7,7 @@ from typing import Any
 
 from direct.showbase.ShowBase import ShowBase
 from direct.showbase.ShowBaseGlobal import globalClock
-from panda3d.core import AmbientLight, DirectionalLight, WindowProperties
+from panda3d.core import AmbientLight, AntialiasAttrib, DirectionalLight, WindowProperties
 
 from game import settings
 from game.engine.camera import CameraState, GameCamera
@@ -105,7 +105,12 @@ class GameApp(ShowBase):
         self.bank = Bank()
         self.skills = Skills(self.skills_data)
         self.equipment = Equipment(self.items_data, self.inventory, self.skills)
-        self.gathering = GatheringSystem(self.world_map.resource_nodes, self.inventory, self.skills)
+        self.gathering = GatheringSystem(
+            self.world_map.resource_nodes,
+            self.inventory,
+            self.skills,
+            item_definitions=self.items_data,
+        )
         self.cooking = CookingSystem(self.items_data, self.inventory, self.skills)
         self.smithing = SmithingSystem(self.recipes_data, self.inventory, self.skills)
         self.combat = CombatSystem(self.world_map.mob_definitions, skills=self.skills)
@@ -199,6 +204,8 @@ class GameApp(ShowBase):
         self.game_camera.zoom(direction * settings.CAMERA_ZOOM_STEP)
 
     def on_left_click(self) -> None:
+        if _hud_blocks_pointer(self):
+            return
         if hasattr(self, "hud"):
             self.hud.hide_context_menu()
         obj = target_from_mouse(self, self.world_map)
@@ -216,6 +223,8 @@ class GameApp(ShowBase):
         self.interactions.move_to_tile(tile)
 
     def on_right_click(self) -> None:
+        if _hud_blocks_pointer(self):
+            return
         obj = target_from_mouse(self, self.world_map)
         if obj is None:
             tile, _ = ground_tile_from_mouse(self, self.world_map.grid)
@@ -553,7 +562,7 @@ class GameApp(ShowBase):
         objective = self.quest.current_objective()
         self.hud.update(
             account=self.current_username or "",
-            time_text=f"{self.game_time.display()}\nHP: {self.combat.current_hitpoints}/{self.combat.max_hitpoints()}",
+            time_text="",
             selected_item_id=self.interactions.selected_item_id,
             inventory=self.inventory.to_dict(),
             bank=self.bank.to_dict(),
@@ -647,16 +656,24 @@ class GameApp(ShowBase):
             self.win.requestProperties(props)
 
     def _configure_lighting(self) -> None:
+        self.render.setAntialias(AntialiasAttrib.MAuto)
+
         ambient = AmbientLight("ambient")
-        ambient.setColor((0.62, 0.58, 0.50, 1))
+        ambient.setColor((0.50, 0.48, 0.44, 1))
         ambient_np = self.render.attachNewNode(ambient)
         self.render.setLight(ambient_np)
 
         sun = DirectionalLight("sun")
-        sun.setColor((0.92, 0.82, 0.62, 1))
+        sun.setColor((1.04, 0.92, 0.68, 1))
         sun_np = self.render.attachNewNode(sun)
-        sun_np.setHpr(45, -60, 0)
+        sun_np.setHpr(35, -58, 0)
         self.render.setLight(sun_np)
+
+        fill = DirectionalLight("cool_fill")
+        fill.setColor((0.26, 0.32, 0.40, 1))
+        fill_np = self.render.attachNewNode(fill)
+        fill_np.setHpr(-145, -32, 0)
+        self.render.setLight(fill_np)
 
     def _create_world_markers(self) -> None:
         self.hover_marker = visuals.make_tile_marker("hover_marker", (1.0, 0.88, 0.46, 1.0), radius=0.43)
@@ -686,9 +703,7 @@ class GameApp(ShowBase):
         self.setBackgroundColor(*DAYLIGHT_SKY)
 
     def _apply_world_light(self) -> None:
-        tint, sky = visuals.world_tint(self.game_time.minute)
-        self.render.setColorScale(*tint)
-        self.setBackgroundColor(*sky)
+        self._apply_fixed_world_light()
 
     def _activity_progress(self) -> float | None:
         pending = self.gathering.pending
@@ -744,6 +759,24 @@ def _load_startup_account(
     state, created = save.load_or_create_save(username, save_dir)
     message = "New character created" if created else "Logged in"
     return username, state, message
+
+
+def _hud_blocks_pointer(app: object) -> bool:
+    hud = getattr(app, "hud", None)
+    blocks_pointer = getattr(hud, "pointer_over_blocking_ui", None)
+    if not callable(blocks_pointer):
+        return False
+    return bool(blocks_pointer(_mouse_aspect2d_pos(app)))
+
+
+def _mouse_aspect2d_pos(app: object) -> tuple[float, float] | None:
+    watcher = getattr(app, "mouseWatcherNode", None)
+    if watcher is None or not hasattr(watcher, "hasMouse") or not watcher.hasMouse():
+        return None
+    mouse = watcher.getMouse()
+    aspect_getter = getattr(app, "getAspectRatio", None)
+    aspect = float(aspect_getter()) if callable(aspect_getter) else 1.0
+    return float(mouse.getX()) * aspect, float(mouse.getY())
 
 
 def _display_label(value: str) -> str:

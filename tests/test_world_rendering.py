@@ -4,6 +4,8 @@ import math
 
 from panda3d.core import NodePath
 
+from game.systems.combat import MobState
+from game.systems.gathering import ResourceNodeState
 from game.world import visuals
 from game.world.map import TERRAIN_CHUNK_SIZE, WorldMap
 
@@ -75,3 +77,82 @@ def test_asset_renderer_hook_can_override_world_object_rendering() -> None:
         assert shop.node.find("**/asset_marker").isEmpty() is False
     finally:
         visuals.register_asset_renderer("shop", None)
+
+
+def test_ore_node_exposes_material_color_and_depleted_state() -> None:
+    world = WorldMap(
+        {
+            "width": 4,
+            "height": 4,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [
+                {
+                    "node_id": "copper_rock_01",
+                    "node_type": "copper_rock",
+                    "display_name": "Copper rock",
+                    "skill_id": "mining",
+                    "required_level": 1,
+                    "xp_reward": 20,
+                    "item_reward": "copper_ore",
+                    "quantity_reward": 1,
+                    "position": [1, 1],
+                    "blocks_movement": True,
+                    "depleted_state": "depleted_rock",
+                    "respawn_seconds": 30,
+                    "base_gather_seconds": 2.2,
+                }
+            ],
+        }
+    )
+    parent = NodePath("test_render")
+
+    world.render(parent)
+
+    rock = world.get_object("copper_rock_01")
+    assert rock is not None and rock.node is not None
+    vein = rock.node.find("**/copper_rock_01_ore_vein_primary")
+    assert vein.isEmpty() is False
+    assert vein.getTag("resource_color") == "0.76,0.35,0.15,1.00"
+
+    world.apply_resource_states({"copper_rock_01": ResourceNodeState(depleted=True, respawn_at=200.0)})
+
+    rock = world.get_object("copper_rock_01")
+    assert rock is not None and rock.node is not None
+    assert rock.node.find("**/copper_rock_01_ore_vein_primary").isEmpty() is True
+    assert rock.node.find("**/copper_rock_01_depleted_collapsed_core").isEmpty() is False
+
+
+def test_mob_hp_bar_uses_current_to_max_hitpoint_ratio() -> None:
+    world = WorldMap(
+        {
+            "width": 4,
+            "height": 4,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [],
+            "mobs": [
+                {
+                    "mob_id": "mob_01",
+                    "display_name": "Worn dummy",
+                    "level": 1,
+                    "hitpoints": 4,
+                    "attack_seconds": 1.0,
+                    "respawn_seconds": 5.0,
+                    "position": [1, 1],
+                    "drops": [],
+                }
+            ],
+        }
+    )
+    world.apply_mob_states({"mob_01": MobState(hitpoints=2)})
+    parent = NodePath("test_render")
+
+    world.render(parent)
+
+    mob = world.get_object("mob_01")
+    assert mob is not None and mob.node is not None
+    fill = mob.node.find("**/mob_01_hp_bar_fill")
+    assert fill.isEmpty() is False
+    assert round(fill.getSx(), 2) == 0.50
+    assert mob.node.find("**/mob_01_hp_pip_0").isEmpty() is True

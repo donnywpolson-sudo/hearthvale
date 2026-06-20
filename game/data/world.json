@@ -1003,6 +1003,15 @@
         13
       ],
       "quest_id": "trail_supplies"
+    },
+    {
+      "id": "field_steward_01",
+      "name": "Field Steward",
+      "tile": [
+        18,
+        14
+      ],
+      "quest_id": "field_provisions"
     }
   ]
 }

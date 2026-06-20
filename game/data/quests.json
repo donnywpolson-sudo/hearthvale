@@ -50,6 +50,28 @@
       "skill_rewards": [
         {"skill_id": "defence", "xp": 25}
       ]
+    },
+    {
+      "quest_id": "field_provisions",
+      "display_name": "Field provisions",
+      "start_text": "Steward: The field crew needs one cooked meal stored before the next shift. Cook food, use the bank, then report back.",
+      "in_progress_text": "Steward: The stores are not ready yet. Still needed: {missing_objectives}.",
+      "completed_text": "Steward: The crew can work through the morning now.",
+      "completion_text": "Quest complete: Field provisions. Reward: 25 coins, +20 Cooking XP.",
+      "not_started_objective": "Talk to the Field Steward.",
+      "return_objective": "Return to the Field Steward.",
+      "completed_objective": "Field provisions complete.",
+      "progress_format": "Field provisions {completed}/{total}: {objective}.",
+      "objectives": [
+        {"flag": "cooked_food", "label": "Cook food"},
+        {"flag": "used_bank", "label": "Use the bank"}
+      ],
+      "item_rewards": [
+        {"item_id": "coins", "quantity": 25}
+      ],
+      "skill_rewards": [
+        {"skill_id": "cooking", "xp": 20}
+      ]
     }
   ]
 }

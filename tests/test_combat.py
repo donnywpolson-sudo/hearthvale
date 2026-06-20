@@ -78,6 +78,7 @@ def test_combat_damages_player_grants_xp_and_can_heal() -> None:
     assert result.feedback == "Hit Worn dummy: 2/3 HP left; Worn dummy hit you for 1; you: 9/10 HP"
     assert system.current_hitpoints == 9
     assert skills.xp("attack") == 4
+    assert skills.xp("hitpoints") == 1
 
     assert system.heal(3) == 1
     assert system.current_hitpoints == 10

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 from game.engine.app import GameApp
@@ -243,6 +245,46 @@ def test_app_talk_to_npc_routes_data_defined_quest_and_rewards_once() -> None:
     assert updates == [True, True, True]
 
 
+def test_shipped_field_provisions_quest_tracks_and_rewards_once() -> None:
+    quest = QuestSystem(_load_data("quests.json"))
+
+    started = quest.talk_to("field_provisions")
+
+    assert started.feedback.startswith("Steward:")
+    assert quest.current_objective().text == "Field provisions 0/2: Cook food."
+
+    quest.record("cooked_food")
+
+    assert quest.current_objective().text == "Field provisions 1/2: Use the bank."
+
+    quest.record("used_bank")
+    completed = quest.talk_to("field_provisions")
+    after = quest.talk_to("field_provisions")
+    app = SimpleNamespace(
+        inventory=Inventory(),
+        skills=Skills(
+            {
+                "cooking": {
+                    "display_name": "Cooking",
+                    "starting_level": 1,
+                    "xp_thresholds": skill_xp_thresholds(),
+                }
+            }
+        ),
+    )
+
+    GameApp._apply_quest_rewards(app, completed)
+    GameApp._apply_quest_rewards(app, after)
+
+    assert completed.completed is True
+    assert completed.feedback == "Quest complete: Field provisions. Reward: 25 coins, +20 Cooking XP."
+    assert after.feedback == "Steward: The crew can work through the morning now."
+    assert after.item_rewards == ()
+    assert after.skill_rewards == ()
+    assert app.inventory.count(COINS_ITEM_ID) == 25
+    assert app.skills.xp("cooking") == 20
+
+
 def _quest_data() -> dict[str, object]:
     return {
         "quests": [
@@ -308,3 +350,8 @@ def _multi_quest_data() -> dict[str, object]:
             },
         ]
     }
+
+
+def _load_data(filename: str) -> dict[str, object]:
+    path = Path(__file__).resolve().parents[1] / "game" / "data" / filename
+    return json.loads(path.read_text(encoding="utf-8"))

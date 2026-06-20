@@ -9,7 +9,7 @@ from direct.gui.OnscreenText import OnscreenText
 from panda3d.core import TextNode
 
 from game.style import UiPalette as UI
-from game.systems.inventory import COINS_ITEM_ID
+from game.systems.inventory import COINS_ITEM_ID, INVENTORY_SLOT_LIMIT, is_non_stackable_item
 
 PANEL = UI.PANEL
 PANEL_DARK = UI.PANEL_DARK
@@ -28,7 +28,7 @@ SKILLS_TAB = "skills"
 TAB_ORDER = (INVENTORY_TAB, CLOTHES_TAB, SKILLS_TAB)
 INVENTORY_COLUMNS = 4
 INVENTORY_ROWS = 7
-INVENTORY_SLOT_COUNT = INVENTORY_COLUMNS * INVENTORY_ROWS
+INVENTORY_SLOT_COUNT = INVENTORY_SLOT_LIMIT
 INVENTORY_QUANTITY_TEXT_SCALE = 0.027
 SIDE_TAB_TEXT_SCALE = 0.039
 SKILL_ROW_SPACING = 0.095
@@ -43,6 +43,13 @@ CHAT_TEXT_SCALE = 0.027
 ROW_TEXT_SCALE = 0.022
 ROW_BUTTON_TEXT_SCALE = 0.023
 SMALL_BUTTON_TEXT_SCALE = 0.023
+BANK_TITLE_TEXT_SCALE = 0.058
+BANK_HEADER_TEXT_SCALE = 0.032
+BANK_ROW_TEXT_SCALE = 0.030
+BANK_ROW_BUTTON_TEXT_SCALE = 0.030
+BANK_ROW_SPACING = 0.068
+BANK_LEFT_COLUMN_X = -0.87
+BANK_RIGHT_COLUMN_X = 0.04
 IconSpec = tuple[
     tuple[float, float, float, float],
     tuple[float, float, float],
@@ -174,16 +181,16 @@ class Hud:
         self._build_side_tabs()
         self.select_tab(INVENTORY_TAB)
 
-        self.bank_panel = _panel((-0.86, 0.86, -0.68, 0.58), (0.0, 0, 0.02), PANEL)
-        _text(self.bank_panel, "Bank", (0.0, 0.51), 0.045, TextNode.ACenter, GOLD)
-        _button(self.bank_panel, "Close", (0.68, 0, 0.50), 0.040, self.on_bank_close)
-        _button(self.bank_panel, "Deposit all", (-0.64, 0, 0.50), 0.035, self.on_deposit_all)
+        self.bank_panel = _panel((-0.94, 0.94, -0.70, 0.62), (0.0, 0, 0.02), PANEL)
+        _text(self.bank_panel, "Bank", (0.0, 0.54), BANK_TITLE_TEXT_SCALE, TextNode.ACenter, GOLD)
+        _button(self.bank_panel, "Close", (0.73, 0, 0.52), 0.045, self.on_bank_close)
+        _button(self.bank_panel, "Deposit all", (-0.70, 0, 0.52), 0.040, self.on_deposit_all)
         self._build_quantity_buttons(self.bank_panel, (-0.28, 0.50))
-        _text(self.bank_panel, "Item", (-0.80, 0.43), 0.022, TextNode.ALeft, GOLD)
-        _text(self.bank_panel, "Inv/Bank", (-0.28, 0.43), 0.022, TextNode.ACenter, GOLD)
-        _text(self.bank_panel, "Item", (0.06, 0.43), 0.022, TextNode.ALeft, GOLD)
-        _text(self.bank_panel, "Inv/Bank", (0.58, 0.43), 0.022, TextNode.ACenter, GOLD)
-        self.empty_bank_label = _text(self.bank_panel, "Bank is empty", (0.0, 0.18), 0.030, TextNode.ACenter, MUTED_TEXT)
+        _text(self.bank_panel, "Item", (BANK_LEFT_COLUMN_X, 0.43), BANK_HEADER_TEXT_SCALE, TextNode.ALeft, GOLD)
+        _text(self.bank_panel, "Inv/Bank", (BANK_LEFT_COLUMN_X + 0.54, 0.43), BANK_HEADER_TEXT_SCALE, TextNode.ACenter, GOLD)
+        _text(self.bank_panel, "Item", (BANK_RIGHT_COLUMN_X, 0.43), BANK_HEADER_TEXT_SCALE, TextNode.ALeft, GOLD)
+        _text(self.bank_panel, "Inv/Bank", (BANK_RIGHT_COLUMN_X + 0.54, 0.43), BANK_HEADER_TEXT_SCALE, TextNode.ACenter, GOLD)
+        self.empty_bank_label = _text(self.bank_panel, "Bank is empty", (0.0, 0.18), 0.038, TextNode.ACenter, MUTED_TEXT)
         self.bank_rows: dict[str, _BankRow] = {}
         self.bank_panel.hide()
 
@@ -221,14 +228,7 @@ class Hud:
     ) -> None:
         if shop_stock is not None:
             self.shop_stock = list(shop_stock)
-        self.stats.setText(
-            "\n".join(
-                [
-                    f"Account: {account}",
-                    time_text,
-                ]
-            )
-        )
+        self.stats.setText(f"Account: {account}")
         self._sync_inventory_slots(inventory, selected_item_id)
         self._sync_equipment_slots(equipment or {})
         self._sync_skill_labels(skills)
@@ -347,6 +347,24 @@ class Hud:
         if hasattr(self, "context_panel"):
             self.context_panel.hide()
 
+    def pointer_over_blocking_ui(self, mouse_pos: object | None) -> bool:
+        point = _mouse_point(mouse_pos)
+        if point is None:
+            return False
+        x, z = point
+        regions = [
+            _region_for(self.stats_panel),
+            _region_for(self.feedback_panel),
+            _region_for(self.quest_panel),
+            _region_for(self.chat_panel),
+            _region_for(self.side_panel),
+            _region_for(self.bank_panel) if self.bank_is_open else None,
+            _region_for(self.shop_panel) if self.shop_is_open else None,
+            _region_for(self.context_panel) if not _widget_hidden(self.context_panel) else None,
+            _region_for(self.file_menu) if self.file_menu_open else None,
+        ]
+        return any(_point_in_region(x, z, region) for region in regions if region is not None)
+
     def _choose_context_action(self, action_id: str, command: Callable[[str], None]) -> None:
         self.hide_context_menu()
         command(action_id)
@@ -452,7 +470,7 @@ class Hud:
                 (x, 0, z),
                 lambda slot_id=slot_id: self.on_unequip_slot(slot_id),
             )
-            equipment_slot = _EquipmentSlot(button=button, empty_label=label)
+            equipment_slot = _EquipmentSlot(button=button, icon=_SlotIcon.create(button), empty_label=label)
             equipment_slot.clear()
             self.equipment_slots[slot_id] = equipment_slot
 
@@ -489,15 +507,16 @@ class Hud:
             self.on_select_item(item_id)
 
     def _sync_inventory_slots(self, inventory: dict[str, int], selected_item_id: str | None) -> None:
-        visible_item_ids = _inventory_item_ids(self.items_data, inventory)[:INVENTORY_SLOT_COUNT]
+        visible_slots = _inventory_slot_views(self.items_data, inventory)[:INVENTORY_SLOT_COUNT]
         for index, slot in enumerate(self.inventory_slots):
-            if index < len(visible_item_ids):
-                item_id = visible_item_ids[index]
+            if index < len(visible_slots):
+                view = visible_slots[index]
                 slot.set_item(
                     self.items_data,
-                    item_id,
-                    inventory.get(item_id, 0),
-                    item_id == selected_item_id,
+                    view.item_id,
+                    view.quantity,
+                    view.item_id == selected_item_id,
+                    show_quantity=view.show_quantity,
                 )
             else:
                 slot.clear()
@@ -506,7 +525,7 @@ class Hud:
         for slot_id, slot in self.equipment_slots.items():
             item_id = equipment.get(slot_id)
             if item_id:
-                slot.set_item(_equipment_slot_text(self.items_data, item_id))
+                slot.set_item(self.items_data, item_id)
             else:
                 slot.clear()
 
@@ -561,25 +580,25 @@ class Hud:
         for index, item_id in enumerate(visible_item_ids):
             col = index // rows_per_column
             row_index = index % rows_per_column
-            x = -0.80 if col == 0 else 0.06
-            y = 0.36 - row_index * 0.052
+            x = BANK_LEFT_COLUMN_X if col == 0 else BANK_RIGHT_COLUMN_X
+            y = 0.36 - row_index * BANK_ROW_SPACING
             row = self.bank_rows.get(item_id)
             if row is None:
                 row = _BankRow(
-                    item_label=_text(self.bank_panel, _item_name(self.items_data, item_id), (x, y), ROW_TEXT_SCALE, TextNode.ALeft, TEXT, True),
-                    bank_label=_text(self.bank_panel, "", (x + 0.52, y), ROW_TEXT_SCALE, TextNode.ACenter, TEXT, True),
+                    item_label=_text(self.bank_panel, _item_name(self.items_data, item_id), (x, y), BANK_ROW_TEXT_SCALE, TextNode.ALeft, TEXT, True),
+                    bank_label=_text(self.bank_panel, "", (x + 0.54, y), BANK_ROW_TEXT_SCALE, TextNode.ACenter, TEXT, True),
                     deposit_button=_button(
                         self.bank_panel,
                         "Dep",
-                        (x + 0.64, 0, y + 0.004),
-                        ROW_BUTTON_TEXT_SCALE,
+                        (x + 0.68, 0, y + 0.004),
+                        BANK_ROW_BUTTON_TEXT_SCALE,
                         lambda item_id=item_id: self.on_deposit_item(item_id),
                     ),
                     withdraw_button=_button(
                         self.bank_panel,
                         "Wit",
-                        (x + 0.77, 0, y + 0.004),
-                        ROW_BUTTON_TEXT_SCALE,
+                        (x + 0.82, 0, y + 0.004),
+                        BANK_ROW_BUTTON_TEXT_SCALE,
                         lambda item_id=item_id: self.on_withdraw_item(item_id),
                     ),
                 )
@@ -648,6 +667,13 @@ class Hud:
 
 
 @dataclass
+class _InventorySlotView:
+    item_id: str
+    quantity: int
+    show_quantity: bool
+
+
+@dataclass
 class _InventorySlot:
     button: DirectButton
     icon: "_SlotIcon"
@@ -666,6 +692,8 @@ class _InventorySlot:
         item_id: str,
         quantity: int,
         selected: bool,
+        *,
+        show_quantity: bool = True,
     ) -> None:
         if quantity <= 0:
             self.clear()
@@ -674,7 +702,7 @@ class _InventorySlot:
         self.hover_text = _inventory_hover_text(items_data, item_id, quantity)
         base_color = SLOT_HILITE if selected else SLOT
         hover_color = SLOT_HILITE if selected else BUTTON_HOVER
-        self.button["text"] = _format_quantity(quantity)
+        self.button["text"] = _format_quantity(quantity) if show_quantity else ""
         self.button["text_fg"] = TEXT
         self.button["frameColor"] = (base_color, hover_color, hover_color, base_color)
         self.icon.set_item(items_data, item_id)
@@ -742,17 +770,20 @@ class _SlotIcon:
 @dataclass
 class _EquipmentSlot:
     button: DirectButton
+    icon: "_SlotIcon"
     empty_label: str
 
-    def set_item(self, text: str) -> None:
-        self.button["text"] = text
+    def set_item(self, items_data: dict[str, dict[str, object]], item_id: str) -> None:
+        self.button["text"] = ""
         self.button["text_fg"] = TEXT
         self.button["frameColor"] = (SLOT_HILITE, BUTTON_HOVER, BUTTON_HOVER, SLOT_HILITE)
+        self.icon.set_item(items_data, item_id)
 
     def clear(self) -> None:
         self.button["text"] = self.empty_label
         self.button["text_fg"] = MUTED_TEXT
         self.button["frameColor"] = (SLOT, SLOT, SLOT, SLOT)
+        self.icon.clear()
 
 
 @dataclass
@@ -774,9 +805,9 @@ class _BankRow:
 
     def set_pos(self, x: float, y: float) -> None:
         self.item_label.setPos(x, y)
-        self.bank_label.setPos(x + 0.52, y)
-        self.deposit_button.setPos(x + 0.64, 0, y + 0.004)
-        self.withdraw_button.setPos(x + 0.77, 0, y + 0.004)
+        self.bank_label.setPos(x + 0.54, y)
+        self.deposit_button.setPos(x + 0.68, 0, y + 0.004)
+        self.withdraw_button.setPos(x + 0.82, 0, y + 0.004)
 
     def destroy(self) -> None:
         self.item_label.destroy()
@@ -803,6 +834,80 @@ class _ShopRow:
         self.quantity_label.destroy()
         self.price_label.destroy()
         self.action_button.destroy()
+
+
+def _mouse_point(mouse_pos: object | None) -> tuple[float, float] | None:
+    if mouse_pos is None:
+        return None
+    try:
+        if len(mouse_pos) >= 3:  # type: ignore[arg-type]
+            return float(mouse_pos[0]), float(mouse_pos[2])  # type: ignore[index]
+        return float(mouse_pos[0]), float(mouse_pos[1])  # type: ignore[index]
+    except (TypeError, ValueError, IndexError):
+        return None
+
+
+def _point_in_region(x: float, z: float, region: tuple[float, float, float, float] | None) -> bool:
+    if region is None:
+        return False
+    left, right, bottom, top = region
+    return left <= x <= right and bottom <= z <= top
+
+
+def _region_for(widget: object) -> tuple[float, float, float, float] | None:
+    frame_size = _widget_option(widget, "frameSize")
+    if frame_size is None:
+        return None
+    try:
+        left, right, bottom, top = [float(value) for value in frame_size]
+    except (TypeError, ValueError):
+        return None
+    x, z = _absolute_widget_pos(widget)
+    return left + x, right + x, bottom + z, top + z
+
+
+def _absolute_widget_pos(widget: object) -> tuple[float, float]:
+    x, z = _widget_pos(widget)
+    parent = _widget_option(widget, "parent")
+    while parent is not None:
+        parent_x, parent_z = _widget_pos(parent)
+        x += parent_x
+        z += parent_z
+        parent = _widget_option(parent, "parent")
+    return x, z
+
+
+def _widget_pos(widget: object) -> tuple[float, float]:
+    pos = getattr(widget, "pos", None)
+    if pos is None:
+        get_pos = getattr(widget, "getPos", None)
+        if callable(get_pos):
+            pos = get_pos()
+    if pos is None:
+        pos = _widget_option(widget, "pos", (0.0, 0.0, 0.0))
+    try:
+        if len(pos) >= 3:  # type: ignore[arg-type]
+            return float(pos[0]), float(pos[2])  # type: ignore[index]
+        return float(pos[0]), float(pos[1])  # type: ignore[index]
+    except (TypeError, ValueError, IndexError):
+        return 0.0, 0.0
+
+
+def _widget_option(widget: object, key: str, default: object | None = None) -> object | None:
+    options = getattr(widget, "options", None)
+    if isinstance(options, dict) and key in options:
+        return options[key]
+    try:
+        return widget[key]  # type: ignore[index]
+    except Exception:
+        return default
+
+
+def _widget_hidden(widget: object) -> bool:
+    if bool(getattr(widget, "hidden", False)):
+        return True
+    is_hidden = getattr(widget, "isHidden", None)
+    return bool(is_hidden()) if callable(is_hidden) else False
 
 
 def _frame(
@@ -1029,8 +1134,8 @@ def _coin_icon_specs() -> list[IconSpec]:
 
 def _tool_icon_specs(item_id: str) -> list[IconSpec]:
     wood = (0.54, 0.30, 0.12, 1.0)
-    metal = (0.72, 0.66, 0.54, 1.0)
-    dark_metal = (0.36, 0.35, 0.32, 1.0)
+    metal = _metal_color(item_id)
+    dark_metal = _metal_shadow_color(item_id)
     if "fishing" in item_id:
         return [
             ((-0.004, 0.004, -0.025, 0.026), (-0.005, 0, 0.011), wood),
@@ -1145,6 +1250,16 @@ def _metal_color(item_id: str) -> tuple[float, float, float, float]:
     return (0.74, 0.46, 0.22, 1.0)
 
 
+def _metal_shadow_color(item_id: str) -> tuple[float, float, float, float]:
+    if item_id.startswith("iron"):
+        return (0.34, 0.34, 0.32, 1.0)
+    if item_id.startswith("mithril"):
+        return (0.10, 0.32, 0.40, 1.0)
+    if item_id.startswith("starsteel"):
+        return (0.12, 0.30, 0.52, 1.0)
+    return (0.42, 0.24, 0.10, 1.0)
+
+
 def _slot_word(word: str) -> str:
     if len(word) <= 8:
         return word
@@ -1215,6 +1330,29 @@ def _inventory_item_ids(
         item_ids,
         key=lambda item_id: (_category_sort_key(items_data, item_id), item_id),
     )
+
+
+def _inventory_slot_views(
+    items_data: dict[str, dict[str, object]],
+    inventory: dict[str, int],
+) -> list[_InventorySlotView]:
+    views: list[_InventorySlotView] = []
+    for item_id in _inventory_item_ids(items_data, inventory):
+        quantity = int(inventory.get(item_id, 0))
+        if quantity <= 0:
+            continue
+        if _is_non_stackable_inventory_item(items_data, item_id):
+            for _index in range(quantity):
+                views.append(_InventorySlotView(item_id, 1, False))
+                if len(views) >= INVENTORY_SLOT_COUNT:
+                    return views
+        else:
+            views.append(_InventorySlotView(item_id, quantity, True))
+    return views
+
+
+def _is_non_stackable_inventory_item(items_data: dict[str, dict[str, object]], item_id: str) -> bool:
+    return is_non_stackable_item(items_data, item_id)
 
 
 def _sellable_item_ids(

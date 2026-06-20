@@ -29,6 +29,17 @@ def test_player_movement_stops_action_animation() -> None:
     assert player.path == [(1, 2)]
 
 
+def test_player_click_movement_uses_slower_walk_speed() -> None:
+    player = _player_with_fake_nodes()
+
+    player.set_path([(1, 1), (1, 2)])
+    player.update(0.25)
+
+    assert player.tile == (1, 1)
+    assert player.path == [(1, 2)]
+    assert round(player.y, 2) == 2.25
+
+
 def _player_with_fake_nodes() -> Player:
     player = Player(TileGrid(4, 4), (1, 1))
     player.node = _FakeNode()

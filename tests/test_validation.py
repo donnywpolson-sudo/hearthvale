@@ -295,6 +295,9 @@ def test_shipped_trail_supplies_quest_links_to_original_npc() -> None:
     assert "trail_supplies" in quest_ids
     assert npcs_by_id["trail_warden_01"]["name"] == "Trail Warden"
     assert npcs_by_id["trail_warden_01"]["quest_id"] == "trail_supplies"
+    assert "field_provisions" in quest_ids
+    assert npcs_by_id["field_steward_01"]["name"] == "Field Steward"
+    assert npcs_by_id["field_steward_01"]["quest_id"] == "field_provisions"
 
 
 def _items() -> dict[str, dict[str, object]]:

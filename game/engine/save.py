@@ -127,9 +127,9 @@ def create_default_save(username: str) -> dict[str, Any]:
                 },
                 "quest_state": {},
                 "day": 1,
-                "minute": 360.0,
+                "minute": 720.0,
             },
-            "time": {"day": 1, "minute": 360.0},
+            "time": {"day": 1, "minute": 720.0},
         }
     )
 

@@ -86,8 +86,8 @@ automatically when needed.
 - Angled top-down camera independent from player movement.
 - Left-click movement with grid A* pathfinding.
 - Classic-style left/right click interactions for ground, gameplay objects, and scenery, including default actions, walk-to behavior, context menus, and examine options.
-- Shared gathering system for woodcutting, mining, and fishing with JSON-defined XP, level requirements, item rewards, depletion, respawn state, and required starter tools.
-- Data-driven inventory display, bottom-right skills/equipment tabs, bankable coin item stack, simple day/time clock, compact account/time HUD, File menu, and per-account save/load.
+- Shared gathering activity system for woodcutting, mining, and fishing with JSON-defined XP, level requirements, item rewards, tiered depletion, respawn state, and required starter tools.
+- Data-driven inventory display, bottom-right skills/equipment tabs, bankable coin item stack, fixed daytime world, compact account HUD, File menu, and per-account save/load.
 - Bank booth with an in-game bank panel for depositing and withdrawing inventory stacks.
 - Shop panel for choosing specific sellable inventory stacks instead of instantly selling everything.
 - Basic combat skills and equipment requirements for wielding higher-tier weapons and shields.

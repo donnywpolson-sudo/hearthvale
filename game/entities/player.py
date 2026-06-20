@@ -47,7 +47,7 @@ class Player:
             return
 
         self.stop_action_animation(sync=False)
-        self.walk_time += dt * 9.0
+        self.walk_time += dt * 6.75
         target_tile = self.path[0]
         target_x, target_y = self.grid.to_world(target_tile)
         dx = target_x - self.x
@@ -111,13 +111,17 @@ class Player:
         if self.node is not None:
             bob = 0.0
             if self.path:
-                bob = abs(math.sin(self.walk_time)) * 0.035
-                sway = math.sin(self.walk_time) * 6.0
-                self._set_part_hpr("left_leg", 0.0, sway, 0.0)
-                self._set_part_hpr("right_leg", 0.0, -sway, 0.0)
-                self._set_part_hpr("left_arm", 0.0, -sway * 0.6, 0.0)
-                self._set_part_hpr("right_arm", 0.0, sway * 0.6, 0.0)
-                self._reset_upper_pose()
+                stride = _stepped_sin(self.walk_time, steps=8)
+                counter = _stepped_sin(self.walk_time + math.pi, steps=8)
+                lift = abs(_stepped_sin(self.walk_time, steps=8))
+                bob = lift * 0.050
+                self._set_part_hpr("left_leg", 0.0, stride * 18.0, stride * 2.0)
+                self._set_part_hpr("right_leg", 0.0, counter * 18.0, counter * 2.0)
+                self._set_part_hpr("left_arm", 0.0, counter * 15.0, -5.0 + counter * 2.0)
+                self._set_part_hpr("right_arm", 0.0, stride * 15.0, 5.0 + stride * 2.0)
+                self._set_part_hpr("body", 0.0, 1.5 + lift * 1.8, stride * 2.2)
+                self._set_part_hpr("head", 0.0, -1.0 + lift * 1.0, -stride * 1.2)
+                self._set_part_hpr("tool", -16.0 + stride * 3.0, -4.0 + counter * 6.0, -10.0 + stride * 4.0)
             else:
                 self._reset_pose()
                 if self.action_animation is not None:
@@ -126,54 +130,66 @@ class Player:
             self.node.setH(self.heading)
 
     def _apply_action_pose(self, action_type: str) -> None:
-        cycle = math.sin(self.action_time * 6.0)
-        fast_cycle = math.sin(self.action_time * 9.5)
-        impact = max(0.0, math.sin(self.action_time * 9.5))
+        cycle = _stepped_sin(self.action_time * 6.0, steps=8)
+        fast_cycle = _stepped_sin(self.action_time * 9.5, steps=8)
+        impact = max(0.0, _stepped_sin(self.action_time * 9.5, steps=8))
+        recoil = max(0.0, -fast_cycle)
         if action_type == "woodcutting":
-            self._set_part_hpr("body", 0.0, 2.0 + impact * 3.0, -5.0 + cycle * 1.4)
-            self._set_part_hpr("left_leg", 0.0, -3.0, -2.0)
-            self._set_part_hpr("right_leg", 0.0, 3.0, 2.0)
-            self._set_part_hpr("right_arm", 0.0, -38.0 + fast_cycle * 18.0, 12.0 + impact * 6.0)
-            self._set_part_hpr("left_arm", 0.0, 12.0 - impact * 4.0, -8.0)
-            self._set_part_hpr("tool", -28.0, -30.0 + fast_cycle * 24.0, -24.0)
+            self._set_part_hpr("body", 0.0, 5.0 + impact * 5.0, -8.0 + cycle * 2.0)
+            self._set_part_hpr("head", 0.0, 3.0 + impact * 2.0, -3.0)
+            self._set_part_hpr("left_leg", 0.0, -8.0, -4.0)
+            self._set_part_hpr("right_leg", 0.0, 7.0, 4.0)
+            self._set_part_hpr("right_arm", 4.0, -62.0 + fast_cycle * 32.0, 18.0 + impact * 9.0)
+            self._set_part_hpr("left_arm", -8.0, 26.0 - impact * 9.0, -14.0)
+            self._set_part_hpr("tool", -35.0, -58.0 + fast_cycle * 42.0, -28.0 - recoil * 12.0)
         elif action_type == "mining":
-            self._set_part_hpr("body", 0.0, 4.0 + impact * 2.0, 3.0)
-            self._set_part_hpr("left_leg", 0.0, -2.0, -2.0)
-            self._set_part_hpr("right_leg", 0.0, 3.0, 2.0)
-            self._set_part_hpr("right_arm", 0.0, -44.0 + fast_cycle * 20.0, 7.0)
-            self._set_part_hpr("left_arm", 0.0, 10.0 - impact * 4.0, -6.0)
-            self._set_part_hpr("tool", -14.0, -36.0 + fast_cycle * 26.0, -10.0)
+            self._set_part_hpr("body", 0.0, 7.0 + impact * 4.0, 4.0)
+            self._set_part_hpr("head", 0.0, 5.0, 2.0)
+            self._set_part_hpr("left_leg", 0.0, -6.0, -3.0)
+            self._set_part_hpr("right_leg", 0.0, 8.0, 3.0)
+            self._set_part_hpr("right_arm", 3.0, -68.0 + fast_cycle * 34.0, 10.0)
+            self._set_part_hpr("left_arm", -4.0, 22.0 - impact * 8.0, -10.0)
+            self._set_part_hpr("tool", -18.0, -62.0 + fast_cycle * 44.0, -12.0 - recoil * 8.0)
         elif action_type == "fishing":
-            self._set_part_hpr("body", 0.0, 6.0 + cycle * 1.8, -3.0)
-            self._set_part_hpr("left_leg", 0.0, 1.0, -1.0)
-            self._set_part_hpr("right_leg", 0.0, -1.0, 1.0)
-            self._set_part_hpr("right_arm", 0.0, -18.0 + cycle * 2.0, -28.0 + cycle * 8.0)
-            self._set_part_hpr("left_arm", 0.0, 9.0 + cycle * 2.0, 12.0)
-            self._set_part_hpr("tool", -38.0, 3.0 + cycle * 3.0, -44.0 + cycle * 12.0)
+            self._set_part_hpr("body", 0.0, 8.0 + cycle * 2.0, -4.0)
+            self._set_part_hpr("head", 0.0, 6.0 + cycle, -2.0)
+            self._set_part_hpr("left_leg", 0.0, 2.0, -2.0)
+            self._set_part_hpr("right_leg", 0.0, -2.0, 2.0)
+            self._set_part_hpr("right_arm", 0.0, -26.0 + cycle * 4.0, -34.0 + cycle * 10.0)
+            self._set_part_hpr("left_arm", 0.0, 14.0 + cycle * 3.0, 14.0)
+            self._set_part_hpr("tool", -42.0, 2.0 + cycle * 5.0, -50.0 + cycle * 14.0)
         elif action_type == "cooking":
-            self._set_part_hpr("body", 0.0, 4.0 + cycle * 1.4, 1.5)
-            self._set_part_hpr("right_arm", 0.0, -16.0 + cycle * 8.0, 14.0)
-            self._set_part_hpr("left_arm", 0.0, 10.0 - cycle * 2.0, -9.0)
-            self._set_part_hpr("tool", -8.0, -10.0 + cycle * 9.0, 20.0)
+            self._set_part_hpr("body", 0.0, 6.0 + cycle * 1.5, 1.5)
+            self._set_part_hpr("head", 0.0, 4.0 + cycle * 1.2, 0.0)
+            self._set_part_hpr("right_arm", 0.0, -24.0 + cycle * 12.0, 16.0)
+            self._set_part_hpr("left_arm", 0.0, 12.0 - cycle * 3.0, -11.0)
+            self._set_part_hpr("tool", -8.0, -16.0 + cycle * 12.0, 22.0)
         elif action_type == "smelting":
-            self._set_part_hpr("body", 0.0, 6.0 + cycle * 1.2, 0.0)
-            self._set_part_hpr("right_arm", 0.0, -12.0 + cycle * 3.0, 10.0)
-            self._set_part_hpr("left_arm", 0.0, 8.0 - cycle * 2.0, -10.0)
-            self._set_part_hpr("head", 0.0, 2.0 + cycle, 0.0)
+            self._set_part_hpr("body", 0.0, 8.0 + cycle * 1.4, 0.0)
+            self._set_part_hpr("right_arm", 0.0, -18.0 + cycle * 5.0, 12.0)
+            self._set_part_hpr("left_arm", 0.0, 10.0 - cycle * 3.0, -12.0)
+            self._set_part_hpr("head", 0.0, 4.0 + cycle, 0.0)
         elif action_type == "smithing":
-            self._set_part_hpr("body", 0.0, 3.0 + impact * 2.0, 3.0)
-            self._set_part_hpr("left_leg", 0.0, -2.0, -1.5)
-            self._set_part_hpr("right_leg", 0.0, 2.0, 1.5)
-            self._set_part_hpr("right_arm", 0.0, -46.0 + fast_cycle * 22.0, 8.0)
-            self._set_part_hpr("left_arm", 0.0, 12.0 - impact * 4.0, -7.0)
-            self._set_part_hpr("tool", -12.0, -38.0 + fast_cycle * 28.0, -8.0)
+            self._set_part_hpr("body", 0.0, 6.0 + impact * 5.0, 4.0)
+            self._set_part_hpr("head", 0.0, 4.0, 2.0)
+            self._set_part_hpr("left_leg", 0.0, -7.0, -3.0)
+            self._set_part_hpr("right_leg", 0.0, 7.0, 3.0)
+            self._set_part_hpr("right_arm", 2.0, -70.0 + fast_cycle * 36.0, 9.0)
+            self._set_part_hpr("left_arm", -4.0, 24.0 - impact * 9.0, -9.0)
+            self._set_part_hpr("tool", -14.0, -66.0 + fast_cycle * 46.0, -10.0 - recoil * 8.0)
         elif action_type == "combat":
-            self._set_part_hpr("body", 0.0, 2.0 + impact * 2.0, 6.0 + fast_cycle * 3.0)
-            self._set_part_hpr("left_leg", 0.0, -3.0, -2.0)
-            self._set_part_hpr("right_leg", 0.0, 4.0, 2.0)
-            self._set_part_hpr("right_arm", 0.0, -36.0 + fast_cycle * 18.0, 22.0)
-            self._set_part_hpr("left_arm", 0.0, 14.0, -16.0 + impact * 4.0)
-            self._set_part_hpr("tool", -20.0, -30.0 + fast_cycle * 22.0, 16.0)
+            self._set_part_hpr("body", 0.0, 4.0 + impact * 4.0, 9.0 + fast_cycle * 5.0)
+            self._set_part_hpr("head", 0.0, 2.0, 3.0 + fast_cycle * 2.0)
+            self._set_part_hpr("left_leg", 0.0, -8.0, -4.0)
+            self._set_part_hpr("right_leg", 0.0, 9.0, 4.0)
+            self._set_part_hpr("right_arm", 0.0, -56.0 + fast_cycle * 32.0, 28.0)
+            self._set_part_hpr("left_arm", 0.0, 20.0, -22.0 + impact * 7.0)
+            self._set_part_hpr("tool", -26.0, -52.0 + fast_cycle * 40.0, 20.0 - recoil * 10.0)
+        elif action_type == "gathering":
+            self._set_part_hpr("body", 0.0, 4.0 + cycle * 2.0, 0.0)
+            self._set_part_hpr("right_arm", 0.0, -30.0 + fast_cycle * 18.0, 8.0)
+            self._set_part_hpr("left_arm", 0.0, 14.0 - impact * 4.0, -8.0)
+            self._set_part_hpr("tool", -18.0, -28.0 + fast_cycle * 24.0, -10.0)
 
     def _reset_pose(self) -> None:
         for key in ("left_leg", "right_leg", "left_arm", "right_arm", "body", "head"):
@@ -190,3 +206,11 @@ class Player:
         if part is None:
             return
         part.setHpr(h, p, r)
+
+
+def _stepped_sin(phase: float, *, steps: int) -> float:
+    if steps <= 0:
+        return math.sin(phase)
+    normalized = (phase % math.tau) / math.tau
+    stepped = round(normalized * steps) / steps
+    return math.sin(stepped * math.tau)

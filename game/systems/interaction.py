@@ -254,11 +254,19 @@ class InteractionManager:
 
     def update(self) -> None:
         if self.gathering is not None:
-            result = self.gathering.update()
-            if result is not None:
-                self._stop_action_animation()
-                self.world_map.apply_resource_states(self.gathering.states)
-                self.feedback(result.feedback)
+            if self._gathering_target_invalid():
+                self._cancel_gathering()
+                self.feedback("Gathering stopped")
+            else:
+                result = self.gathering.update()
+                if result is not None:
+                    self.world_map.apply_resource_states(self.gathering.states)
+                    target = self.world_map.get_object(result.node_id) if result.node_id is not None else None
+                    if result.pending:
+                        self._start_action_animation("gathering", target, result.skill_id)
+                    else:
+                        self._stop_action_animation()
+                    self.feedback(result.feedback)
 
         if self.cooking is not None:
             result = self.cooking.update()
@@ -303,8 +311,10 @@ class InteractionManager:
                         if created:
                             feedback = f"{feedback}; drops appeared"
                         self._animate_ground_drops(created)
-                if result.player_damage > 0 and not result.killed and result.mob_id is not None:
-                    self._animate_hit(self.world_map.get_object(result.mob_id))
+                if result.player_damage > 0 and result.mob_id is not None:
+                    self._animate_hit(self.world_map.get_object(result.mob_id), result.player_damage)
+                if result.enemy_damage > 0:
+                    self._animate_player_hit(result.enemy_damage)
                 if result.pending and not result.player_dead and not result.killed and result.mob_id is not None:
                     self._start_action_animation("combat", self.world_map.get_object(result.mob_id))
                 else:
@@ -542,15 +552,15 @@ class InteractionManager:
         target_direction = self._direction_from_player(obj) if obj is not None else (0.0, -1.0, 0.0)
 
         if action_id == "gathering" and skill_id == "woodcutting":
-            self._start_anim("start_swing", "action:arm", right_arm, axis="p", amplitude=38.0, speed=8.8)
-            self._start_anim("start_swing", "action:tool", tool, axis="p", amplitude=56.0, speed=8.8, phase=0.35)
+            self._start_anim("start_swing", "action:arm", right_arm, axis="p", amplitude=44.0, speed=8.8, steps=8)
+            self._start_anim("start_swing", "action:tool", tool, axis="p", amplitude=66.0, speed=8.8, phase=0.35, steps=8)
             self._start_anim("start_shake", "action:target_shake", target, amplitude=0.020, speed=13.0)
             self._start_anim("start_tilt", "action:target", target, roll=4.5, speed=9.0)
             self._start_anim("start_pulse", "action:target_pulse", target, amplitude=0.025, speed=9.0)
             self._start_anim("start_burst", "action:target_burst", target, amplitude=0.035, duration=0.24)
         elif action_id == "gathering" and skill_id == "mining":
-            self._start_anim("start_swing", "action:arm", right_arm, axis="p", amplitude=44.0, speed=9.5)
-            self._start_anim("start_swing", "action:tool", tool, axis="p", amplitude=62.0, speed=9.5, phase=0.25)
+            self._start_anim("start_swing", "action:arm", right_arm, axis="p", amplitude=50.0, speed=9.5, steps=8)
+            self._start_anim("start_swing", "action:tool", tool, axis="p", amplitude=72.0, speed=9.5, phase=0.25, steps=8)
             self._start_anim("start_shake", "action:target_shake", target, amplitude=0.030, speed=16.0)
             self._start_anim("start_tilt", "action:target", target, pitch=2.5, roll=4.0, speed=11.0)
             self._start_anim("start_flash", "action:target_flash", target, color=(1.20, 1.15, 0.90, 1.0), speed=8.0)
@@ -558,13 +568,13 @@ class InteractionManager:
             self._start_anim("start_spark", "action:target_spark", target, lift=0.08, duration=0.18)
         elif action_id == "gathering" and skill_id == "fishing":
             self._start_anim("start_tilt", "action:player_lean", player_node, pitch=2.5, roll=2.5, speed=4.2)
-            self._start_anim("start_swing", "action:tool", tool, axis="r", amplitude=20.0, speed=4.8)
+            self._start_anim("start_swing", "action:tool", tool, axis="r", amplitude=24.0, speed=4.8, steps=8)
             self._start_anim("start_pulse", "action:target_pulse", target, amplitude=0.08, speed=5.2)
             self._start_anim("start_rotate", "action:target_rotate", target, degrees_per_second=28.0)
             self._start_anim("start_ripple", "action:target_ripple", target, amplitude=0.12, duration=0.42)
         elif action_id == "cooking":
             self._start_anim("start_tilt", "action:player_lean", player_node, pitch=2.0, roll=1.5, speed=4.4)
-            self._start_anim("start_swing", "action:arm", right_arm, axis="p", amplitude=18.0, speed=6.0)
+            self._start_anim("start_swing", "action:arm", right_arm, axis="p", amplitude=22.0, speed=6.0, steps=8)
             self._start_anim("start_pulse", "action:range_pulse", target, amplitude=0.035, speed=5.5)
             self._start_anim("start_flash", "action:range_glow", target, color=(1.16, 0.78, 0.42, 1.0), speed=5.5)
             self._start_anim("start_burst", "action:range_burst", target, amplitude=0.04, color=(1.22, 0.74, 0.36, 1.0), duration=0.28)
@@ -574,15 +584,15 @@ class InteractionManager:
             self._start_anim("start_flash", "action:furnace_glow", target, color=(1.25, 0.62, 0.28, 1.0), speed=6.2)
             self._start_anim("start_burst", "action:furnace_burst", target, amplitude=0.05, color=(1.30, 0.58, 0.20, 1.0), duration=0.30)
         elif action_id == "smithing":
-            self._start_anim("start_swing", "action:arm", right_arm, axis="p", amplitude=46.0, speed=10.5)
-            self._start_anim("start_swing", "action:tool", tool, axis="p", amplitude=64.0, speed=10.5, phase=0.25)
+            self._start_anim("start_swing", "action:arm", right_arm, axis="p", amplitude=52.0, speed=10.5, steps=8)
+            self._start_anim("start_swing", "action:tool", tool, axis="p", amplitude=74.0, speed=10.5, phase=0.25, steps=8)
             self._start_anim("start_pulse", "action:anvil_pulse", target, amplitude=0.035, speed=10.0)
             self._start_anim("start_flash", "action:anvil_flash", target, color=(1.28, 1.15, 0.74, 1.0), speed=10.0)
             self._start_anim("start_impact", "action:anvil_impact", target, direction=target_direction, distance=0.025, duration=0.16)
             self._start_anim("start_spark", "action:anvil_spark", target, lift=0.10, duration=0.18)
         elif action_id == "combat":
-            self._start_anim("start_swing", "action:arm", right_arm, axis="p", amplitude=36.0, speed=7.8)
-            self._start_anim("start_swing", "action:tool", tool, axis="p", amplitude=50.0, speed=7.8, phase=0.20)
+            self._start_anim("start_swing", "action:arm", right_arm, axis="p", amplitude=44.0, speed=7.8, steps=8)
+            self._start_anim("start_swing", "action:tool", tool, axis="p", amplitude=60.0, speed=7.8, phase=0.20, steps=8)
             self._start_anim("start_bob", "action:combat_bob", player_node, amplitude=0.018, speed=7.8)
             self._start_anim("start_pulse", "action:combat_target", target, amplitude=0.018, speed=7.8)
 
@@ -601,7 +611,7 @@ class InteractionManager:
         if player_action is not None:
             start_player(player_action)
 
-    def _animate_hit(self, obj: WorldObject | None) -> None:
+    def _animate_hit(self, obj: WorldObject | None, damage: int = 0) -> None:
         if obj is None or self.animator is None:
             return
         self._start_anim(
@@ -617,6 +627,34 @@ class InteractionManager:
             direction=self._direction_from_player(obj),
             distance=0.045,
             duration=0.18,
+        )
+        if damage > 0:
+            self._start_anim(
+                "start_float_text",
+                f"fx:damage:{obj.object_id}",
+                obj.node,
+                text=f"-{damage}",
+                color=(1.0, 0.30, 0.18, 1.0),
+            )
+
+    def _animate_player_hit(self, damage: int) -> None:
+        if self.animator is None:
+            return
+        player_node = getattr(self.player, "node", None)
+        self._start_anim(
+            "start_hit",
+            "fx:player_hit",
+            player_node,
+            direction=(0.0, -1.0, 0.0),
+            distance=0.035,
+            duration=0.18,
+        )
+        self._start_anim(
+            "start_float_text",
+            "fx:player_damage",
+            player_node,
+            text=f"-{damage}",
+            color=(1.0, 0.20, 0.12, 1.0),
         )
 
     def _animate_defeat(self, obj: WorldObject) -> None:
@@ -665,6 +703,12 @@ class InteractionManager:
     def _cancel_gathering(self) -> None:
         if self.gathering is not None and self.gathering.cancel_pending():
             self._stop_action_animation()
+
+    def _gathering_target_invalid(self) -> bool:
+        if self.gathering is None or self.gathering.pending is None:
+            return False
+        obj = self._get_target(self.gathering.pending.node_id)
+        return obj is None or not obj.active or obj.object_id not in self.gathering.nodes
 
     def _cancel_cooking(self) -> None:
         if self.cooking is not None and self.cooking.cancel_pending():
