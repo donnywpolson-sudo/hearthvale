@@ -2,43 +2,52 @@
 
 ## Audit report path
 
-None. The audit cycle was blocked before report creation because `.codex/AUDIT.md` is read-only in this sandbox.
+`reports\audit\AUDIT_REPORT_20260621_143947.md`
+
+## Latest report pointer path
+
+`reports\audit\AUDIT_REPORT_LATEST.md`
 
 ## Files changed
 
-* `CODEX_HANDOFF.md`: recorded the blocked audit cycle and checks run.
+* `RUN_AUDIT_CYCLE.ps1`: moved generated audit outputs to `reports\audit`, made `.codex\AUDIT.md` read-only/optional, and changed Step 3 to select but not remediate findings.
+* `reports\audit\AUDIT_CURRENT.md`: created the reusable Hearthvale audit prompt from the available meta/canonical audit guidance.
+* `reports\audit\AUDIT_REPORT_20260621_143947.md`: created the timestamped audit report.
+* `reports\audit\AUDIT_REPORT_LATEST.md`: created the latest-report pointer.
+* `CODEX_HANDOFF.md`: replaced the stale blocked-run handoff with this completed audit-cycle handoff.
 
-## Issue fixed
+## Remediation batch selected
 
-None. Step 1 could not update `.codex/AUDIT.md`, so Step 2 and Step 3 were not completed.
+Clean the smallest non-gameplay protected-term drift batch:
+
+* Remove or rename the legacy protected desktop-folder fallback in `launcher\hearthvale_launcher.py`.
+* Update the focused launcher test fixture in `tests\test_launcher.py`.
+* Reword `GRAPHICS_ANIMATION_NOTE.md` to avoid naming protected games.
+* Do not touch gameplay code, save migrations, protected-term policy, content data, visuals/audio implementation, routines, or broad tests.
+* Treat ignored local `Hearthvale.spec` as generated/user-local; remove or regenerate only with explicit user approval.
 
 ## Tests/checks run
 
-* `git status --short`: clean before checks.
-* `Get-ChildItem -Force .codex`: inspected audit prompt directory.
-* `Get-ChildItem -Force`: inspected top-level repo entries.
-* `Get-Content -Raw CODEX_HANDOFF.md`: read prior handoff.
-* `Get-Content -Raw README.md`: inspected project docs.
-* `Get-Content -Raw requirements.txt`: inspected dependencies.
-* `Get-Content -Raw .codex\META_AUDIT.md`: inspected meta-audit instructions.
-* `Get-Content -Raw .codex\AUDIT.md`: inspected current audit prompt.
-* `Get-Content -Raw AGENTS.md`: inspected repo rules.
-* `Get-Content -Raw RUN_AUDIT_CYCLE.ps1`: inspected audit runner wrapper.
-* `Get-Content -Raw game\settings.py`: inspected save/log/user-data path settings.
-* `rg --files ...`: inventoried tracked-relevant files while skipping generated/cache/build/runtime output.
-* `pwd`: verified repo path.
-* `git rev-parse --show-toplevel`: verified repo root.
-* `Get-Content .\game\tools\validate_data.py -TotalCount 220`: confirmed validation entry point is read-only.
-* `Get-Content -Raw game\engine\validation.py`: inspected validation coverage.
-* `rg -n ...`: searched system/risk markers and protected-term drift.
-* attempted `apply_patch` for `.codex/AUDIT.md`: rejected because `.codex` is read-only.
+* `git status --short`: pre-existing ` M RUN_AUDIT_CYCLE.ps1`.
+* `pwd`: confirmed `C:\Users\donny\Desktop\hearthvale`.
+* `git rev-parse --show-toplevel`: confirmed `C:/Users/donny/Desktop/hearthvale`.
+* Targeted reads: `CODEX_HANDOFF.md`, `.codex\META_AUDIT.md`, `.codex\AUDIT.md`, `AGENTS.md`, `README.md`, `requirements.txt`, `.gitignore`, targeted source/data/test/docs/launcher files.
+* Targeted searches: implementation/risk search, case-insensitive protected-term search, data/system/test evidence searches.
+* `python -B -m game.tools.validate_data`: passed.
+* `python -B -m pytest -p no:cacheprovider tests\test_validation.py tests\test_launcher.py`: 40 passed.
+* `git status --short` before report writes: unchanged pre-existing ` M RUN_AUDIT_CYCLE.ps1`.
+* `powershell -NoProfile -ExecutionPolicy Bypass -File .\RUN_AUDIT_CYCLE.ps1`: completed.
+* Wrapper `python -B -m game.tools.validate_data`: passed.
+* Wrapper `python -B -m pytest -p no:cacheprovider`: 250 passed.
 
 ## Remaining findings
 
-* `.codex/AUDIT.md` could not be updated, so no new timestamped audit report was created.
-* Because there is no new audit report, no remediation batch was selected or fixed.
-* Protected-term search found policy text, validation guard code/tests, and legacy save migration aliases; active data drift was not found in the targeted search.
+* Protected-term drift remains in `launcher\hearthvale_launcher.py`, `tests\test_launcher.py`, `GRAPHICS_ANIMATION_NOTE.md`, and ignored local `Hearthvale.spec`.
+* `ranged` and `magic` are active systems but absent from `game\data\skills.json`, relying on fallback definitions.
+* Daily routines are missing because game time is fixed at noon.
+* Visuals remain procedural placeholder geometry and audio/music are missing.
+* Manual game smoke was not run.
 
 ## Next recommended step
 
-Make `.codex` writable for Codex, then rerun the audit cycle so `.codex/AUDIT.md` and the timestamped audit report can be updated in the requested location.
+Implement the selected non-gameplay protected-term drift cleanup batch, then run targeted launcher/protected-term checks only.

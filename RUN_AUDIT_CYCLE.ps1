@@ -14,39 +14,58 @@ if ($ActualRepoRoot -ne $ExpectedRepoRoot) {
 }
 
 $MetaAuditPath = ".codex\META_AUDIT.md"
-$AuditPath = ".codex\AUDIT.md"
+$CanonicalAuditPath = ".codex\AUDIT.md"
+$AuditOutputDir = "reports\audit"
+$CurrentAuditPath = Join-Path $AuditOutputDir "AUDIT_CURRENT.md"
+$LatestReportPath = Join-Path $AuditOutputDir "AUDIT_REPORT_LATEST.md"
+$Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$ReportPath = Join-Path $AuditOutputDir "AUDIT_REPORT_$Timestamp.md"
 
-if (-not (Test-Path $MetaAuditPath)) {
-    throw "Missing $MetaAuditPath"
+$dirty = @(git status --porcelain)
+$blockingDirty = @()
+foreach ($line in $dirty) {
+    $path = $line.Substring(3).Trim()
+    $allowed = (
+        $path -eq "RUN_AUDIT_CYCLE.ps1" -or
+        $path -eq "CODEX_HANDOFF.md" -or
+        $path -like "reports/audit/*"
+    )
+    if (-not $allowed) {
+        $blockingDirty += $line
+    }
 }
-
-if (-not (Test-Path $AuditPath)) {
-    throw "Missing $AuditPath"
-}
-
-$dirty = git status --porcelain
-if ($dirty) {
-    Write-Host "Repo is not clean. Stop and review git status first:" -ForegroundColor Red
-    git status --short
+if ($blockingDirty) {
+    Write-Host "Repo has non-audit changes. Stop and review git status first:" -ForegroundColor Red
+    $blockingDirty | ForEach-Object { Write-Host $_ }
     exit 1
 }
+if ($dirty) {
+    Write-Host "Continuing with existing audit-infrastructure changes:" -ForegroundColor Yellow
+    git status --short
+}
+
+New-Item -ItemType Directory -Force -Path $AuditOutputDir | Out-Null
+
+$MetaAuditStatus = if (Test-Path $MetaAuditPath) { "available at $MetaAuditPath" } else { "not available" }
+$CanonicalAuditStatus = if (Test-Path $CanonicalAuditPath) { "available at $CanonicalAuditPath" } else { "not available" }
 
 $prompt = @"
 Run one audit cycle.
 
 Step 1:
-Use $MetaAuditPath to inspect the current repo and update $AuditPath.
-$AuditPath should become the best reusable project-specific audit prompt for this repo.
+Use the meta-audit prompt if available ($MetaAuditStatus) and the canonical audit prompt if available ($CanonicalAuditStatus) to inspect the current repo and update $CurrentAuditPath.
+$CanonicalAuditPath is an optional read-only canonical prompt location. Read it if available, but do not write to .codex and do not fail if .codex is read-only or unavailable.
+$CurrentAuditPath should become the best reusable project-specific audit prompt for this repo.
 
 Step 2:
-Using the updated $AuditPath, audit the repo and create one new timestamped audit report.
+Using the updated $CurrentAuditPath, audit the repo and create one new timestamped audit report at $ReportPath.
 The audit report should identify what to improve.
 Do not fix code during the audit step.
 
 Step 3:
-Read the new audit report and fix only the next smallest safe actionable batch.
-Do not fix everything.
-Do not do unrelated refactors.
+Read the new audit report and select only the next smallest safe actionable remediation batch.
+Do not fix the selected batch yet.
+Do not modify gameplay code, save migrations, protected-term policy, content data, visuals, audio, routines, or tests.
 Do not delete user work.
 Do not commit.
 
@@ -57,22 +76,35 @@ Rules:
 - If full pytest is needed, ask me to run it instead of running it yourself.
 - Update or create CODEX_HANDOFF.md with:
   - audit report path
+  - latest report pointer path
   - files changed
-  - issue fixed
+  - remediation batch selected
   - tests/checks run
   - remaining findings
   - next recommended step
 
 Expected allowed changes:
-- $AuditPath
-- one timestamped audit report
+- $CurrentAuditPath
+- $ReportPath
+- $LatestReportPath
 - CODEX_HANDOFF.md
-- only source/test files needed for the single small remediation batch
+- no remediation/source/test/data/gameplay files
 
 Return only Changed, Notes/blockers, Next, Metrics.
 "@
 
 $prompt | codex exec --cd "$RepoRoot" --sandbox workspace-write -
+
+if (-not (Test-Path $ReportPath)) {
+    throw "Audit report was not created at $ReportPath"
+}
+
+@"
+# Latest Audit Report
+
+Path: $ReportPath
+Generated: $Timestamp
+"@ | Set-Content -Path $LatestReportPath -Encoding UTF8
 
 Write-Host ""
 Write-Host "Running local verification..." -ForegroundColor Cyan
