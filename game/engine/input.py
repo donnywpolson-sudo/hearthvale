@@ -24,7 +24,7 @@ class InputManager:
         self.app.accept("mouse3", self.app.on_right_click)
         self.app.accept("f5", self.app.save_game)
         self.app.accept("f9", self.app.load_game)
-        self.app.accept("escape", self._ignore_escape)
+        self.app.accept("escape", getattr(self.app, "on_escape_key", self._ignore_escape))
         self.app.accept("i", self.app.toggle_inventory_tab)
         self.app.accept("c", self.app.toggle_clothes_tab)
         self.app.accept("k", self.app.toggle_skills_tab)

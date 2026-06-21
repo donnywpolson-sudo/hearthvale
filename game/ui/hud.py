@@ -26,6 +26,11 @@ INVENTORY_TAB = "inventory"
 CLOTHES_TAB = "clothes"
 SKILLS_TAB = "skills"
 TAB_ORDER = (INVENTORY_TAB, CLOTHES_TAB, SKILLS_TAB)
+DEFAULT_VIEWPORT_ASPECT = 16.0 / 9.0
+TAB_BOX_FRAME_SIZE = (-0.235, 0.235, -0.94, 0.04)
+TAB_BOX_COLLAPSED_FRAME_SIZE = (-0.235, 0.235, -0.075, 0.04)
+TAB_BOX_POS = (DEFAULT_VIEWPORT_ASPECT - TAB_BOX_FRAME_SIZE[1], 0, -1.0 - TAB_BOX_FRAME_SIZE[2])
+TAB_BUTTON_FRAME_SIZE = (-0.070, 0.070, -0.033, 0.033)
 INVENTORY_COLUMNS = 4
 INVENTORY_ROWS = 7
 INVENTORY_SLOT_COUNT = INVENTORY_SLOT_LIMIT
@@ -152,6 +157,10 @@ class Hud:
         self.chat_messages: list[str] = []
         self.chat_scroll = 0
         self.context_buttons: list[DirectButton] = []
+        self.loot_buttons: list[DirectButton] = []
+        self.loot_tile: tuple[int, int] | None = None
+        self.loot_command: Callable[[str], None] | None = None
+        self.viewport_aspect = DEFAULT_VIEWPORT_ASPECT
 
         self.stats_panel = _panel((-0.02, 0.49, -0.22, 0.04), (-1.75, 0, 0.95), PANEL)
         self.stats = _text(self.stats_panel, "", (0.025, -0.035), STATS_TEXT_SCALE, TextNode.ALeft, TEXT, True)
@@ -190,7 +199,6 @@ class Hud:
         _frame((-0.012, 0.012, -0.012, 0.012), (0.10, 0, 0.06), (0.10, 0.44, 0.14, 1), self.minimap)
         _frame((-0.012, 0.012, -0.012, 0.012), (0.12, 0, -0.08), (0.68, 0.44, 0.20, 1), self.minimap)
 
-        self.side_panel = _panel((-0.055, 0.055, -0.36, 0.36), (1.725, 0, -0.04), PANEL)
         self.active_tab = ""
         self.tabs_collapsed = False
         self.tab_buttons: dict[str, DirectButton] = {}
@@ -246,6 +254,9 @@ class Hud:
 
         self.context_panel = _panel((-0.17, 0.17, -0.30, 0.03), (0.0, 0, 0.0), PANEL_DARK)
         self.context_panel.hide()
+        self.loot_panel = _panel((-0.24, 0.24, -0.20, 0.03), (0.0, 0, 0.0), PANEL_DARK)
+        self.loot_panel.hide()
+        self.apply_viewport_layout(DEFAULT_VIEWPORT_ASPECT)
 
     def update(
         self,
@@ -351,6 +362,7 @@ class Hud:
 
     def open_bank(self) -> None:
         self.hide_context_menu()
+        self.hide_loot_window()
         self._close_quantity_prompt()
         self.bank_is_open = True
         self.bank_panel.show()
@@ -358,6 +370,7 @@ class Hud:
     def close_bank(self) -> None:
         self.bank_is_open = False
         self.hide_context_menu()
+        self.hide_loot_window()
         self._close_quantity_prompt()
         self.bank_panel.hide()
 
@@ -366,6 +379,7 @@ class Hud:
         self.shop_tab = "buy"
         self.shop_selected_row_id = ""
         self.hide_context_menu()
+        self.hide_loot_window()
         self._close_quantity_prompt()
         self._sync_shop_tabs()
         self.shop_is_open = True
@@ -374,6 +388,7 @@ class Hud:
     def close_shop(self) -> None:
         self.shop_is_open = False
         self.hide_context_menu()
+        self.hide_loot_window()
         self._close_quantity_prompt()
         self.shop_panel.hide()
 
@@ -383,6 +398,7 @@ class Hud:
         self.shop_tab = tab_id
         self.shop_selected_row_id = ""
         self.hide_context_menu()
+        self.hide_loot_window()
         self._close_quantity_prompt()
         self._sync_shop_tabs()
         self._sync_shop_rows(getattr(self, "_last_inventory", {}), self.shop_stock)
@@ -394,9 +410,10 @@ class Hud:
         pos: tuple[float, float, float] = (0.0, 0, 0.20),
     ) -> None:
         self.hide_context_menu()
+        self.hide_loot_window()
         if not actions:
             return
-        self.context_panel.setPos(*_clamp_context_menu_pos(pos))
+        self.context_panel.setPos(*_clamp_floating_panel_pos(pos, self.viewport_aspect, self.context_panel))
         self.context_panel.show()
         for index, (action_id, label) in enumerate(actions[:9]):
             button = _button(
@@ -415,6 +432,63 @@ class Hud:
         if hasattr(self, "context_panel"):
             self.context_panel.hide()
 
+    def show_loot_window(
+        self,
+        entries: list[tuple[str, str]],
+        command: Callable[[str], None],
+        tile: tuple[int, int],
+        pos: tuple[float, float, float] = (0.0, 0, 0.20),
+    ) -> None:
+        self.hide_context_menu()
+        self.hide_loot_window()
+        if not entries:
+            return
+        visible_entries = entries[:9]
+        bottom = -0.045 - len(visible_entries) * 0.055
+        frame_size = (-0.24, 0.24, bottom, 0.035)
+        _set_panel_frame_size(self.loot_panel, frame_size)
+        self.loot_panel.setPos(*_clamp_floating_panel_pos(pos, self.viewport_aspect, self.loot_panel))
+        self.loot_tile = tile
+        self.loot_command = command
+        self.loot_panel.show()
+        for index, (object_id, label) in enumerate(visible_entries):
+            button = _button(
+                self.loot_panel,
+                label,
+                (0.0, 0, -0.035 - index * 0.055),
+                0.023,
+                lambda object_id=object_id: self._choose_loot_item(object_id),
+                frame_size=(-0.21, 0.21, -0.024, 0.024),
+            )
+            self.loot_buttons.append(button)
+
+    def hide_loot_window(self) -> None:
+        for button in self.loot_buttons:
+            button.destroy()
+        self.loot_buttons.clear()
+        self.loot_tile = None
+        self.loot_command = None
+        if hasattr(self, "loot_panel"):
+            self.loot_panel.hide()
+
+    def has_open_loot_window(self) -> bool:
+        return not _widget_hidden(getattr(self, "loot_panel", None))
+
+    def close_transients(self) -> bool:
+        if not _widget_hidden(self.shop_amount_panel):
+            self._close_quantity_prompt()
+            return True
+        if not _widget_hidden(self.loot_panel):
+            self.hide_loot_window()
+            return True
+        if not _widget_hidden(self.context_panel):
+            self.hide_context_menu()
+            return True
+        if self.file_menu_open:
+            self._close_file_menu()
+            return True
+        return False
+
     def close_transient_if_outside(self, mouse_pos: object | None) -> bool:
         point = _mouse_point(mouse_pos)
         if point is None:
@@ -424,6 +498,11 @@ class Hud:
             region = _region_for(self.shop_amount_panel)
             if not _point_in_region(x, z, region):
                 self._close_quantity_prompt()
+                return True
+        if not _widget_hidden(self.loot_panel):
+            region = _region_for(self.loot_panel)
+            if not _point_in_region(x, z, region):
+                self.hide_loot_window()
                 return True
         if not _widget_hidden(self.context_panel):
             region = _region_for(self.context_panel)
@@ -443,20 +522,41 @@ class Hud:
             _region_for(self.quest_panel),
             _region_for(self.chat_panel),
             _region_for(self.minimap),
-            _region_for(self.side_panel),
-            _region_for(self.tab_box) if not self.tabs_collapsed else None,
+            _region_for(self.tab_box) if not _widget_hidden(self.tab_box) else None,
             _region_for(self.skill_detail_panel) if not _widget_hidden(getattr(self, "skill_detail_panel", None)) else None,
             _region_for(self.bank_panel) if self.bank_is_open else None,
             _region_for(self.shop_panel) if self.shop_is_open else None,
             _region_for(self.context_panel) if not _widget_hidden(self.context_panel) else None,
+            _region_for(self.loot_panel) if not _widget_hidden(self.loot_panel) else None,
             _region_for(self.shop_amount_panel) if not _widget_hidden(self.shop_amount_panel) else None,
             _region_for(self.file_menu) if self.file_menu_open else None,
         ]
         return any(_point_in_region(x, z, region) for region in regions if region is not None)
 
+    def apply_viewport_layout(self, aspect: float) -> None:
+        self.viewport_aspect = max(1.0, float(aspect))
+        _set_widget_pos(self.stats_panel, _anchor_pos(self.stats_panel, self.viewport_aspect, "left", "top"))
+        _set_widget_pos(self.feedback_panel, _anchor_pos(self.feedback_panel, self.viewport_aspect, "center", "top"))
+        feedback_region = _region_for(self.feedback_panel)
+        quest_frame = _widget_option(self.quest_panel, "frameSize")
+        if feedback_region is not None and quest_frame is not None:
+            try:
+                quest_top = float(quest_frame[3])  # type: ignore[index]
+            except (TypeError, ValueError, IndexError):
+                quest_top = 0.04
+            _set_widget_pos(self.quest_panel, (0.0, 0, feedback_region[2] - quest_top))
+        _set_widget_pos(self.chat_panel, _anchor_pos(self.chat_panel, self.viewport_aspect, "left", "bottom"))
+        _set_widget_pos(self.minimap, _anchor_pos(self.minimap, self.viewport_aspect, "right", "top"))
+        _set_widget_pos(self.tab_box, _anchor_pos(self.tab_box, self.viewport_aspect, "right", "bottom"))
+
     def _choose_context_action(self, action_id: str, command: Callable[[str], None]) -> None:
         self.hide_context_menu()
         command(action_id)
+
+    def _choose_loot_item(self, object_id: str) -> None:
+        command = self.loot_command
+        if command is not None:
+            command(object_id)
 
     def _close_file_menu(self) -> None:
         self.file_menu_open = False
@@ -488,10 +588,14 @@ class Hud:
 
     def _set_tabs_collapsed(self, collapsed: bool) -> None:
         self.tabs_collapsed = collapsed
+        _set_panel_frame_size(self.tab_box, TAB_BOX_COLLAPSED_FRAME_SIZE if collapsed else TAB_BOX_FRAME_SIZE)
         if collapsed:
-            self.tab_box.hide()
+            self.tab_box.show()
+            for frame in self.tab_frames.values():
+                frame.hide()
         else:
             self.tab_box.show()
+        self.apply_viewport_layout(self.viewport_aspect)
 
     def _build_side_tabs(self) -> None:
         tab_labels = {
@@ -500,22 +604,23 @@ class Hud:
             SKILLS_TAB: "Skill",
         }
         tab_positions = {
-            INVENTORY_TAB: 0.22,
-            CLOTHES_TAB: 0.0,
-            SKILLS_TAB: -0.22,
+            INVENTORY_TAB: -0.145,
+            SKILLS_TAB: 0.0,
+            CLOTHES_TAB: 0.145,
         }
+        self.tab_box = _panel(TAB_BOX_FRAME_SIZE, TAB_BOX_POS, PANEL_DARK)
         for tab_id in TAB_ORDER:
             self.tab_buttons[tab_id] = _button(
-                self.side_panel,
+                self.tab_box,
                 tab_labels[tab_id],
-                (0.0, 0, tab_positions[tab_id]),
+                (tab_positions[tab_id], 0, 0.005),
                 SIDE_TAB_TEXT_SCALE,
                 lambda tab_id=tab_id: self.select_tab(tab_id),
+                frame_size=TAB_BUTTON_FRAME_SIZE,
             )
 
-        self.tab_box = _panel((-0.235, 0.235, -0.94, 0.04), (1.425, 0, -0.08), PANEL_DARK)
         for tab_id in TAB_ORDER:
-            self.tab_frames[tab_id] = _frame((-0.225, 0.225, -0.925, 0.025), (0.0, 0, 0.0), UI.TRANSPARENT, self.tab_box)
+            self.tab_frames[tab_id] = _frame((-0.225, 0.225, -0.925, -0.055), (0.0, 0, 0.0), UI.TRANSPARENT, self.tab_box)
 
         self._build_inventory_tab(self.tab_frames[INVENTORY_TAB])
         self._build_clothes_tab(self.tab_frames[CLOTHES_TAB])
@@ -1351,6 +1456,38 @@ def _set_widget_roll(widget: object, roll: float) -> None:
         pass
 
 
+def _set_widget_pos(widget: object, pos: tuple[float, float, float]) -> None:
+    set_pos = getattr(widget, "setPos", None)
+    if callable(set_pos):
+        set_pos(*pos)
+        return
+    try:
+        widget["pos"] = pos  # type: ignore[index]
+    except Exception:
+        pass
+
+
+def _anchor_pos(widget: object, aspect: float, x_anchor: str, z_anchor: str) -> tuple[float, float, float]:
+    frame_size = _widget_option(widget, "frameSize")
+    try:
+        left, right, bottom, top = [float(value) for value in frame_size]  # type: ignore[union-attr]
+    except (TypeError, ValueError):
+        return (0.0, 0, 0.0)
+    if x_anchor == "left":
+        x = -aspect - left
+    elif x_anchor == "right":
+        x = aspect - right
+    else:
+        x = 0.0
+    if z_anchor == "top":
+        z = 1.0 - top
+    elif z_anchor == "bottom":
+        z = -1.0 - bottom
+    else:
+        z = 0.0
+    return (x, 0, z)
+
+
 def _frame(
     frame_size: tuple[float, float, float, float],
     pos: tuple[float, float, float],
@@ -1405,25 +1542,63 @@ def _panel(
 ) -> DirectFrame:
     panel = _frame(frame_size, pos, UI.STONE, parent)
     left, right, bottom, top = frame_size
-    _frame((left + border, right - border, bottom + border, top - border), (0, 0, 0), color, panel)
+    inner = _frame((left + border, right - border, bottom + border, top - border), (0, 0, 0), color, panel)
+    panel.inner_frame = inner
     return panel
 
 
-def _button(parent: Any, text: str, pos: tuple[float, float, float], scale: float, command: Callable[[], None]) -> DirectButton:
-    return DirectButton(
-        parent=parent,
-        text=text,
-        pos=pos,
-        scale=scale,
-        frameColor=(BUTTON, BUTTON_HOVER, BUTTON_HOVER, BUTTON),
-        text_fg=TEXT,
-        command=command,
-    )
+def _set_panel_frame_size(panel: DirectFrame, frame_size: tuple[float, float, float, float], border: float = 0.012) -> None:
+    panel["frameSize"] = frame_size
+    inner = getattr(panel, "inner_frame", None)
+    if inner is None:
+        return
+    left, right, bottom, top = frame_size
+    inner["frameSize"] = (left + border, right - border, bottom + border, top - border)
+
+
+def _button(
+    parent: Any,
+    text: str,
+    pos: tuple[float, float, float],
+    scale: float,
+    command: Callable[[], None],
+    *,
+    frame_size: tuple[float, float, float, float] | None = None,
+) -> DirectButton:
+    kwargs: dict[str, Any] = {
+        "parent": parent,
+        "text": text,
+        "pos": pos,
+        "scale": scale,
+        "frameColor": (BUTTON, BUTTON_HOVER, BUTTON_HOVER, BUTTON),
+        "text_fg": TEXT,
+        "command": command,
+    }
+    if frame_size is not None:
+        kwargs["frameSize"] = frame_size
+    return DirectButton(**kwargs)
 
 
 def _clamp_context_menu_pos(pos: tuple[float, float, float]) -> tuple[float, float, float]:
+    return _clamp_floating_panel_pos(pos, DEFAULT_VIEWPORT_ASPECT, (-0.17, 0.17, -0.30, 0.03))
+
+
+def _clamp_floating_panel_pos(
+    pos: tuple[float, float, float],
+    aspect: float,
+    widget_or_frame: object,
+) -> tuple[float, float, float]:
     x, y, z = pos
-    return (max(-1.24, min(1.24, x)), y, max(-0.62, min(0.88, z)))
+    frame_size = widget_or_frame if isinstance(widget_or_frame, tuple) else _widget_option(widget_or_frame, "frameSize")
+    try:
+        left, right, bottom, top = [float(value) for value in frame_size]  # type: ignore[union-attr]
+    except (TypeError, ValueError):
+        left, right, bottom, top = -0.17, 0.17, -0.30, 0.03
+    min_x = -aspect - left
+    max_x = aspect - right
+    min_z = -1.0 - bottom
+    max_z = 1.0 - top
+    return (max(min_x, min(max_x, x)), y, max(min_z, min(max_z, z)))
 
 
 def _slot_button(parent: Any, pos: tuple[float, float, float], command: Callable[[], None]) -> DirectButton:

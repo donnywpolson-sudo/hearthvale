@@ -370,6 +370,46 @@ def test_right_click_ground_opens_walk_here_menu(monkeypatch) -> None:
     assert moved == []
 
 
+def test_right_click_stacked_ground_items_opens_loot_window(monkeypatch) -> None:
+    from game.engine import app as app_module
+
+    world = WorldMap(
+        {
+            "width": 4,
+            "height": 4,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [],
+        }
+    )
+    world.add_ground_item("coins", 3, (1, 1))
+    world.add_ground_item("logs", 1, (1, 1))
+    loot_calls: list[tuple[list[tuple[str, str]], tuple[int, int], tuple[float, float, float]]] = []
+    shown: list[tuple[object, tuple[int, int]]] = []
+    fake_app = SimpleNamespace(
+        hud=SimpleNamespace(
+            show_loot_window=lambda entries, _command, tile, pos: loot_calls.append((entries, tile, pos)),
+        ),
+        world_map=world,
+        selection_marker=object(),
+        selected_text="",
+        _show_marker=lambda marker, tile: shown.append((marker, tile)),
+        _context_menu_pos=lambda: (0.25, 0, 0.30),
+        _item_name=lambda item_id: {"coins": "Coins", "logs": "Logs"}[item_id],
+    )
+    monkeypatch.setattr(app_module, "ground_tile_from_mouse", lambda _base, _grid: ((1, 1), None))
+    monkeypatch.setattr(app_module, "target_from_mouse", lambda _base, _world_map: (_ for _ in ()).throw(AssertionError("picked object")))
+
+    app_module.GameApp.on_right_click(fake_app)
+
+    assert loot_calls == [(
+        [("ground_item_0001", "Coins x3"), ("ground_item_0002", "Logs x1")],
+        (1, 1),
+        (0.25, 0, 0.30),
+    )]
+    assert shown == [(fake_app.selection_marker, (1, 1))]
+
+
 def test_right_click_over_hud_does_not_open_world_context(monkeypatch) -> None:
     from game.engine import app as app_module
 
@@ -780,12 +820,83 @@ def test_combat_walks_adjacent_kills_mob_and_spawns_pickup_drop() -> None:
     assert world.get_object("mob_01").active is False
     ground_items = [obj for obj in world.objects.values() if obj.kind == "ground_item"]
     assert [obj.item_id for obj in ground_items] == ["coins", "wooden_splinters"]
+    assert [obj.tile for obj in ground_items] == [(2, 2), (2, 2)]
+    assert [obj.object_id for obj in world.ground_items_at((2, 2))] == ["ground_item_0001", "ground_item_0002"]
     assert feedback[-1] == "Defeated Test sentry; you: 9/10 HP; drops appeared"
 
     manager.interact_with(ground_items[0])
 
     assert inventory.count("coins") == 3
     assert world.get_object(ground_items[0].object_id) is None
+    assert world.get_object(ground_items[1].object_id) is ground_items[1]
+
+
+def test_loot_window_pickup_removes_only_selected_stack() -> None:
+    from game.engine import app as app_module
+
+    world = WorldMap(
+        {
+            "width": 4,
+            "height": 4,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [],
+        }
+    )
+    coins = world.add_ground_item("coins", 3, (1, 1))
+    logs = world.add_ground_item("logs", 1, (1, 1))
+    inventory = Inventory()
+    feedback: list[str] = []
+    manager = InteractionManager(
+        world,
+        _Player(tile=(1, 1)),
+        inventory,
+        Skills(_skills()),
+        Shop(_items()),
+        lambda amount: None,
+        feedback.append,
+    )
+    loot_updates: list[list[tuple[str, str]]] = []
+    hidden: list[bool] = []
+    fake_hud = SimpleNamespace(
+        loot_panel=SimpleNamespace(pos=(0.20, 0, 0.30)),
+        show_loot_window=lambda entries, _command, _tile, **_kwargs: loot_updates.append(entries),
+        hide_loot_window=lambda: hidden.append(True),
+    )
+    fake_app = SimpleNamespace(
+        world_map=world,
+        interactions=manager,
+        hud=fake_hud,
+        _context_menu_pos=lambda: (0.20, 0, 0.30),
+        _item_name=lambda item_id: {"coins": "Coins", "logs": "Logs"}[item_id],
+    )
+
+    app_module.GameApp._pickup_loot_entry(fake_app, coins.object_id)
+
+    assert inventory.count("coins") == 3
+    assert inventory.count("logs") == 0
+    assert world.get_object(coins.object_id) is None
+    assert world.get_object(logs.object_id) is logs
+    assert loot_updates == [[(logs.object_id, "Logs x1")]]
+    assert hidden == []
+
+
+def test_open_loot_window_closes_when_player_moves_away() -> None:
+    from game.engine import app as app_module
+
+    hidden: list[bool] = []
+    fake_app = SimpleNamespace(
+        hud=SimpleNamespace(
+            loot_tile=(1, 1),
+            has_open_loot_window=lambda: True,
+            hide_loot_window=lambda: hidden.append(True),
+        ),
+        player=_Player(tile=(4, 4)),
+    )
+
+    app_module.GameApp._sync_open_loot_window(fake_app)
+
+    assert hidden == [True]
 
 
 def test_ranged_combat_starts_without_walking_when_target_in_range() -> None:

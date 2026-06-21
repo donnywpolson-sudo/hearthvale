@@ -51,6 +51,7 @@ class WorldMap:
         self.objects: dict[str, WorldObject] = {}
         self.scenery_objects: dict[str, WorldObject] = {}
         self.objects_by_tile: dict[Tile, WorldObject] = {}
+        self.ground_items_by_tile: dict[Tile, list[WorldObject]] = {}
         self.scenery_by_tile: dict[Tile, WorldObject] = {}
         self.shop_stock = [
             dict(raw_stock_item)
@@ -234,6 +235,9 @@ class WorldMap:
     def target_at(self, tile: Tile) -> WorldObject | None:
         return self.object_at(tile) or self.scenery_at(tile)
 
+    def ground_items_at(self, tile: Tile) -> list[WorldObject]:
+        return list(self.ground_items_by_tile.get(tile, ()))
+
     def decoration_at(self, tile: Tile) -> Decoration | None:
         return self.decorations_by_tile.get(tile)
 
@@ -266,15 +270,10 @@ class WorldMap:
 
     def spawn_ground_drops(self, origin: Tile, drops: Iterable[DropStack]) -> list[WorldObject]:
         created: list[WorldObject] = []
-        used_tiles: set[Tile] = set()
         for drop in drops:
             if drop.quantity <= 0:
                 continue
-            tile = self._next_ground_drop_tile(origin, used_tiles)
-            if tile is None:
-                continue
-            used_tiles.add(tile)
-            created.append(self.add_ground_item(drop.item_id, drop.quantity, tile))
+            created.append(self.add_ground_item(drop.item_id, drop.quantity, origin))
         return created
 
     def add_ground_item(
@@ -554,6 +553,10 @@ class WorldMap:
             for obj in self.objects.values()
             if obj.active and obj.is_interactable
         }
+        self.ground_items_by_tile = {}
+        for obj in self.objects.values():
+            if obj.active and obj.kind == "ground_item":
+                self.ground_items_by_tile.setdefault(obj.tile, []).append(obj)
         self.scenery_by_tile = {
             obj.tile: obj
             for obj in self.scenery_objects.values()

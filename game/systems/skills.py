@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import Any
+from typing import Any, Callable
 
 
 XP_PER_LEVEL = 100
@@ -29,8 +29,14 @@ class SkillState:
 
 
 class Skills:
-    def __init__(self, definitions: dict[str, Any] | list[dict[str, Any]] | None = None) -> None:
+    def __init__(
+        self,
+        definitions: dict[str, Any] | list[dict[str, Any]] | None = None,
+        *,
+        on_xp_gain: Callable[[str, int], None] | None = None,
+    ) -> None:
         self.definitions = _normalize_definitions(definitions)
+        self.on_xp_gain = on_xp_gain
         self.states: dict[str, SkillState] = {}
         for skill_id, definition in self.definitions.items():
             xp = int(definition.get("xp", 0))
@@ -47,6 +53,8 @@ class Skills:
         state = self.states.get(skill_id) or self.add_skill(skill_id)
         state.xp += amount
         state.level = self.level_for_xp(skill_id, state.xp)
+        if amount > 0 and self.on_xp_gain is not None:
+            self.on_xp_gain(skill_id, amount)
         return state.level
 
     def level(self, skill_id: str) -> int:

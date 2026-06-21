@@ -42,6 +42,17 @@ from game.world.time import GameTime
 LOGGER = logging.getLogger(__name__)
 DAYLIGHT_TINT = (1.0, 0.98, 0.90, 1.0)
 DAYLIGHT_SKY = (0.56, 0.70, 0.84, 1.0)
+XP_POPUP_COLOR = (1.0, 0.86, 0.44, 1.0)
+XP_POPUP_DURATION = 1.20
+XP_POPUP_FADE_IN = 0.12
+XP_POPUP_FADE_OUT = 0.55
+XP_POPUP_LIFT = 0.34
+XP_POPUP_SCALE = 0.135
+XP_POPUP_START_SCALE = 0.86
+XP_POPUP_HEAD_OFFSET = 1.30
+XP_POPUP_FORWARD_OFFSET = -0.25
+XP_POPUP_STACK_SPACING = 0.16
+XP_POPUP_MAX_STACK = 4
 
 
 class GameApp(ShowBase):
@@ -167,6 +178,7 @@ class GameApp(ShowBase):
             on_load=self.load_game,
             on_quit=self.userExit,
         )
+        self.hud.apply_viewport_layout(self.getAspectRatio())
         self.selected_text = "Selected: none"
         self.interactions = InteractionManager(
             self.world_map,
@@ -207,6 +219,8 @@ class GameApp(ShowBase):
         self.animator.update(dt)
         self.game_time.update(dt)
         self._apply_world_light()
+        self.hud.apply_viewport_layout(self.getAspectRatio())
+        self._sync_open_loot_window()
         self._update_hover_marker()
         self._update_hud()
         self.hud.tick(dt)
@@ -241,9 +255,11 @@ class GameApp(ShowBase):
             return
         if _hud_blocks_pointer(self):
             return
+        tile, _ = ground_tile_from_mouse(self, self.world_map.grid)
+        if tile is not None and GameApp._show_stacked_loot_window(self, tile):
+            return
         obj = target_from_mouse(self, self.world_map)
         if obj is None:
-            tile, _ = ground_tile_from_mouse(self, self.world_map.grid)
             if tile is not None:
                 self.selected_text = f"Selected tile: {tile[0]}, {tile[1]}"
                 self._show_marker(self.selection_marker, tile)
@@ -263,6 +279,68 @@ class GameApp(ShowBase):
             lambda action_id, object_id=obj.object_id: self._perform_context_action(object_id, action_id),
             pos=self._context_menu_pos(),
         )
+
+    def on_escape_key(self) -> None:
+        if hasattr(self, "hud") and self.hud.close_transients():
+            return
+
+    def _show_stacked_loot_window(self, tile: tuple[int, int]) -> bool:
+        ground_items_at = getattr(self.world_map, "ground_items_at", None)
+        ground_items = ground_items_at(tile) if callable(ground_items_at) else []
+        if len(ground_items) <= 1:
+            return False
+        self.selected_text = f"Selected tile: {tile[0]}, {tile[1]}"
+        self._show_marker(self.selection_marker, tile)
+        self.hud.show_loot_window(
+            GameApp._loot_window_entries(self, tile),
+            lambda object_id: GameApp._pickup_loot_entry(self, object_id),
+            tile,
+            pos=self._context_menu_pos(),
+        )
+        return True
+
+    def _loot_window_entries(self, tile: tuple[int, int]) -> list[tuple[str, str]]:
+        ground_items = self.world_map.ground_items_at(tile)
+        return [
+            (obj.object_id, f"{self._item_name(obj.item_id)} x{obj.quantity}")
+            for obj in ground_items
+        ]
+
+    def _pickup_loot_entry(self, object_id: str) -> None:
+        obj = self.world_map.get_object(object_id)
+        if obj is None or obj.kind != "ground_item":
+            self.hud.hide_loot_window()
+            return
+        tile = obj.tile
+        self.interactions.interact_with(obj)
+        GameApp._refresh_loot_window(self, tile)
+
+    def _refresh_loot_window(self, tile: tuple[int, int]) -> None:
+        entries = GameApp._loot_window_entries(self, tile)
+        if not entries:
+            self.hud.hide_loot_window()
+            return
+        self.hud.show_loot_window(
+            entries,
+            lambda object_id: GameApp._pickup_loot_entry(self, object_id),
+            tile,
+            pos=getattr(self.hud.loot_panel, "pos", self._context_menu_pos()),
+        )
+
+    def _sync_open_loot_window(self) -> None:
+        if not hasattr(self, "hud") or not self.hud.has_open_loot_window():
+            return
+        tile = self.hud.loot_tile
+        if tile is None:
+            self.hud.hide_loot_window()
+            return
+        distance = abs(self.player.tile[0] - tile[0]) + abs(self.player.tile[1] - tile[1])
+        if distance > settings.INTERACTION_RANGE:
+            self.hud.hide_loot_window()
+            return
+        entries = GameApp._loot_window_entries(self, tile)
+        if not entries:
+            self.hud.hide_loot_window()
 
     def _perform_context_action(self, object_id: str, action_id: str) -> None:
         get_target = getattr(self.world_map, "get_target", None)
@@ -825,6 +903,10 @@ class GameApp(ShowBase):
         return max(0.0, min(1.0, (pending.duration - remaining) / pending.duration))
 
     def _hover_label(self, tile: tuple[int, int]) -> str:
+        ground_items_at = getattr(self.world_map, "ground_items_at", None)
+        ground_items = ground_items_at(tile) if callable(ground_items_at) else []
+        if len(ground_items) > 1:
+            return f"{len(ground_items)} loot stacks"
         obj = self.world_map.target_at(tile)
         if obj is not None:
             if obj.is_resource_node and obj.depleted:

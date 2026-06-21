@@ -491,6 +491,11 @@ class SceneAnimator:
         color: Vec4Tuple = (1.0, 0.25, 0.12, 1.0),
         duration: float = 0.70,
         lift: float = 0.42,
+        base_pos: Vec3Tuple = (0.0, -0.36, 0.92),
+        scale: float = 0.22,
+        start_scale: float = 1.0,
+        fade_in: float = 0.0,
+        fade_out: float = 0.70,
     ) -> None:
         if not hasattr(node, "attachNewNode"):
             return
@@ -501,8 +506,10 @@ class SceneAnimator:
         text_node.setCardColor(0.07, 0.04, 0.02, 0.72)
         text_node.setCardAsMargin(0.18, 0.18, 0.06, 0.08)
         path = node.attachNewNode(text_node)
-        path.setPos(0.0, -0.36, 0.92)
-        path.setScale(0.22)
+        path.setPos(*base_pos)
+        path.setScale(scale)
+        if fade_in > 0:
+            path.setColorScale(1.0, 1.0, 1.0, 0.0)
         if hasattr(path, "setBillboardPointEye"):
             path.setBillboardPointEye()
         base = _capture(path)
@@ -510,6 +517,7 @@ class SceneAnimator:
         def apply(track: _Track) -> None:
             progress = _progress(track)
             eased = progress * progress * (3.0 - 2.0 * progress)
+            scale_eased = 1.0 - (1.0 - progress) * (1.0 - progress)
             _set_pos(
                 track.node,
                 (
@@ -518,7 +526,25 @@ class SceneAnimator:
                     track.base.pos[2] + lift * eased,
                 ),
             )
-            _set_color(track.node, (color[0], color[1], color[2], max(0.0, 1.0 - progress)))
+            if start_scale != 1.0:
+                scale_factor = start_scale + (1.0 - start_scale) * scale_eased
+                _set_scale(
+                    track.node,
+                    (
+                        track.base.scale[0] * scale_factor,
+                        track.base.scale[1] * scale_factor,
+                        track.base.scale[2] * scale_factor,
+                    ),
+                )
+            alpha = 1.0
+            if fade_in > 0:
+                alpha *= min(1.0, track.elapsed / fade_in)
+            if fade_out > 0:
+                fade_out_elapsed = max(0.0, track.elapsed - max(0.0, duration - fade_out))
+                alpha *= max(0.0, 1.0 - fade_out_elapsed / fade_out)
+            else:
+                alpha *= max(0.0, 1.0 - progress)
+            _set_color(track.node, (color[0], color[1], color[2], alpha))
 
         self._replace(
             _Track(
@@ -528,6 +554,7 @@ class SceneAnimator:
                 apply,
                 duration=duration,
                 reset_pos=True,
+                reset_scale=True,
                 reset_color=True,
                 restore_on_finish=False,
                 cleanup=lambda: path.removeNode() if hasattr(path, "removeNode") else None,

@@ -468,14 +468,14 @@ def test_context_menu_position_is_clamped(monkeypatch) -> None:
         pos=(9.0, 0, -9.0),
     )
 
-    assert ui.context_panel.pos == (1.24, 0, -0.62)
+    assert ui.context_panel.pos == (hud.DEFAULT_VIEWPORT_ASPECT - 0.17, 0, -0.70)
 
 
-def test_pointer_over_blocking_ui_covers_rail_and_overlays(monkeypatch) -> None:
+def test_pointer_over_blocking_ui_covers_tabs_and_overlays(monkeypatch) -> None:
     _install_hud_fakes(monkeypatch)
     ui = hud.Hud(_items())
 
-    assert ui.pointer_over_blocking_ui((1.72, 0.0)) is True
+    assert ui.pointer_over_blocking_ui((1.76, -0.99)) is True
     assert ui.pointer_over_blocking_ui((1.40, -0.30)) is True
     assert ui.pointer_over_blocking_ui((0.0, 0.91)) is True
     assert ui.pointer_over_blocking_ui((-0.20, 0.0)) is False
@@ -483,6 +483,7 @@ def test_pointer_over_blocking_ui_covers_rail_and_overlays(monkeypatch) -> None:
     ui.tab_buttons[hud.INVENTORY_TAB].click()
     assert ui.tabs_collapsed is True
     assert ui.pointer_over_blocking_ui((1.40, -0.30)) is False
+    assert ui.pointer_over_blocking_ui((1.53, -0.95)) is True
 
     ui.open_bank()
     assert ui.pointer_over_blocking_ui((0.0, 0.0)) is True
@@ -496,11 +497,35 @@ def test_pointer_over_blocking_ui_covers_rail_and_overlays(monkeypatch) -> None:
     assert ui.pointer_over_blocking_ui((0.10, 0.20)) is True
 
 
+def test_viewport_layout_anchors_edge_panels(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    ui = hud.Hud(_items())
+
+    ui.apply_viewport_layout(2.25)
+
+    assert hud._region_for(ui.stats_panel)[0] == -2.25
+    assert hud._region_for(ui.stats_panel)[3] == 1.0
+    assert hud._region_for(ui.feedback_panel)[3] == 1.0
+    assert hud._region_for(ui.quest_panel)[3] == hud._region_for(ui.feedback_panel)[2]
+    assert hud._region_for(ui.chat_panel)[0] == -2.25
+    assert hud._region_for(ui.chat_panel)[2] == -1.0
+    assert hud._region_for(ui.minimap)[1] == 2.25
+    assert hud._region_for(ui.minimap)[3] == 1.0
+    assert hud._region_for(ui.tab_box)[1] == 2.25
+    assert hud._region_for(ui.tab_box)[2] == -1.0
+
+
 def test_side_tabs_switch_visible_content(monkeypatch) -> None:
     _install_hud_fakes(monkeypatch)
     ui = hud.Hud(_items())
 
     assert ui.active_tab == hud.INVENTORY_TAB
+    assert ui.tab_box.pos == hud.TAB_BOX_POS
+    assert ui.tab_buttons[hud.INVENTORY_TAB].options["parent"] is ui.tab_box
+    assert ui.tab_buttons[hud.INVENTORY_TAB].pos == (-0.145, 0, 0.005)
+    assert ui.tab_buttons[hud.INVENTORY_TAB].options["frameSize"] == hud.TAB_BUTTON_FRAME_SIZE
+    assert ui.tab_buttons[hud.SKILLS_TAB].pos == (0.0, 0, 0.005)
+    assert ui.tab_buttons[hud.CLOTHES_TAB].pos == (0.145, 0, 0.005)
     assert ui.tab_frames[hud.INVENTORY_TAB].hidden is False
     assert ui.tab_frames[hud.CLOTHES_TAB].hidden is True
     assert ui.tab_frames[hud.SKILLS_TAB].hidden is True
@@ -516,7 +541,32 @@ def test_side_tabs_switch_visible_content(monkeypatch) -> None:
     ui.tab_buttons[hud.SKILLS_TAB].click()
 
     assert ui.tabs_collapsed is True
-    assert ui.tab_box.hidden is True
+    assert ui.tab_box.hidden is False
+    assert ui.tab_box.options["frameSize"] == hud.TAB_BOX_COLLAPSED_FRAME_SIZE
+    assert ui.tab_frames[hud.SKILLS_TAB].hidden is True
+
+
+def test_loot_window_selects_one_stack_and_closes_as_transient(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    selected: list[str] = []
+    ui = hud.Hud(_items())
+
+    ui.show_loot_window(
+        [("ground_item_0001", "Coins x3"), ("ground_item_0002", "Logs x1")],
+        selected.append,
+        (2, 2),
+        pos=(9.0, 0, 9.0),
+    )
+
+    assert ui.loot_panel.hidden is False
+    assert ui.loot_tile == (2, 2)
+    assert [button.text for button in ui.loot_buttons] == ["Coins x3", "Logs x1"]
+
+    ui.loot_buttons[1].click()
+
+    assert selected == ["ground_item_0002"]
+    assert ui.close_transient_if_outside((0.0, 0.0)) is True
+    assert ui.loot_panel.hidden is True
 
 
 def test_clothes_tab_shows_equipped_item_icons(monkeypatch) -> None:
