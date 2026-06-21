@@ -1,7 +1,17 @@
 ﻿$ErrorActionPreference = "Stop"
 
 $RepoRoot = "C:\Users\donny\Desktop\hearthvale"
-Set-Location $RepoRoot
+Set-Location -LiteralPath $RepoRoot
+
+$ExpectedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
+$ActualRepoRoot = git rev-parse --show-toplevel
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to resolve git repo root from $RepoRoot"
+}
+$ActualRepoRoot = (Resolve-Path -LiteralPath $ActualRepoRoot).Path
+if ($ActualRepoRoot -ne $ExpectedRepoRoot) {
+    throw "Wrong repo root. Expected $ExpectedRepoRoot but got $ActualRepoRoot"
+}
 
 $MetaAuditPath = ".codex\META_AUDIT.md"
 $AuditPath = ".codex\AUDIT.md"
@@ -62,7 +72,7 @@ Expected allowed changes:
 Return only Changed, Notes/blockers, Next, Metrics.
 "@
 
-$prompt | codex exec --sandbox workspace-write --skip-git-repo-check -
+$prompt | codex exec --cd "$RepoRoot" --sandbox workspace-write -
 
 Write-Host ""
 Write-Host "Running local verification..." -ForegroundColor Cyan
