@@ -1,0 +1,65 @@
+$ErrorActionPreference = "Stop"
+
+Set-Location "C:\Users\donny\Desktop\hearthvale"
+
+$dirty = git status --porcelain
+if ($dirty) {
+    Write-Host "Repo is not clean. Stop and review git status first:" -ForegroundColor Red
+    git status --short
+    exit 1
+}
+
+$prompt = @'
+Run one audit cycle.
+
+Step 1:
+Use META AUDIT.md to inspect the current repo and update AUDIT.md.
+AUDIT.md should become the best reusable project-specific audit prompt for this repo.
+
+Step 2:
+Using the updated AUDIT.md, audit the repo and create one new timestamped audit report.
+The audit report should identify what to improve.
+Do not fix code during the audit step.
+
+Step 3:
+Read the new audit report and fix only the next smallest safe actionable batch.
+Do not fix everything.
+Do not do unrelated refactors.
+Do not delete user work.
+Do not commit.
+
+Rules:
+- Read files directly by path. Do not ask me to paste reports or logs.
+- Keep changes minimal.
+- Prefer targeted tests only.
+- If full pytest is needed, ask me to run it instead of running it yourself.
+- Update or create CODEX_HANDOFF.md with:
+  - audit report path
+  - files changed
+  - issue fixed
+  - tests/checks run
+  - remaining findings
+  - next recommended step
+
+Expected allowed changes:
+- AUDIT.md
+- one timestamped audit report
+- CODEX_HANDOFF.md
+- only source/test files needed for the single small remediation batch
+
+Return only Changed, Notes/blockers, Next, Metrics.
+'@
+
+$prompt | codex exec --sandbox workspace-write --skip-git-repo-check -
+
+Write-Host ""
+Write-Host "Running local verification..." -ForegroundColor Cyan
+
+$env:PYTHONDONTWRITEBYTECODE = "1"
+
+python -B -m game.tools.validate_data
+python -B -m pytest -p no:cacheprovider
+
+Write-Host ""
+Write-Host "Final git status:" -ForegroundColor Cyan
+git status --short
