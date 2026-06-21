@@ -12,7 +12,7 @@ Goal: inspect the current repository and produce one concise, evidence-based aud
 * Create or update files only when explicitly requested, and only within the requested report/handoff paths.
 * Skip `.venv/`, `.pytest_cache/`, `__pycache__/`, `*.pyc`, `build/`, `dist/`, `logs/`, binary files, and real user data.
 * Do not inspect real account/save contents unless explicitly asked: `users.db`, `saves/`, `savegame.json`.
-* If the user supplies stricter audit-only rules, allowed output paths, forbidden remediation areas, or timestamp/report names, obey those limits over this reusable prompt.
+* If the user supplies stricter audit-only rules, allowed output paths, forbidden remediation areas, timestamp/report names, latest-pointer paths, handoff paths, or final response sections, obey those limits over this reusable prompt.
 * Do not run the game, launcher, build script, formatter, installer, manual smoke, or full pytest unless the user explicitly asks. Ask the user to run full/expensive checks when needed.
 * Evidence must be concise: `path:line`, function/class/config key, command, or test name. Do not paste large source files or full logs.
 * Code/docs mentioning a feature is not proof it is playable. Classify audited systems exactly as `fully implemented`, `partially implemented`, `partially wired`, `present but unused`, `stub/TODO`, `missing`, or `manually unverified`.
@@ -46,7 +46,7 @@ rg -n "TODO|FIXME|pass|NotImplemented|stub|animation|sprite|tileset|audio|music|
 rg -ni "runescape|osrs|stardew|runite|\brune\b" AGENTS.md README.md docs launcher game tests -g "!*.pyc" -g "!__pycache__/**"
 ```
 
-Include `CODEX_HANDOFF.md` and root planning/asset notes such as `GRAPHICS_ANIMATION_NOTE.md` in the searches when present. If `CODEX_HANDOFF.md` conflicts with current `git status`, report it as stale handoff/process drift rather than source drift.
+Include `CODEX_HANDOFF.md`, audit runner scripts such as `RUN_AUDIT_CYCLE.ps1`, and root planning/asset notes such as `GRAPHICS_ANIMATION_NOTE.md` in the searches when present. If `CODEX_HANDOFF.md` conflicts with current `git status`, report it as stale handoff/process drift rather than source drift.
 
 Classify protected-term hits as policy text, legacy compatibility/migration coverage, generated/ignored drift, or unsafe active content drift.
 
@@ -111,7 +111,7 @@ Avoid broad rewrites, speculative architecture, generated-file churn, and clone-
 
 If the user asks for an audit cycle, read the new audit report after writing it and select exactly one smallest safe actionable remediation batch. Do not fix the batch unless the user separately asks for implementation. Record the selected batch in `CODEX_HANDOFF.md` only when the task explicitly requests a handoff update.
 
-If the user forbids source/gameplay/data/test remediation for the selected batch, select only a future batch that stays inside the allowed future scope, or state that no safe batch is selectable.
+If the user forbids source/gameplay/data/test remediation for the selected batch, select only a future docs/process/report batch that stays inside the allowed future scope, or state that no safe batch is selectable.
 
 Audit-cycle reports and handoffs must clearly state:
 

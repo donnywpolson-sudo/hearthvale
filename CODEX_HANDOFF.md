@@ -2,75 +2,91 @@
 
 ## Current task
 
-Implemented only the selected audit batch: Launcher build dependency install guard.
+Audit-only cycle completed.
+
+## Audit status
+
+* Audit-only: yes
+* Remediation applied: no
+* Selected batch: Docs-only audio/settings gap disclosure
+* Selected batch severity: Low
+* Next action: run a separate approved remediation goal
+
+## Report paths
+
+* Audit report path: `reports\audit\AUDIT_REPORT_20260621_155500.md`
+* Latest report pointer path: `reports\audit\AUDIT_REPORT_LATEST.md`
+* Reusable audit prompt path: `reports\audit\AUDIT_CURRENT.md`
 
 ## Files changed
 
-* `launcher\build_launcher.ps1`: added explicit `-InstallBuildDependencies` opt-in and default fail-fast behavior when PyInstaller is missing.
-* `README.md`: documented that PyInstaller must be installed explicitly, or the build script must be run with `-InstallBuildDependencies`.
-* `tests\test_launcher.py`: added a focused test proving the build script requires an explicit dependency-install flag before `pip install pyinstaller`.
-* `CODEX_HANDOFF.md`: recorded this remediation, checks, and remaining blockers.
+* `reports\audit\AUDIT_CURRENT.md`: tightened reusable audit-cycle rules for exact paths, runner-script searches, and docs/process-only batch selection when source/data/test remediation is forbidden.
+* `reports\audit\AUDIT_REPORT_20260621_155500.md`: added the new timestamped audit report.
+* `reports\audit\AUDIT_REPORT_LATEST.md`: updated the latest pointer to the new report.
+* `CODEX_HANDOFF.md`: replaced stale prior handoff with this audit-only handoff.
 
-Pre-existing audit/process artifacts remain dirty/staged and were preserved:
+No remediation/source/test/data/gameplay files were changed.
 
-* `RUN_AUDIT_CYCLE.ps1`
-* `reports\audit\AUDIT_CURRENT.md`
-* `reports\audit\AUDIT_REPORT_LATEST.md`
-* `reports\audit\AUDIT_REPORT_20260621_151336.md`
-* `reports\audit\AUDIT_REPORT_20260621_153137.md`
-* `reports\audit\AUDIT_REPORT_20260621_153903.md`
+## Selected batch summary
 
-## Exact guard behavior added
+Problem statement:
+The audit found no implemented audio/music system and only code-level settings constants, but current docs do not clearly label audio/music and user-facing settings as missing/manual-verification gaps.
 
-* Default build behavior no longer installs PyInstaller when it is missing.
-* If PyInstaller is missing and `-InstallBuildDependencies` is not supplied, the script throws a clear message:
-  * PyInstaller is not installed.
-  * No dependencies were installed.
-  * Install explicitly with `"<project>\.venv\Scripts\python.exe" -m pip install pyinstaller`, or rerun with `-InstallBuildDependencies`.
-* If PyInstaller is already installed, the existing build path is preserved.
-* If `-InstallBuildDependencies` is supplied and PyInstaller is missing, the script may run `python -m pip install pyinstaller` explicitly.
+Scope boundaries:
+Documentation only. Do not modify gameplay code, save migrations, protected-term policy, content data, visuals, audio, routines, tests, generated files, `.codex`, real save/account data, or lockfiles. Do not run full pytest, the game, launcher, build, or manual smoke for this docs-only batch. Do not commit.
 
-## Commands/results
+Likely files:
+* `README.md`
+* `GRAPHICS_ANIMATION_NOTE.md`
 
-* `git status --short`: showed pre-existing audit/process changes before this batch.
-* Read `CODEX_HANDOFF.md`, `README.md`, `requirements.txt`, `launcher\build_launcher.ps1`, and `tests\test_launcher.py`.
-* `rg -n "pip install|python -m pip|PyInstaller|throw|InstallBuildDependencies|No dependencies were installed" launcher\build_launcher.ps1 README.md tests\test_launcher.py`: confirmed the install command is behind `-InstallBuildDependencies` and the docs mention explicit install.
-* `python -B -m pytest -p no:cacheprovider tests\test_launcher.py`: 8 passed.
-* `git diff --check`: passed.
-* `git diff --cached --check`: passed.
+Acceptance criteria:
+* Docs state that audio/music and in-game settings are currently missing or manual-verification gaps.
+* Wording stays original and does not mention or recommend protected clone content.
+* No implementation claims are added.
 
-## Dependency installation attempted
+Suggested focused tests:
+* `git diff --check README.md GRAPHICS_ANIMATION_NOTE.md`
+* Optional read-only check: `rg -n "audio|music|settings|manual verification" README.md GRAPHICS_ANIMATION_NOTE.md`
 
-No. The PyInstaller build script was not run, and no dependency installation was attempted.
+Explicit stop condition:
+Stop after docs are updated and focused docs checks are reported; do not implement audio/settings or touch source/data/tests.
 
-## Remaining blockers
+## Suggested commands
 
-Low
+* Selected docs batch: `git diff --check README.md GRAPHICS_ANIMATION_NOTE.md`
+* Optional selected docs check: `rg -n "audio|music|settings|manual verification" README.md GRAPHICS_ANIMATION_NOTE.md`
+* Separate approved verification goal: `python -B -m pytest -p no:cacheprovider`
+* Separate approved data check when source/data changes happen: `$env:PYTHONDONTWRITEBYTECODE='1'; python -B -m game.tools.validate_data`
+* Separate approved manual smoke: `python -m game.main`
+* Separate approved launcher/build smoke only when generated output is allowed: `.\launcher\build_launcher.ps1`
 
-* Pre-existing audit/process artifacts remain dirty/staged in the worktree.
-* Manual `.\launcher\build_launcher.ps1` smoke was not run because it can write generated `build\` and `dist\` output and was not explicitly approved.
+## Checks run
 
-Medium
+* `git status --short`: clean before audit checks.
+* `pwd`: `C:\Users\donny\Desktop\hearthvale`.
+* `git rev-parse --show-toplevel`: `C:/Users/donny/Desktop/hearthvale`.
+* `Get-ChildItem -Force | Select-Object Mode,Length,LastWriteTime,Name`: inspected top-level layout.
+* Read `.codex\META_AUDIT.md`, `.codex\AUDIT.md`, `reports\audit\AUDIT_CURRENT.md`, `CODEX_HANDOFF.md`, `README.md`, `requirements.txt`, `.gitignore`, and targeted source/data/test files.
+* Targeted `rg` searches for implementation, protected terms, audio/settings, TODO/stub/pass signals, and data/schema evidence.
+* `python -B -m game.tools.validate_data`: `Data validation passed.`
+* `git status --short`: clean after read-only checks and before report/handoff edits.
 
-* None for this launcher build dependency guard batch.
+Skipped by audit-only contract:
+* Full pytest.
+* Game launch.
+* Launcher/build smoke.
+* Manual smoke.
+* Remediation validation.
 
-Severe
+## Remaining findings
 
-* None.
+* Medium - verification: full pytest and manual runtime smoke were not run by contract.
+* Medium - game feel: audio/music and user-facing settings are missing or undocumented as missing.
+* Medium - game feel: time is fixed at noon; daily routines are missing.
+* Low - visuals: procedural placeholder visuals remain; authored assets/VFX are missing.
+* Low - quests: current quest content is functional but checklist-like.
+* Low - economy: economy is shop-only and single-player; no market/trading/social systems are implemented.
 
-## Final git status
+## Next recommended step
 
-* `MM CODEX_HANDOFF.md`
-* `M README.md`
-* `M RUN_AUDIT_CYCLE.ps1`
-* `M launcher\build_launcher.ps1`
-* `MM reports\audit\AUDIT_CURRENT.md`
-* `A reports\audit\AUDIT_REPORT_20260621_151336.md`
-* `MM reports\audit\AUDIT_REPORT_LATEST.md`
-* `M tests\test_launcher.py`
-* `?? reports\audit\AUDIT_REPORT_20260621_153137.md`
-* `?? reports\audit\AUDIT_REPORT_20260621_153903.md`
-
-## Next action
-
-Stop after this batch. Run manual launcher build smoke only if explicitly approved because it writes generated build output.
+Run a separate approved remediation goal for the selected docs-only batch, then stop.
