@@ -30,9 +30,9 @@ Then run the built launcher from the project folder:
 .\dist\Hearthvale.exe
 ```
 
-If you move the launcher to the Desktop, it will look for a `hearthvale`,
-`Hearthvale`, or legacy `runescape` project folder next to it. For other
-locations, set `HEARTHVALE_PROJECT_ROOT` to this checkout before running it.
+If you move the launcher to the Desktop, it will look for `hearthvale`,
+`Hearthvale`, or supported legacy compatibility project folders next to it. For
+other locations, set `HEARTHVALE_PROJECT_ROOT` to this checkout before running it.
 `Launch Game.bat`, if present, is only an optional manual fallback for running
 `python -m game.main`.
 
@@ -42,6 +42,19 @@ locations, set `HEARTHVALE_PROJECT_ROOT` to this checkout before running it.
 python -m pytest
 python -m game.tools.validate_data
 ```
+
+## Manual Smoke Checklist
+
+After code or data changes that affect gameplay reachability, run `python -m game.main`
+and verify:
+
+- Gathering gives items and XP, depletes a node, and later respawns it.
+- Bank opens from the bank booth and can deposit and withdraw an item stack.
+- Shop opens from a shop object and can sell a selected inventory stack.
+- Combat starts from a monster, updates player health, grants combat XP, and drops loot.
+- Quest dialogue starts or advances a quest and completion rewards apply once.
+- `F5` saves, `F9` loads, and the visible inventory, bank, skills, quest, and combat state persist.
+- Built launcher starts the same game entry point when launcher behavior changes.
 
 ## Controls
 

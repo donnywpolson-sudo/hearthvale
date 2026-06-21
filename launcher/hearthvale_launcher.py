@@ -101,7 +101,7 @@ def main() -> int:
             "Project folder was not found.\n\n"
             f"Set {ENV_PROJECT_ROOT} to the project folder, or run the launcher "
             "from this repo's dist folder. A Desktop launcher also checks for "
-            "hearthvale or runescape folders next to it.",
+            "Hearthvale and supported legacy compatibility folders next to it.",
         )
         return 1
 
