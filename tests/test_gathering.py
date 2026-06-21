@@ -87,14 +87,14 @@ class GatheringTests(unittest.TestCase):
         self.assertEqual(skills.xp("woodcutting"), 100)
         self.assertTrue(system.is_depleted("tree_01"))
 
-    def test_diagonal_adjacency_can_start_gathering(self) -> None:
+    def test_diagonal_adjacency_walks_to_cardinal_tile_before_gathering(self) -> None:
         system, _, _, grid, _ = _system([_tree()])
 
         result = system.start_gather("tree_01", (1, 1), grid, system.blocking_tiles())
 
         self.assertTrue(result.success)
-        self.assertTrue(result.pending)
-        self.assertEqual(result.new_player_tile, None)
+        self.assertFalse(result.pending)
+        self.assertEqual(result.new_player_tile, (1, 2))
 
     def test_required_level_blocks_each_skill(self) -> None:
         for node, start_tile, feedback in [
@@ -157,7 +157,7 @@ class GatheringTests(unittest.TestCase):
 
         self.assertTrue(result.success)
         self.assertFalse(result.pending)
-        self.assertEqual(result.new_player_tile, (1, 1))
+        self.assertEqual(result.new_player_tile, (1, 2))
         self.assertEqual(inventory.count("logs"), 0)
 
     def test_higher_level_reduces_gather_duration(self) -> None:

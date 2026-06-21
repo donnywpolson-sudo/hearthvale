@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import random
 import time
 from typing import Any, Callable
 
@@ -26,6 +27,7 @@ class CookingResult:
     raw_item_id: str | None = None
     cooked_item_id: str | None = None
     xp: int = 0
+    burned: bool = False
     pending: bool = False
     duration: float = 0.0
 
@@ -35,6 +37,7 @@ class PendingCook:
     raw_item_id: str
     complete_at: float
     duration: float
+    remaining: int = 1
 
 
 class CookingSystem:
@@ -45,20 +48,24 @@ class CookingSystem:
         skills: Any,
         *,
         time_provider: TimeProvider = time.time,
+        rng: random.Random | None = None,
     ) -> None:
         self.item_definitions = item_definitions
         self.inventory = inventory
         self.skills = skills
         self.time_provider = time_provider
+        self.rng = rng or random.Random()
         self.recipes = _recipes_from_items(item_definitions)
         self.pending: PendingCook | None = None
 
     def is_cookable(self, item_id: str) -> bool:
         return item_id in self.recipes
 
-    def start_cooking(self, raw_item_id: str | None) -> CookingResult:
+    def start_cooking(self, raw_item_id: str | None, quantity: int = 1) -> CookingResult:
         if raw_item_id is None or raw_item_id not in self.recipes:
             return CookingResult(False, "Select a raw fish first")
+        if quantity <= 0:
+            raise ValueError("quantity must be positive")
 
         recipe = self.recipes[raw_item_id]
         if self.pending is not None:
@@ -73,8 +80,10 @@ class CookingSystem:
                 )
             self.cancel_pending()
 
-        if self.inventory.count(raw_item_id) <= 0:
+        available = self.inventory.count(raw_item_id)
+        if available <= 0:
             return CookingResult(False, f"No {_item_name(self.item_definitions, raw_item_id)} to cook")
+        quantity = min(quantity, available)
 
         current_level = _skill_level(self.skills, "cooking")
         if current_level < recipe.required_level:
@@ -92,6 +101,7 @@ class CookingSystem:
             raw_item_id=raw_item_id,
             complete_at=self.time_provider() + duration,
             duration=duration,
+            remaining=quantity,
         )
         return CookingResult(
             True,
@@ -122,14 +132,30 @@ class CookingSystem:
         if self.inventory.remove(recipe.raw_item_id, 1) != 1:
             return CookingResult(False, f"No {_item_name(self.item_definitions, recipe.raw_item_id)} to cook")
 
-        self.inventory.add(recipe.cooked_item_id, 1)
-        self.skills.add_xp("cooking", recipe.xp_reward)
+        burned = self.rng.random() > self.cook_success_chance(recipe)
+        if not burned:
+            self.inventory.add(recipe.cooked_item_id, 1)
+            self.skills.add_xp("cooking", recipe.xp_reward)
+        duration = self._schedule_next_if_possible(recipe, pending.remaining - 1)
+        continuing = duration > 0
+        if burned:
+            return CookingResult(
+                False,
+                _burn_feedback(self.item_definitions, recipe),
+                raw_item_id=recipe.raw_item_id,
+                cooked_item_id=recipe.cooked_item_id,
+                burned=True,
+                pending=continuing,
+                duration=duration,
+            )
         return CookingResult(
             True,
             _success_feedback(self.item_definitions, self.skills, recipe),
             raw_item_id=recipe.raw_item_id,
             cooked_item_id=recipe.cooked_item_id,
             xp=recipe.xp_reward,
+            pending=continuing,
+            duration=duration,
         )
 
     def cancel_pending(self) -> bool:
@@ -148,6 +174,33 @@ class CookingSystem:
         level_advantage = max(0, current_level - recipe.required_level)
         speed_bonus = min(0.50, 0.10 * level_advantage)
         return max(0.75, recipe.base_cook_seconds * (1.0 - speed_bonus))
+
+    def cook_success_chance(self, recipe: CookingRecipe) -> float:
+        current_level = _skill_level(self.skills, "cooking")
+        tier = 1 + max(0, recipe.required_level - 1) // 15
+        chance = 0.70 + 0.02 * (current_level - recipe.required_level) - 0.03 * (tier - 1)
+        return _clamp(chance, 0.35, 0.98)
+
+    def _schedule_next_if_possible(self, recipe: CookingRecipe, remaining: int) -> float:
+        if remaining <= 0:
+            return 0.0
+        if self.inventory.count(recipe.raw_item_id) <= 0:
+            return 0.0
+        if not inventory_can_transact(
+            self.inventory.to_dict(),
+            self.item_definitions,
+            remove={recipe.raw_item_id: 1},
+            add={recipe.cooked_item_id: 1},
+        ):
+            return 0.0
+        duration = self.cook_duration(recipe)
+        self.pending = PendingCook(
+            raw_item_id=recipe.raw_item_id,
+            complete_at=self.time_provider() + duration,
+            duration=duration,
+            remaining=remaining,
+        )
+        return duration
 
 
 def _recipes_from_items(item_definitions: dict[str, dict[str, object]]) -> dict[str, CookingRecipe]:
@@ -209,3 +262,15 @@ def _success_feedback(
         f"Cooked {raw_name}: +1 {cooked_name}, "
         f"+{recipe.xp_reward} {_skill_name(skills, 'cooking')} XP"
     )
+
+
+def _burn_feedback(
+    item_definitions: dict[str, dict[str, object]],
+    recipe: CookingRecipe,
+) -> str:
+    raw_name = _item_name(item_definitions, recipe.raw_item_id)
+    return f"Burned {raw_name}"
+
+
+def _clamp(value: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(maximum, value))

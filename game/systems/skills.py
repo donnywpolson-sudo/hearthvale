@@ -15,6 +15,8 @@ STANDARD_SKILL_IDS = (
     "attack",
     "strength",
     "defence",
+    "ranged",
+    "magic",
     "hitpoints",
     "smithing",
 )

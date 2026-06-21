@@ -33,33 +33,6 @@ Prioritize features that make the game feel more playable, grindable, and comple
 6. Clear UI feedback for actions, XP, levels, loot, errors, and unlocks.
 7. Incremental content additions over large rewrites.
 
-## Working Style
-
-Be extremely token efficient.
-
-Input handling:
-
-* Read only what is needed.
-* Prefer targeted file inspection before broad summaries.
-* Avoid pasting large files unless required.
-* Use path/file references instead of copying code when possible.
-
-Output handling:
-
-* Be concise.
-* Prefer bullets, tables, and changed hunks.
-* Do not include filler, praise, or generic advice.
-* Do not explain obvious steps.
-* Do not repeat the user’s request.
-* For code changes, show only changed files and important diffs unless asked otherwise.
-
-Reasoning:
-
-* Keep reasoning compact.
-* Do not output long chain-of-thought.
-* Provide only brief rationale, tradeoffs, and decisions.
-* When uncertain, state the uncertainty directly and inspect the repo instead of guessing.
-
 ## Repository Rules
 
 For all tasks:

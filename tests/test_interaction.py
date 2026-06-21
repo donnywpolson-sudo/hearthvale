@@ -15,8 +15,21 @@ from game.world.map import WorldMap
 from game.world.objects import WorldObject
 
 
-def test_diagonal_adjacency_counts_for_shop_interaction() -> None:
+class FixedRng:
+    def __init__(self, random_value: float = 0.0, damage: int = 1) -> None:
+        self.random_value = random_value
+        self.damage = damage
+
+    def random(self) -> float:
+        return self.random_value
+
+    def randint(self, _lower: int, upper: int) -> int:
+        return min(self.damage, upper)
+
+
+def test_diagonal_adjacency_does_not_count_for_shop_interaction() -> None:
     opened: list[bool] = []
+    feedback: list[str] = []
     manager = InteractionManager(
         SimpleNamespace(),
         SimpleNamespace(tile=(0, 0)),
@@ -24,13 +37,14 @@ def test_diagonal_adjacency_counts_for_shop_interaction() -> None:
         Skills(),
         Shop({"logs": {"sell_price": 3}}),
         lambda amount: None,
-        lambda message: None,
+        feedback.append,
         open_shop=lambda: opened.append(True),
     )
 
     manager.interact_with(WorldObject("shop_01", "shop", (1, 1)))
 
-    assert opened == [True]
+    assert opened == []
+    assert feedback[-1] == "No path"
 
 
 def test_bank_interaction_opens_bank_callback() -> None:
@@ -46,7 +60,7 @@ def test_bank_interaction_opens_bank_callback() -> None:
         open_bank=lambda: opened.append(True),
     )
 
-    manager.interact_with(WorldObject("bank_01", "bank", (1, 1)))
+    manager.interact_with(WorldObject("bank_01", "bank", (1, 0)))
 
     assert opened == [True]
 
@@ -65,7 +79,7 @@ def test_shop_interaction_opens_shop_without_autoselling() -> None:
         open_shop=lambda: opened.append(True),
     )
 
-    manager.interact_with(WorldObject("shop_01", "shop", (1, 1)))
+    manager.interact_with(WorldObject("shop_01", "shop", (1, 0)))
 
     assert inventory.to_dict() == {"logs": 2}
     assert opened == [True]
@@ -81,7 +95,6 @@ def test_context_action_generation_covers_interactable_types() -> None:
             "resource_nodes": [_tree().to_dict()],
             "furnace": {"id": "furnace_01", "tile": [3, 1]},
             "anvil": {"id": "anvil_01", "tile": [4, 1]},
-            "combat_dummy": {"id": "combat_dummy_01", "name": "Training dummy", "tile": [5, 1]},
             "npcs": [{"id": "guide_01", "name": "Village Guide", "tile": [1, 3], "quest_id": "starter_path"}],
             "mobs": [_mob_data()],
         }
@@ -97,8 +110,7 @@ def test_context_action_generation_covers_interactable_types() -> None:
         lambda amount: None,
         lambda message: None,
         gathering=GatheringSystem([_tree()], inventory, skills),
-        combat=CombatSystem(world.mob_definitions),
-        train_combat=lambda: None,
+        combat=CombatSystem(world.mob_definitions, rng=FixedRng()),
     )
 
     assert _action_ids(manager, "tree_01") == ["gather", "examine", "cancel"]
@@ -107,7 +119,6 @@ def test_context_action_generation_covers_interactable_types() -> None:
     assert _action_ids(manager, "anvil_01") == ["smith", "examine", "cancel"]
     assert _action_ids(manager, "guide_01") == ["talk", "examine", "cancel"]
     assert _action_ids(manager, "mob_01") == ["attack", "examine", "cancel"]
-    assert _action_ids(manager, "combat_dummy_01") == ["train", "examine", "cancel"]
 
 
 def test_fishing_spot_actions_and_feedback_show_requirements_and_catch() -> None:
@@ -161,31 +172,44 @@ def test_fishing_spot_actions_and_feedback_show_requirements_and_catch() -> None
     assert feedback[-1] == "Fishing Fishing spot... 1.8s; requires Fishing level 1 and fishing rod; catches Raw shrimp"
 
 
-def test_training_dummy_uses_train_callback() -> None:
+def test_monster_uses_timed_combat_not_instant_xp() -> None:
+    clock = FakeClock()
     world = WorldMap(
         {
             "width": 4,
             "height": 4,
             "blocked_tiles": [],
             "water_tiles": [],
-            "combat_dummy": {"id": "combat_dummy_01", "name": "Training dummy", "tile": [1, 1]},
+            "mobs": [{**_mob_data(), "position": [1, 1]}],
         }
     )
-    trained: list[bool] = []
+    feedback: list[str] = []
+    skills = Skills(_skills())
+    combat = CombatSystem(world.mob_definitions, skills=skills, time_provider=clock, rng=FixedRng())
     manager = InteractionManager(
         world,
         _Player(tile=(1, 2)),
         Inventory(),
-        Skills(_skills()),
+        skills,
         Shop(_items()),
         lambda amount: None,
-        lambda message: None,
-        train_combat=lambda: trained.append(True),
+        feedback.append,
+        combat=combat,
     )
 
-    manager.interact_with(world.get_object("combat_dummy_01"))
+    manager.interact_with(world.get_object("mob_01"))
 
-    assert trained == [True]
+    assert combat.pending is not None
+    assert combat.pending.mob_id == "mob_01"
+    assert skills.xp("attack") == 0
+    assert feedback[-1] == "Attacking Test sentry: 2/2 HP; you: 10/10 HP; 1.0s"
+
+    clock.now += 1.0
+    manager.update()
+
+    assert skills.xp("attack") == 4
+    assert skills.xp("hitpoints") == 1
+    assert feedback[-1] == "Hit Test sentry: 1/2 HP left; Test sentry hit you for 1; you: 9/10 HP"
 
 
 def test_ground_item_actions_and_default_pickup() -> None:
@@ -406,7 +430,7 @@ def test_perform_action_separates_examine_from_npc_talk() -> None:
         feedback.append,
         talk_to_npc=lambda obj: talked_to.append(obj.object_id),
     )
-    npc = WorldObject("guide_01", "npc", (1, 1), display_name="Village Guide")
+    npc = WorldObject("guide_01", "npc", (1, 0), display_name="Village Guide")
 
     manager.perform_action("examine", npc)
     manager.perform_action("talk", npc)
@@ -483,7 +507,7 @@ def test_combat_start_cancels_pending_gathering() -> None:
     inventory = Inventory({"bronze_axe": 1})
     skills = Skills(_skills())
     gathering = GatheringSystem(world.resource_nodes, inventory, skills, time_provider=clock)
-    combat = CombatSystem(world.mob_definitions, time_provider=clock)
+    combat = CombatSystem(world.mob_definitions, time_provider=clock, rng=FixedRng())
     manager = InteractionManager(
         world,
         _Player(tile=(1, 2)),
@@ -595,7 +619,7 @@ def test_cooking_range_requires_selected_raw_fish() -> None:
         cooking=CookingSystem(_items(), inventory, skills),
     )
 
-    manager.interact_with(WorldObject("cooking_range_01", "cooking_range", (1, 1)))
+    manager.interact_with(WorldObject("cooking_range_01", "cooking_range", (1, 0)))
 
     assert feedback == ["Select a raw fish first"]
 
@@ -617,7 +641,7 @@ def test_selecting_raw_fish_then_range_starts_cooking() -> None:
     )
 
     manager.select_inventory_item("raw_shrimp")
-    manager.interact_with(WorldObject("cooking_range_01", "cooking_range", (1, 1)))
+    manager.interact_with(WorldObject("cooking_range_01", "cooking_range", (1, 0)))
 
     assert manager.selected_item_id == "raw_shrimp"
     assert cooking.pending is not None
@@ -722,7 +746,7 @@ def test_combat_walks_adjacent_kills_mob_and_spawns_pickup_drop() -> None:
         }
     )
     inventory = Inventory()
-    combat = CombatSystem(world.mob_definitions, time_provider=clock)
+    combat = CombatSystem(world.mob_definitions, time_provider=clock, rng=FixedRng())
     player = _Player(tile=(0, 0))
     feedback: list[str] = []
     manager = InteractionManager(
@@ -746,7 +770,7 @@ def test_combat_walks_adjacent_kills_mob_and_spawns_pickup_drop() -> None:
     manager.update()
 
     assert combat.pending is not None
-    assert feedback[-1] == "Attacking Worn dummy: 2/2 HP; you: 10/10 HP; 1.0s"
+    assert feedback[-1] == "Attacking Test sentry: 2/2 HP; you: 10/10 HP; 1.0s"
 
     clock.now += 1.0
     manager.update()
@@ -756,12 +780,48 @@ def test_combat_walks_adjacent_kills_mob_and_spawns_pickup_drop() -> None:
     assert world.get_object("mob_01").active is False
     ground_items = [obj for obj in world.objects.values() if obj.kind == "ground_item"]
     assert [obj.item_id for obj in ground_items] == ["coins", "wooden_splinters"]
-    assert feedback[-1] == "Defeated Worn dummy; you: 9/10 HP; drops appeared"
+    assert feedback[-1] == "Defeated Test sentry; you: 9/10 HP; drops appeared"
 
     manager.interact_with(ground_items[0])
 
     assert inventory.count("coins") == 3
     assert world.get_object(ground_items[0].object_id) is None
+
+
+def test_ranged_combat_starts_without_walking_when_target_in_range() -> None:
+    clock = FakeClock()
+    mob = _mob_data()
+    mob["position"] = [2, 5]
+    world = WorldMap(
+        {
+            "width": 8,
+            "height": 8,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [],
+            "mobs": [mob],
+        }
+    )
+    combat = CombatSystem(world.mob_definitions, time_provider=clock, rng=FixedRng())
+    combat.set_training_style("ranged")
+    player = _Player(tile=(2, 1))
+    feedback: list[str] = []
+    manager = InteractionManager(
+        world,
+        player,
+        Inventory(),
+        Skills(_skills()),
+        Shop(_items()),
+        lambda amount: None,
+        feedback.append,
+        combat=combat,
+    )
+
+    manager.interact_with(world.get_object("mob_01"))
+
+    assert player.path == []
+    assert combat.pending is not None
+    assert feedback[-1] == "Attacking Test sentry: 2/2 HP; you: 10/10 HP; 1.0s"
 
 
 def _skills() -> dict[str, dict[str, object]]:
@@ -922,7 +982,7 @@ class FakeClock:
 def _mob_data() -> dict[str, object]:
     return {
         "mob_id": "mob_01",
-        "display_name": "Worn dummy",
+        "display_name": "Test sentry",
         "level": 1,
         "hitpoints": 2,
         "attack_seconds": 1.0,

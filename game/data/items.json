@@ -56,6 +56,26 @@
     "equip_slot": "weapon",
     "required_skills": {"attack": 1}
   },
+  "training_bow": {
+    "name": "Training bow",
+    "category": "weapon",
+    "stackable": false,
+    "buy_price": 32,
+    "sell_price": 10,
+    "ranged_bonus": 1,
+    "equip_slot": "weapon",
+    "required_skills": {"ranged": 1}
+  },
+  "training_staff": {
+    "name": "Training staff",
+    "category": "weapon",
+    "stackable": false,
+    "buy_price": 32,
+    "sell_price": 10,
+    "magic_bonus": 1,
+    "equip_slot": "weapon",
+    "required_skills": {"magic": 1}
+  },
   "iron_sword": {
     "name": "Iron sword",
     "category": "weapon",
@@ -390,5 +410,23 @@
     "category": "misc",
     "stackable": false,
     "sell_price": 3
+  },
+  "bones": {
+    "name": "Bones",
+    "category": "misc",
+    "stackable": false,
+    "sell_price": 2
+  },
+  "cloth": {
+    "name": "Cloth",
+    "category": "misc",
+    "stackable": false,
+    "sell_price": 3
+  },
+  "gel": {
+    "name": "Gel",
+    "category": "misc",
+    "stackable": false,
+    "sell_price": 4
   }
 }

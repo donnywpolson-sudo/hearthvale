@@ -34,6 +34,7 @@ class WorldObject:
     item_id: str = ""
     quantity: int = 0
     quest_id: str = ""
+    visual_kind: str = ""
     depleted_state: str = "depleted"
     respawn_seconds: float | None = None
     depleted: bool = False
@@ -51,7 +52,6 @@ class WorldObject:
                 "shop",
                 "bank",
                 "cooking_range",
-                "combat_dummy",
                 "mob",
                 "ground_item",
                 "furnace",

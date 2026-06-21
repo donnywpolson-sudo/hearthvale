@@ -8,6 +8,7 @@ def test_player_action_animation_sets_and_restores_pose() -> None:
     player = _player_with_fake_nodes()
 
     player.start_action_animation("woodcutting")
+    action_arm_pose = player.parts["right_arm"].hpr
 
     assert player.action_animation == "woodcutting"
     assert player.parts["right_arm"].hpr != (0.0, 0.0, 0.0)
@@ -15,7 +16,7 @@ def test_player_action_animation_sets_and_restores_pose() -> None:
 
     assert player.stop_action_animation()
     assert player.action_animation is None
-    assert player.parts["right_arm"].hpr == (0.0, 0.0, 0.0)
+    assert player.parts["right_arm"].hpr != action_arm_pose
     assert player.parts["tool"].hpr == (-16.0, 0.0, -10.0)
 
 
@@ -27,6 +28,43 @@ def test_player_movement_stops_action_animation() -> None:
 
     assert player.action_animation is None
     assert player.path == [(1, 2)]
+
+
+def test_player_faces_walk_direction_without_moonwalking() -> None:
+    player = _player_with_fake_nodes()
+
+    player.set_path([(1, 1), (1, 2)])
+    player.update(0.05)
+
+    assert player.heading == 180.0
+    assert player.node.heading == 180.0
+
+    player.set_position_tile((1, 1))
+    player.set_path([(1, 1), (2, 1)])
+    player.update(0.05)
+
+    assert player.heading == 90.0
+    assert player.node.heading == 90.0
+
+
+def test_player_idle_pose_has_subtle_motion() -> None:
+    player = _player_with_fake_nodes()
+
+    player.update(0.5)
+
+    assert player.idle_time == 0.5
+    assert player.parts["body"].hpr != (0.0, 0.0, 0.0)
+    assert player.parts["head"].hpr != (0.0, 0.0, 0.0)
+
+
+def test_player_combat_styles_use_distinct_action_poses() -> None:
+    poses: dict[str, tuple[tuple[float, float, float], tuple[float, float, float]]] = {}
+    for action_type in ("combat_attack", "combat_strength", "combat_defence", "combat_ranged", "combat_magic"):
+        player = _player_with_fake_nodes()
+        player.start_action_animation(action_type)
+        poses[action_type] = (player.parts["right_arm"].hpr, player.parts["tool"].hpr)
+
+    assert len(set(poses.values())) == len(poses)
 
 
 def test_player_click_movement_uses_slower_walk_speed() -> None:

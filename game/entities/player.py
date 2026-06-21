@@ -19,6 +19,7 @@ class Player:
         self.parts: dict[str, NodePath] = {}
         self.heading = 0.0
         self.walk_time = 0.0
+        self.idle_time = 0.0
         self.action_animation: str | None = None
         self.action_time = 0.0
 
@@ -41,13 +42,15 @@ class Player:
     def update(self, dt: float) -> None:
         if not self.path:
             self.walk_time = 0.0
+            self.idle_time += dt
             if self.action_animation is not None:
                 self.action_time += dt
             self._sync_node()
             return
 
         self.stop_action_animation(sync=False)
-        self.walk_time += dt * 6.75
+        self.idle_time = 0.0
+        self.walk_time += dt * 7.15
         target_tile = self.path[0]
         target_x, target_y = self.grid.to_world(target_tile)
         dx = target_x - self.x
@@ -61,7 +64,7 @@ class Player:
             self.tile = target_tile
             self.path.pop(0)
         else:
-            self.heading = math.degrees(math.atan2(-dx, dy))
+            self.heading = heading_for_delta(dx, dy)
             self.x += dx / distance * step
             self.y += dy / distance * step
 
@@ -111,28 +114,30 @@ class Player:
         if self.node is not None:
             bob = 0.0
             if self.path:
-                stride = _stepped_sin(self.walk_time, steps=8)
-                counter = _stepped_sin(self.walk_time + math.pi, steps=8)
-                lift = abs(_stepped_sin(self.walk_time, steps=8))
-                bob = lift * 0.050
-                self._set_part_hpr("left_leg", 0.0, stride * 18.0, stride * 2.0)
-                self._set_part_hpr("right_leg", 0.0, counter * 18.0, counter * 2.0)
-                self._set_part_hpr("left_arm", 0.0, counter * 15.0, -5.0 + counter * 2.0)
-                self._set_part_hpr("right_arm", 0.0, stride * 15.0, 5.0 + stride * 2.0)
-                self._set_part_hpr("body", 0.0, 1.5 + lift * 1.8, stride * 2.2)
-                self._set_part_hpr("head", 0.0, -1.0 + lift * 1.0, -stride * 1.2)
-                self._set_part_hpr("tool", -16.0 + stride * 3.0, -4.0 + counter * 6.0, -10.0 + stride * 4.0)
+                stride = math.sin(self.walk_time)
+                counter = math.sin(self.walk_time + math.pi)
+                lift = abs(math.sin(self.walk_time))
+                bob = lift * 0.045
+                self._set_part_hpr("left_leg", 0.0, stride * 22.0, stride * 2.5)
+                self._set_part_hpr("right_leg", 0.0, counter * 22.0, counter * 2.5)
+                self._set_part_hpr("left_arm", 0.0, counter * 18.0, -5.0 + counter * 2.5)
+                self._set_part_hpr("right_arm", 0.0, stride * 18.0, 5.0 + stride * 2.5)
+                self._set_part_hpr("body", 0.0, 1.2 + lift * 1.4, stride * 2.0)
+                self._set_part_hpr("head", 0.0, -0.8 + lift * 0.8, -stride * 1.0)
+                self._set_part_hpr("tool", -16.0 + stride * 2.4, -4.0 + counter * 5.2, -10.0 + stride * 3.2)
             else:
                 self._reset_pose()
                 if self.action_animation is not None:
                     self._apply_action_pose(self.action_animation)
+                else:
+                    self._apply_idle_pose()
             self.node.setPos(Vec3(self.x, self.y, 0.02 + bob))
             self.node.setH(self.heading)
 
     def _apply_action_pose(self, action_type: str) -> None:
-        cycle = _stepped_sin(self.action_time * 6.0, steps=8)
-        fast_cycle = _stepped_sin(self.action_time * 9.5, steps=8)
-        impact = max(0.0, _stepped_sin(self.action_time * 9.5, steps=8))
+        cycle = math.sin(self.action_time * 6.0)
+        fast_cycle = math.sin(self.action_time * 9.5)
+        impact = max(0.0, fast_cycle)
         recoil = max(0.0, -fast_cycle)
         if action_type == "woodcutting":
             self._set_part_hpr("body", 0.0, 5.0 + impact * 5.0, -8.0 + cycle * 2.0)
@@ -178,6 +183,8 @@ class Player:
             self._set_part_hpr("left_arm", -4.0, 24.0 - impact * 9.0, -9.0)
             self._set_part_hpr("tool", -14.0, -66.0 + fast_cycle * 46.0, -10.0 - recoil * 8.0)
         elif action_type == "combat":
+            self._apply_action_pose("combat_attack")
+        elif action_type == "combat_attack":
             self._set_part_hpr("body", 0.0, 4.0 + impact * 4.0, 9.0 + fast_cycle * 5.0)
             self._set_part_hpr("head", 0.0, 2.0, 3.0 + fast_cycle * 2.0)
             self._set_part_hpr("left_leg", 0.0, -8.0, -4.0)
@@ -185,11 +192,53 @@ class Player:
             self._set_part_hpr("right_arm", 0.0, -56.0 + fast_cycle * 32.0, 28.0)
             self._set_part_hpr("left_arm", 0.0, 20.0, -22.0 + impact * 7.0)
             self._set_part_hpr("tool", -26.0, -52.0 + fast_cycle * 40.0, 20.0 - recoil * 10.0)
+        elif action_type == "combat_strength":
+            self._set_part_hpr("body", 0.0, 8.0 + impact * 6.0, 13.0 + fast_cycle * 6.0)
+            self._set_part_hpr("head", 0.0, 3.0, 4.0 + fast_cycle * 2.0)
+            self._set_part_hpr("left_leg", 0.0, -11.0, -6.0)
+            self._set_part_hpr("right_leg", 0.0, 12.0, 6.0)
+            self._set_part_hpr("right_arm", 2.0, -68.0 + fast_cycle * 40.0, 32.0)
+            self._set_part_hpr("left_arm", 0.0, 26.0, -25.0 + impact * 9.0)
+            self._set_part_hpr("tool", -32.0, -64.0 + fast_cycle * 48.0, 24.0 - recoil * 14.0)
+        elif action_type == "combat_defence":
+            self._set_part_hpr("body", 0.0, -2.0 + impact * 2.0, 4.0 + cycle * 2.0)
+            self._set_part_hpr("head", 0.0, 1.0, 1.0)
+            self._set_part_hpr("left_leg", 0.0, -10.0, -8.0)
+            self._set_part_hpr("right_leg", 0.0, 8.0, 8.0)
+            self._set_part_hpr("right_arm", 0.0, -38.0 + fast_cycle * 20.0, 18.0)
+            self._set_part_hpr("left_arm", 0.0, 42.0, -34.0 + impact * 5.0)
+            self._set_part_hpr("tool", -18.0, -36.0 + fast_cycle * 28.0, 10.0)
+        elif action_type == "combat_ranged":
+            draw = max(0.0, -cycle)
+            self._set_part_hpr("body", 0.0, 2.0 + draw * 2.0, -8.0)
+            self._set_part_hpr("head", 0.0, 1.5, -4.0)
+            self._set_part_hpr("left_leg", 0.0, -6.0, -5.0)
+            self._set_part_hpr("right_leg", 0.0, 6.0, 5.0)
+            self._set_part_hpr("right_arm", 0.0, -16.0 - draw * 28.0, 40.0)
+            self._set_part_hpr("left_arm", 0.0, -4.0 + draw * 8.0, -42.0)
+            self._set_part_hpr("tool", -4.0, -8.0 - draw * 12.0, -58.0 + cycle * 8.0)
+        elif action_type == "combat_magic":
+            cast = max(0.0, fast_cycle)
+            self._set_part_hpr("body", 0.0, 5.0 + cast * 3.0, 0.0)
+            self._set_part_hpr("head", 0.0, 2.0 + cast * 2.0, 0.0)
+            self._set_part_hpr("left_leg", 0.0, -3.0, -3.0)
+            self._set_part_hpr("right_leg", 0.0, 3.0, 3.0)
+            self._set_part_hpr("right_arm", 0.0, -34.0 + cast * 18.0, 24.0)
+            self._set_part_hpr("left_arm", 0.0, -22.0 + cast * 16.0, -24.0)
+            self._set_part_hpr("tool", -10.0 + cast * 8.0, -20.0 + cast * 20.0, 36.0 + cycle * 8.0)
         elif action_type == "gathering":
             self._set_part_hpr("body", 0.0, 4.0 + cycle * 2.0, 0.0)
             self._set_part_hpr("right_arm", 0.0, -30.0 + fast_cycle * 18.0, 8.0)
             self._set_part_hpr("left_arm", 0.0, 14.0 - impact * 4.0, -8.0)
             self._set_part_hpr("tool", -18.0, -28.0 + fast_cycle * 24.0, -10.0)
+
+    def _apply_idle_pose(self) -> None:
+        breath = math.sin(self.idle_time * 2.2)
+        sway = math.sin(self.idle_time * 1.3)
+        self._set_part_hpr("body", 0.0, 0.8 + breath * 0.8, sway * 0.9)
+        self._set_part_hpr("head", 0.0, -0.4 + breath * 0.4, -sway * 0.5)
+        self._set_part_hpr("left_arm", 0.0, 2.0 + breath * 1.2, -4.0)
+        self._set_part_hpr("right_arm", 0.0, -2.0 - breath * 1.2, 4.0)
 
     def _reset_pose(self) -> None:
         for key in ("left_leg", "right_leg", "left_arm", "right_arm", "body", "head"):
@@ -208,9 +257,10 @@ class Player:
         part.setHpr(h, p, r)
 
 
-def _stepped_sin(phase: float, *, steps: int) -> float:
-    if steps <= 0:
-        return math.sin(phase)
-    normalized = (phase % math.tau) / math.tau
-    stepped = round(normalized * steps) / steps
-    return math.sin(stepped * math.tau)
+def heading_for_delta(dx: float, dy: float) -> float:
+    if abs(dx) <= 0.000001 and abs(dy) <= 0.000001:
+        return 0.0
+    heading = math.degrees(math.atan2(-dx, dy)) + 180.0
+    if heading > 180.0:
+        heading -= 360.0
+    return heading

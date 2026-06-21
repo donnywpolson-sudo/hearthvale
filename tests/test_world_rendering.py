@@ -258,7 +258,7 @@ def test_mob_hp_bar_uses_current_to_max_hitpoint_ratio() -> None:
             "mobs": [
                 {
                     "mob_id": "mob_01",
-                    "display_name": "Worn dummy",
+                    "display_name": "Test sentry",
                     "level": 1,
                     "hitpoints": 4,
                     "attack_seconds": 1.0,
@@ -280,3 +280,149 @@ def test_mob_hp_bar_uses_current_to_max_hitpoint_ratio() -> None:
     assert fill.isEmpty() is False
     assert round(fill.getSx(), 2) == 0.50
     assert mob.node.find("**/mob_01_hp_pip_0").isEmpty() is True
+
+
+def test_mob_visual_kinds_use_distinct_model_parts() -> None:
+    world = WorldMap(
+        {
+            "width": 10,
+            "height": 10,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [],
+            "mobs": [
+                {
+                    "mob_id": "rat_01",
+                    "display_name": "Rat",
+                    "level": 1,
+                    "hitpoints": 2,
+                    "attack_seconds": 1.0,
+                    "respawn_seconds": 5.0,
+                    "visual_kind": "rat",
+                    "position": [1, 1],
+                    "drops": [],
+                },
+                {
+                    "mob_id": "goblin_01",
+                    "display_name": "Goblin",
+                    "level": 2,
+                    "hitpoints": 3,
+                    "attack_seconds": 1.0,
+                    "respawn_seconds": 5.0,
+                    "visual_kind": "goblin",
+                    "position": [3, 1],
+                    "drops": [],
+                },
+                {
+                    "mob_id": "skeleton_01",
+                    "display_name": "Skeleton",
+                    "level": 3,
+                    "hitpoints": 5,
+                    "attack_seconds": 1.0,
+                    "respawn_seconds": 5.0,
+                    "visual_kind": "skeleton",
+                    "position": [5, 1],
+                    "drops": [],
+                },
+                {
+                    "mob_id": "slime_01",
+                    "display_name": "Slime",
+                    "level": 4,
+                    "hitpoints": 6,
+                    "attack_seconds": 1.0,
+                    "respawn_seconds": 5.0,
+                    "visual_kind": "slime",
+                    "position": [7, 1],
+                    "drops": [],
+                },
+                {
+                    "mob_id": "wolf_01",
+                    "display_name": "Wolf",
+                    "level": 5,
+                    "hitpoints": 7,
+                    "attack_seconds": 1.0,
+                    "respawn_seconds": 5.0,
+                    "visual_kind": "wolf",
+                    "position": [1, 4],
+                    "drops": [],
+                },
+                {
+                    "mob_id": "bandit_01",
+                    "display_name": "Bandit",
+                    "level": 6,
+                    "hitpoints": 8,
+                    "attack_seconds": 1.0,
+                    "respawn_seconds": 5.0,
+                    "visual_kind": "bandit",
+                    "position": [3, 4],
+                    "drops": [],
+                },
+                {
+                    "mob_id": "mage_imp_01",
+                    "display_name": "Mage imp",
+                    "level": 7,
+                    "hitpoints": 6,
+                    "attack_seconds": 1.0,
+                    "respawn_seconds": 5.0,
+                    "visual_kind": "mage_imp",
+                    "position": [5, 4],
+                    "drops": [],
+                },
+                {
+                    "mob_id": "archer_goblin_01",
+                    "display_name": "Archer goblin",
+                    "level": 8,
+                    "hitpoints": 7,
+                    "attack_seconds": 1.0,
+                    "respawn_seconds": 5.0,
+                    "visual_kind": "archer_goblin",
+                    "position": [7, 4],
+                    "drops": [],
+                },
+            ],
+        }
+    )
+
+    world.render(NodePath("test_render"))
+
+    expected_parts = {
+        "rat_01": "rat_body",
+        "goblin_01": "goblin_tunic",
+        "skeleton_01": "skeleton_skull",
+        "slime_01": "slime_blob",
+        "wolf_01": "wolf_body",
+        "bandit_01": "bandit_blade",
+        "mage_imp_01": "imp_spell_orb",
+        "archer_goblin_01": "goblin_shortbow",
+    }
+    for mob_id, part in expected_parts.items():
+        mob = world.get_object(mob_id)
+        assert mob is not None and mob.node is not None
+        assert mob.node.find(f"**/{mob_id}_{part}").isEmpty() is False
+
+
+def test_special_ground_drops_have_distinct_visual_parts() -> None:
+    world = WorldMap(
+        {
+            "width": 5,
+            "height": 5,
+            "blocked_tiles": [],
+            "water_tiles": [],
+            "resource_nodes": [],
+        }
+    )
+    world.render(NodePath("test_render"))
+
+    splinters = world.add_ground_item("wooden_splinters", 1, (1, 1))
+    scrap = world.add_ground_item("rusty_scrap", 1, (2, 1))
+    dust = world.add_ground_item("glow_dust", 1, (3, 1))
+    bones = world.add_ground_item("bones", 1, (1, 3))
+    cloth = world.add_ground_item("cloth", 1, (2, 3))
+    gel = world.add_ground_item("gel", 1, (3, 3))
+
+    assert splinters.node is not None and splinters.node.find(f"**/{splinters.object_id}_wood_shard_0").isEmpty() is False
+    assert scrap.node is not None and scrap.node.find(f"**/{scrap.object_id}_rust_plate_0").isEmpty() is False
+    assert dust.node is not None and dust.node.find(f"**/{dust.object_id}_glow_mote_0").isEmpty() is False
+    assert bones.node is not None and bones.node.find(f"**/{bones.object_id}_bone_shaft_0").isEmpty() is False
+    assert cloth.node is not None and cloth.node.find(f"**/{cloth.object_id}_cloth_fold").isEmpty() is False
+    assert gel.node is not None and gel.node.find(f"**/{gel.object_id}_gel_blob").isEmpty() is False

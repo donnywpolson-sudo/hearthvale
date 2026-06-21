@@ -754,22 +754,17 @@
       14
     ]
   },
-  "combat_dummy": {
-    "id": "combat_dummy_01",
-    "name": "Training dummy",
-    "tile": [
-      16,
-      14
-    ]
-  },
   "mobs": [
     {
-      "mob_id": "worn_dummy_01",
-      "display_name": "Worn dummy",
+      "mob_id": "rat_01",
+      "display_name": "Rat",
       "level": 1,
       "hitpoints": 2,
-      "attack_seconds": 1.2,
-      "respawn_seconds": 12,
+      "attack_seconds": 1.0,
+      "respawn_seconds": 8,
+      "attack_style": "melee",
+      "attack_range": 1,
+      "visual_kind": "rat",
       "position": [
         17,
         16
@@ -777,7 +772,7 @@
       "drops": [
         {
           "item_id": "coins",
-          "quantity": 3
+          "quantity": 2
         },
         {
           "item_id": "wooden_splinters",
@@ -786,15 +781,18 @@
       ]
     },
     {
-      "mob_id": "rusty_sentry_01",
-      "display_name": "Rusty sentry",
+      "mob_id": "goblin_01",
+      "display_name": "Goblin",
       "level": 2,
       "hitpoints": 3,
-      "attack_seconds": 1.4,
-      "respawn_seconds": 16,
+      "attack_seconds": 1.3,
+      "respawn_seconds": 14,
+      "attack_style": "melee",
+      "attack_range": 1,
+      "visual_kind": "goblin",
       "position": [
-        20,
-        18
+        19,
+        17
       ],
       "drops": [
         {
@@ -808,15 +806,18 @@
       ]
     },
     {
-      "mob_id": "cave_wisp_01",
-      "display_name": "Cave wisp",
+      "mob_id": "skeleton_01",
+      "display_name": "Skeleton",
       "level": 3,
-      "hitpoints": 4,
-      "attack_seconds": 1.6,
-      "respawn_seconds": 20,
+      "hitpoints": 5,
+      "attack_seconds": 1.5,
+      "respawn_seconds": 24,
+      "attack_style": "melee",
+      "attack_range": 1,
+      "visual_kind": "skeleton",
       "position": [
-        24,
-        19
+        20,
+        18
       ],
       "drops": [
         {
@@ -824,7 +825,140 @@
           "quantity": 8
         },
         {
+          "item_id": "bones",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "mob_id": "slime_01",
+      "display_name": "Slime",
+      "level": 4,
+      "hitpoints": 6,
+      "attack_seconds": 1.7,
+      "respawn_seconds": 18,
+      "attack_style": "melee",
+      "attack_range": 1,
+      "visual_kind": "slime",
+      "position": [
+        23,
+        20
+      ],
+      "drops": [
+        {
+          "item_id": "coins",
+          "quantity": 6
+        },
+        {
+          "item_id": "gel",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "mob_id": "wolf_01",
+      "display_name": "Wolf",
+      "level": 5,
+      "hitpoints": 7,
+      "attack_seconds": 1.2,
+      "respawn_seconds": 26,
+      "attack_style": "melee",
+      "attack_range": 1,
+      "visual_kind": "wolf",
+      "position": [
+        25,
+        20
+      ],
+      "drops": [
+        {
+          "item_id": "coins",
+          "quantity": 9
+        },
+        {
+          "item_id": "bones",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "mob_id": "bandit_01",
+      "display_name": "Bandit",
+      "level": 6,
+      "hitpoints": 8,
+      "attack_seconds": 1.4,
+      "respawn_seconds": 30,
+      "attack_style": "melee",
+      "attack_range": 1,
+      "visual_kind": "bandit",
+      "position": [
+        27,
+        22
+      ],
+      "drops": [
+        {
+          "item_id": "coins",
+          "quantity": 12
+        },
+        {
+          "item_id": "rusty_scrap",
+          "quantity": 1
+        },
+        {
+          "item_id": "cloth",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "mob_id": "mage_imp_01",
+      "display_name": "Mage imp",
+      "level": 7,
+      "hitpoints": 6,
+      "attack_seconds": 1.8,
+      "respawn_seconds": 34,
+      "attack_style": "magic",
+      "attack_range": 4,
+      "visual_kind": "mage_imp",
+      "position": [
+        29,
+        23
+      ],
+      "drops": [
+        {
+          "item_id": "coins",
+          "quantity": 14
+        },
+        {
           "item_id": "glow_dust",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "mob_id": "archer_goblin_01",
+      "display_name": "Archer goblin",
+      "level": 8,
+      "hitpoints": 7,
+      "attack_seconds": 1.6,
+      "respawn_seconds": 36,
+      "attack_style": "ranged",
+      "attack_range": 4,
+      "visual_kind": "archer_goblin",
+      "position": [
+        31,
+        22
+      ],
+      "drops": [
+        {
+          "item_id": "coins",
+          "quantity": 16
+        },
+        {
+          "item_id": "wooden_splinters",
+          "quantity": 1
+        },
+        {
+          "item_id": "cloth",
           "quantity": 1
         }
       ]

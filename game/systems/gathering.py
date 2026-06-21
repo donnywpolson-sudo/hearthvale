@@ -196,6 +196,16 @@ class GatheringSystem:
         if destination is None:
             return GatheringResult(False, "No path" if allow_movement else "Too far away", node_id=node.node_id)
 
+        if destination != player_tile:
+            return GatheringResult(
+                True,
+                f"Walking to {_node_label(node)}",
+                node_id=node.node_id,
+                skill_id=node.skill_id,
+                item_id=node.item_reward,
+                new_player_tile=destination,
+            )
+
         current_level = _skill_level(self.skills, node.skill_id)
         tool_id, tool_name = REQUIRED_TOOLS.get(node.skill_id, ("", ""))
         if tool_id and self.inventory.count(tool_id) <= 0:
@@ -213,16 +223,6 @@ class GatheringSystem:
                 f"You need {_skill_name(self.skills, node.skill_id)} level {node.required_level}",
                 node_id=node.node_id,
                 new_player_tile=destination if destination != player_tile else None,
-            )
-
-        if destination != player_tile:
-            return GatheringResult(
-                True,
-                f"Walking to {_node_label(node)}",
-                node_id=node.node_id,
-                skill_id=node.skill_id,
-                item_id=node.item_reward,
-                new_player_tile=destination,
             )
 
         if not self._inventory_can_accept(node):
@@ -459,7 +459,7 @@ class GatheringSystem:
         if not node.blocks_movement and grid.in_bounds(node.position) and node.position not in blocked_tiles:
             tiles.append(node.position)
 
-        for tile in grid.neighbors(node.position, diagonals=True):
+        for tile in grid.neighbors(node.position, diagonals=False):
             if tile not in blocked_tiles:
                 tiles.append(tile)
         return tiles

@@ -139,6 +139,21 @@ def test_inventory_grid_has_fixed_slots_and_populates_in_category_order(monkeypa
     assert ui.inventory_slots[15].icon.label.hidden is True
 
 
+def test_misc_loot_icons_are_distinct() -> None:
+    items = {
+        "wooden_splinters": {"name": "Wooden splinters", "category": "misc"},
+        "rusty_scrap": {"name": "Rusty scrap", "category": "misc"},
+        "glow_dust": {"name": "Glow dust", "category": "misc"},
+        "bones": {"name": "Bones", "category": "misc"},
+        "cloth": {"name": "Cloth", "category": "misc"},
+        "gel": {"name": "Gel", "category": "misc"},
+    }
+
+    icons = {item_id: tuple(hud._item_icon_specs(items, item_id)) for item_id in items}
+
+    assert len(set(icons.values())) == len(items)
+
+
 def test_inventory_expands_gear_and_tools_without_quantity_labels(monkeypatch) -> None:
     _install_hud_fakes(monkeypatch)
     ui = hud.Hud(_items())
@@ -212,6 +227,66 @@ def test_inventory_slots_use_select_item_callback(monkeypatch) -> None:
     ui.inventory_slots[4].button.click()
 
     assert selected == ["raw_shrimp"]
+
+
+def test_duplicate_nonstackable_inventory_selection_uses_occurrence_index(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    selected: list[tuple[str, int]] = []
+    ui = hud.Hud(
+        {"bronze_bar": {"name": "Bronze bar", "category": "bar", "stackable": False}},
+        on_select_item=lambda item_id, occurrence_index: selected.append((item_id, occurrence_index)),
+    )
+
+    ui.update(
+        account="test",
+        time_text="Day 1 08:00",
+        selected_text="Selected: none",
+        inventory={"bronze_bar": 4},
+        bank={},
+        skills=FakeSkills(),
+    )
+
+    ui.inventory_slots[2].button.click()
+
+    assert selected == [("bronze_bar", 2)]
+
+    ui.update(
+        account="test",
+        time_text="Day 1 08:00",
+        selected_text="Selected: none",
+        selected_item_slot=("bronze_bar", 2),
+        inventory={"bronze_bar": 4},
+        bank={},
+        skills=FakeSkills(),
+    )
+
+    assert ui.inventory_slots[0].button.options["frameColor"][0] == hud.SLOT
+    assert ui.inventory_slots[2].button.options["frameColor"][0] == hud.SLOT_HILITE
+
+
+def test_inventory_right_click_context_examines_or_drops_one_item(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    examined: list[str] = []
+    dropped: list[str] = []
+    ui = hud.Hud(_items(), on_examine_item=examined.append, on_drop_item=dropped.append)
+    ui.update(
+        account="test",
+        time_text="Day 1 08:00",
+        selected_text="Selected: none",
+        inventory={"raw_shrimp": 2},
+        bank={},
+        skills=FakeSkills(),
+    )
+
+    ui.inventory_slots[0].button.trigger(hud.DGG.B3PRESS)
+    assert [button.text for button in ui.context_buttons] == ["Examine Raw shrimp", "Drop Raw shrimp", "Cancel"]
+    ui.context_buttons[0].click()
+
+    ui.inventory_slots[0].button.trigger(hud.DGG.B3PRESS)
+    ui.context_buttons[1].click()
+
+    assert examined == ["raw_shrimp"]
+    assert dropped == ["raw_shrimp"]
 
 
 def test_feedback_routes_to_chatbox_and_keeps_latest_messages(monkeypatch) -> None:
@@ -400,9 +475,14 @@ def test_pointer_over_blocking_ui_covers_rail_and_overlays(monkeypatch) -> None:
     _install_hud_fakes(monkeypatch)
     ui = hud.Hud(_items())
 
-    assert ui.pointer_over_blocking_ui((1.48, 0.0)) is True
+    assert ui.pointer_over_blocking_ui((1.72, 0.0)) is True
+    assert ui.pointer_over_blocking_ui((1.40, -0.30)) is True
     assert ui.pointer_over_blocking_ui((0.0, 0.91)) is True
     assert ui.pointer_over_blocking_ui((-0.20, 0.0)) is False
+
+    ui.tab_buttons[hud.INVENTORY_TAB].click()
+    assert ui.tabs_collapsed is True
+    assert ui.pointer_over_blocking_ui((1.40, -0.30)) is False
 
     ui.open_bank()
     assert ui.pointer_over_blocking_ui((0.0, 0.0)) is True
@@ -432,6 +512,11 @@ def test_side_tabs_switch_visible_content(monkeypatch) -> None:
     assert ui.tab_frames[hud.CLOTHES_TAB].hidden is True
     assert ui.tab_frames[hud.SKILLS_TAB].hidden is False
     assert ui.tab_buttons[hud.SKILLS_TAB].options["frameColor"][0] == hud.SLOT_HILITE
+
+    ui.tab_buttons[hud.SKILLS_TAB].click()
+
+    assert ui.tabs_collapsed is True
+    assert ui.tab_box.hidden is True
 
 
 def test_clothes_tab_shows_equipped_item_icons(monkeypatch) -> None:
@@ -478,10 +563,12 @@ def test_clothes_tab_selects_combat_training_style(monkeypatch) -> None:
 
     assert ui.combat_style_buttons["strength"].options["frameColor"][0] == hud.SLOT_HILITE
     assert ui.combat_style_buttons["attack"].options["frameColor"][0] == hud.BUTTON
+    assert "ranged" in ui.combat_style_buttons
+    assert "magic" in ui.combat_style_buttons
 
-    ui.combat_style_buttons["defence"].click()
+    ui.combat_style_buttons["magic"].click()
 
-    assert selected == ["defence"]
+    assert selected == ["magic"]
 
 
 def test_skills_tab_uses_larger_two_line_skill_rows(monkeypatch) -> None:
@@ -506,6 +593,77 @@ def test_skills_tab_uses_larger_two_line_skill_rows(monkeypatch) -> None:
     assert hud.STATS_TEXT_SCALE > 0.032
     assert hud.CHAT_TEXT_SCALE > 0.023
     assert hud.ROW_TEXT_SCALE > 0.019
+
+
+def test_clicking_skill_icon_opens_unlock_detail_pane(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    ui = hud.Hud(
+        _items(),
+        {
+            "woodcutting": {"display_name": "Woodcutting"},
+            "cooking": {"display_name": "Cooking"},
+        },
+        world_data={
+            "resource_nodes": [
+                {
+                    "skill_id": "woodcutting",
+                    "required_level": 1,
+                    "item_reward": "logs",
+                    "display_name": "Tree",
+                }
+            ]
+        },
+    )
+    ui.update(
+        account="test",
+        time_text="Day 1 08:00",
+        selected_text="Selected: none",
+        inventory={},
+        bank={},
+        skills=FakeSkills(),
+    )
+
+    ui.skill_buttons["woodcutting"].click()
+
+    assert ui.skill_detail_panel.hidden is False
+    assert "Woodcutting" in ui.skill_detail_title.text
+    assert ui.skill_detail_lines[0].text == "Lv 1: Logs - Tree"
+
+
+def test_ranged_and_magic_skill_details_use_equipment_unlocks(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    items = {
+        **_items(),
+        "training_bow": {
+            "name": "Training bow",
+            "category": "weapon",
+            "stackable": False,
+            "equip_slot": "weapon",
+            "required_skills": {"ranged": 1},
+        },
+        "training_staff": {
+            "name": "Training staff",
+            "category": "weapon",
+            "stackable": False,
+            "equip_slot": "weapon",
+            "required_skills": {"magic": 1},
+        },
+    }
+    ui = hud.Hud(items)
+    ui.update(
+        account="test",
+        time_text="Day 1 08:00",
+        selected_text="Selected: none",
+        inventory={},
+        bank={},
+        skills=FakeSkills(),
+    )
+
+    ui.select_skill_detail("ranged")
+    assert ui.skill_detail_lines[0].text == "Lv 1: Equip Training bow"
+
+    ui.select_skill_detail("magic")
+    assert ui.skill_detail_lines[0].text == "Lv 1: Equip Training staff"
 
 
 def test_selected_inventory_slot_is_highlighted(monkeypatch) -> None:
@@ -610,10 +768,12 @@ def test_bank_rows_show_positive_inventory_or_bank_stacks(monkeypatch) -> None:
         skills=FakeSkills(),
     )
 
-    assert list(ui.bank_rows) == ["logs", "copper_ore"]
-    assert ui.bank_rows["logs"].bank_label.text == "3/0"
-    assert ui.bank_rows["copper_ore"].bank_label.text == "6/0"
-    assert ui.empty_bank_label.hidden is True
+    assert list(ui.bank_rows) == []
+    assert list(ui.bank_inventory_rows) == ["logs", "copper_ore"]
+    assert ui.bank_inventory_rows["logs"].quantity_label.text == "Qty 3"
+    assert ui.bank_inventory_rows["copper_ore"].quantity_label.text == "Qty 6"
+    assert ui.empty_bank_label.hidden is False
+    assert ui.empty_bank_inventory_label.hidden is True
 
     ui.update(
         account="test",
@@ -624,8 +784,9 @@ def test_bank_rows_show_positive_inventory_or_bank_stacks(monkeypatch) -> None:
         skills=FakeSkills(),
     )
 
-    assert list(ui.bank_rows) == ["logs", "copper_ore"]
-    assert ui.bank_rows["logs"].bank_label.text == "3/2"
+    assert list(ui.bank_rows) == ["logs"]
+    assert list(ui.bank_inventory_rows) == ["logs", "copper_ore"]
+    assert ui.bank_rows["logs"].quantity_label.text == "Qty 2"
     assert ui.empty_bank_label.hidden is True
 
     row = ui.bank_rows["logs"]
@@ -638,9 +799,10 @@ def test_bank_rows_show_positive_inventory_or_bank_stacks(monkeypatch) -> None:
         skills=FakeSkills(),
     )
 
-    assert list(ui.bank_rows) == ["copper_ore"]
-    assert row.bank_label.destroyed is True
-    assert ui.empty_bank_label.hidden is True
+    assert list(ui.bank_rows) == []
+    assert list(ui.bank_inventory_rows) == ["copper_ore"]
+    assert row.quantity_label.destroyed is True
+    assert ui.empty_bank_label.hidden is False
 
 
 def test_bank_rows_use_larger_text_and_buttons(monkeypatch) -> None:
@@ -658,9 +820,8 @@ def test_bank_rows_use_larger_text_and_buttons(monkeypatch) -> None:
 
     row = ui.bank_rows["logs"]
     assert row.item_label.options["scale"] == hud.BANK_ROW_TEXT_SCALE
-    assert row.bank_label.options["scale"] == hud.BANK_ROW_TEXT_SCALE
-    assert row.deposit_button.options["scale"] == hud.BANK_ROW_BUTTON_TEXT_SCALE
-    assert row.withdraw_button.options["scale"] == hud.BANK_ROW_BUTTON_TEXT_SCALE
+    assert row.quantity_label.options["scale"] == 0.023
+    assert any(not part.hidden for part in row.icon.parts)
 
 
 def test_shop_buy_tab_shows_simple_rows_and_quantity_context(monkeypatch) -> None:
@@ -753,7 +914,21 @@ def test_shop_sell_tab_shows_inventory_rows_and_quantity_context(monkeypatch) ->
     ui.context_buttons[4].click()
 
     assert sold == ["logs"]
-    assert ui.quantity_mode == "all"
+    assert ui.quantity_mode == "2"
+
+
+def test_quantity_prompt_closes_when_clicking_outside(monkeypatch) -> None:
+    _install_hud_fakes(monkeypatch)
+    chosen: list[int] = []
+    ui = hud.Hud(_items())
+
+    ui.show_quantity_menu("sell", "Logs", 10, chosen.append)
+    ui.context_buttons[3].click()
+
+    assert ui.shop_amount_panel.hidden is False
+    assert ui.close_transient_if_outside((0.90, 0.90)) is True
+    assert ui.shop_amount_panel.hidden is True
+    assert chosen == []
 
 
 def test_shop_sell_tab_empty_state_uses_mutable_label(monkeypatch) -> None:

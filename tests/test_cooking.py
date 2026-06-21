@@ -13,11 +13,19 @@ class FakeClock:
         return self.now
 
 
+class FixedRng:
+    def __init__(self, value: float) -> None:
+        self.value = value
+
+    def random(self) -> float:
+        return self.value
+
+
 def test_cooking_completes_after_timer_and_grants_rewards() -> None:
     clock = FakeClock()
     inventory = Inventory({"raw_shrimp": 1})
     skills = Skills(_skills())
-    cooking = CookingSystem(_items(), inventory, skills, time_provider=clock)
+    cooking = CookingSystem(_items(), inventory, skills, time_provider=clock, rng=FixedRng(0.0))
 
     started = cooking.start_cooking("raw_shrimp")
 
@@ -37,6 +45,24 @@ def test_cooking_completes_after_timer_and_grants_rewards() -> None:
     assert inventory.count("cooked_shrimp") == 1
     assert skills.xp("cooking") == 30
     assert completed.feedback == "Cooked Raw shrimp: +1 Cooked shrimp, +30 Cooking XP"
+
+
+def test_cooking_can_burn_raw_item_without_reward() -> None:
+    clock = FakeClock()
+    inventory = Inventory({"raw_shrimp": 1})
+    skills = Skills(_skills())
+    cooking = CookingSystem(_items(), inventory, skills, time_provider=clock, rng=FixedRng(1.0))
+
+    started = cooking.start_cooking("raw_shrimp")
+    clock.now += started.duration
+    completed = cooking.update()
+
+    assert completed is not None
+    assert not completed.success
+    assert completed.burned
+    assert completed.feedback == "Burned Raw shrimp"
+    assert inventory.to_dict() == {}
+    assert skills.xp("cooking") == 0
 
 
 def test_too_low_cooking_level_blocks_recipe() -> None:
@@ -59,11 +85,14 @@ def test_higher_cooking_level_reduces_duration() -> None:
     recipe = cooking.recipes["raw_shrimp"]
 
     level_one_duration = cooking.cook_duration(recipe)
+    level_one_success = cooking.cook_success_chance(recipe)
     skills.add_xp("cooking", int(skill_xp_thresholds()["6"]))
     level_six_duration = cooking.cook_duration(recipe)
+    level_six_success = cooking.cook_success_chance(recipe)
 
     assert level_one_duration == 1.8
     assert level_six_duration == 0.9
+    assert level_six_success > level_one_success
 
 
 def test_cooking_completion_requires_raw_item_still_available() -> None:

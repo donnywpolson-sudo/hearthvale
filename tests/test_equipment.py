@@ -42,6 +42,26 @@ def test_equipping_replaces_and_unequips_items() -> None:
     assert inventory.to_dict() == {"bronze_sword": 1, "iron_sword": 1}
 
 
+def test_equipment_requires_ranged_and_magic_levels() -> None:
+    inventory = Inventory({"training_bow": 1, "training_staff": 1})
+    skills = Skills(_skills())
+    equipment = Equipment(_items(), inventory, skills)
+
+    blocked_bow = equipment.equip("training_bow")
+    blocked_staff = equipment.equip("training_staff")
+
+    assert blocked_bow.feedback == "You need ranged level 5 to wield Training bow"
+    assert blocked_staff.feedback == "You need magic level 5 to wield Training staff"
+
+    skills.add_xp("ranged", skill_xp_thresholds()["5"])
+    skills.add_xp("magic", skill_xp_thresholds()["5"])
+
+    assert equipment.equip("training_bow").success
+    assert equipment.equip("training_staff").success
+    assert equipment.to_dict() == {"weapon": "training_staff"}
+    assert inventory.to_dict() == {"training_bow": 1}
+
+
 def test_unequip_requires_open_inventory_slot_for_non_stackable_item() -> None:
     inventory = Inventory({"iron_sword": 28})
     skills = Skills(_skills())
@@ -68,6 +88,16 @@ def _skills() -> dict[str, dict[str, object]]:
             "starting_level": 1,
             "xp_thresholds": thresholds,
         },
+        "ranged": {
+            "display_name": "ranged",
+            "starting_level": 1,
+            "xp_thresholds": thresholds,
+        },
+        "magic": {
+            "display_name": "magic",
+            "starting_level": 1,
+            "xp_thresholds": thresholds,
+        },
     }
 
 
@@ -88,5 +118,21 @@ def _items() -> dict[str, dict[str, object]]:
             "stackable": False,
             "equip_slot": "weapon",
             "required_skills": {"attack": 15},
+        },
+        "training_bow": {
+            "name": "Training bow",
+            "category": "weapon",
+            "sell_price": 10,
+            "stackable": False,
+            "equip_slot": "weapon",
+            "required_skills": {"ranged": 5},
+        },
+        "training_staff": {
+            "name": "Training staff",
+            "category": "weapon",
+            "sell_price": 10,
+            "stackable": False,
+            "equip_slot": "weapon",
+            "required_skills": {"magic": 5},
         },
     }

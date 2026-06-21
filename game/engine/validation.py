@@ -93,7 +93,7 @@ def validate_items(items: dict[str, Any]) -> list[ValidationIssue]:
         heal_amount = definition.get("heal_amount")
         if heal_amount is not None and (not isinstance(heal_amount, int) or heal_amount <= 0):
             issues.append(ValidationIssue(source, "'heal_amount' must be a positive integer"))
-        for key in ("attack_bonus", "strength_bonus", "defence_bonus"):
+        for key in ("attack_bonus", "strength_bonus", "defence_bonus", "ranged_bonus", "magic_bonus"):
             bonus = definition.get(key)
             if bonus is not None and (not isinstance(bonus, int) or bonus < 0):
                 issues.append(ValidationIssue(source, f"'{key}' must be a non-negative integer"))
@@ -143,7 +143,7 @@ def validate_items(items: dict[str, Any]) -> list[ValidationIssue]:
 
 def validate_item_skill_refs(items: dict[str, Any], skills: dict[str, Any]) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
-    valid_skill_ids = set(skills) | {"attack", "strength", "defence", "hitpoints", "smithing"}
+    valid_skill_ids = set(skills) | {"attack", "strength", "defence", "ranged", "magic", "hitpoints", "smithing"}
     for item_id, definition in items.items():
         if not isinstance(definition, dict):
             continue
@@ -229,7 +229,7 @@ def validate_quests(
         return [ValidationIssue("quests.json:quests", "must be a non-empty list")]
 
     seen_ids: set[str] = set()
-    valid_skill_ids = set(skills) | {"attack", "strength", "defence", "hitpoints", "smithing"}
+    valid_skill_ids = set(skills) | {"attack", "strength", "defence", "ranged", "magic", "hitpoints", "smithing"}
     required_strings = {
         "quest_id",
         "display_name",
@@ -435,7 +435,7 @@ def validate_world(
 
     world_object_positions: set[tuple[int, int]] = set()
     invalid_object_tiles = blocked_tiles | water_tiles
-    for key in ("shop", "bank", "cooking_range", "combat_dummy", "furnace", "anvil"):
+    for key in ("shop", "bank", "cooking_range", "furnace", "anvil"):
         _validate_optional_world_object(
             world,
             key,
@@ -670,6 +670,15 @@ def _validate_mobs(
         display_name = mob.get("display_name")
         if not isinstance(display_name, str) or not display_name:
             issues.append(ValidationIssue(source, "'display_name' must be a non-empty string"))
+        visual_kind = mob.get("visual_kind")
+        if visual_kind is not None and (not isinstance(visual_kind, str) or not visual_kind):
+            issues.append(ValidationIssue(source, "'visual_kind' must be a non-empty string"))
+        attack_style = mob.get("attack_style", "melee")
+        if attack_style not in {"melee", "ranged", "magic"}:
+            issues.append(ValidationIssue(source, "'attack_style' must be melee, ranged, or magic"))
+        attack_range = mob.get("attack_range", 1)
+        if not isinstance(attack_range, int) or attack_range <= 0:
+            issues.append(ValidationIssue(source, "'attack_range' must be a positive integer"))
         for key in ("level", "hitpoints"):
             if not isinstance(mob.get(key), int) or int(mob.get(key)) <= 0:
                 issues.append(ValidationIssue(source, f"'{key}' must be a positive integer"))

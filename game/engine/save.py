@@ -23,6 +23,8 @@ STARTER_ITEMS = {
     "bronze_pickaxe": 1,
     "fishing_rod": 1,
     "bronze_sword": 1,
+    "training_bow": 1,
+    "training_staff": 1,
     "bronze_shield": 1,
 }
 DEFAULT_SKILL_IDS = (
@@ -33,6 +35,8 @@ DEFAULT_SKILL_IDS = (
     "attack",
     "strength",
     "defence",
+    "ranged",
+    "magic",
     "hitpoints",
     "smithing",
 )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import random
 import time
 from typing import Any, Callable, Iterable
 
@@ -31,6 +32,9 @@ class MobDefinition:
     respawn_seconds: float
     position: Tile
     drops: tuple[DropStack, ...]
+    visual_kind: str = "fighter"
+    attack_style: str = "melee"
+    attack_range: int = 1
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "MobDefinition":
@@ -54,6 +58,9 @@ class MobDefinition:
                 for drop in data.get("drops", [])
                 if isinstance(drop, dict)
             ),
+            visual_kind=str(data.get("visual_kind") or "fighter"),
+            attack_style=_normalize_attack_style(str(data.get("attack_style") or "melee")),
+            attack_range=max(1, int(data.get("attack_range", 1))),
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -66,6 +73,9 @@ class MobDefinition:
             "respawn_seconds": self.respawn_seconds,
             "position": list(self.position),
             "drops": [drop.to_dict() for drop in self.drops],
+            "visual_kind": self.visual_kind,
+            "attack_style": self.attack_style,
+            "attack_range": self.attack_range,
         }
 
 
@@ -101,6 +111,8 @@ class PendingCombat:
     mob_id: str
     complete_at: float
     duration: float
+    combat_style: str
+    player_tile: Tile
 
 
 @dataclass(frozen=True)
@@ -115,6 +127,7 @@ class CombatResult:
     player_damage: int = 0
     enemy_damage: int = 0
     player_dead: bool = False
+    combat_style: str = DEFAULT_COMBAT_TRAINING_STYLE
 
 
 class CombatSystem:
@@ -127,13 +140,17 @@ class CombatSystem:
         skills: Any | None = None,
         current_hitpoints: int | None = None,
         training_style: str = DEFAULT_COMBAT_TRAINING_STYLE,
+        rng: random.Random | None = None,
     ) -> None:
         self.mobs = dict(mobs) if isinstance(mobs, dict) else {mob.mob_id: mob for mob in mobs}
         self.time_provider = time_provider
         self.damage_per_hit = max(1, int(damage_per_hit))
         self.defence_bonus = 0
+        self.ranged_bonus = 0
+        self.magic_bonus = 0
         self.skills = skills
         self.training_style = normalize_combat_training_style(training_style)
+        self.rng = rng or random.Random()
         self.current_hitpoints = int(current_hitpoints) if current_hitpoints is not None else self.max_hitpoints()
         self.states: dict[str, MobState] = {}
         self.pending: PendingCombat | None = None
@@ -177,7 +194,7 @@ class CombatSystem:
         mob = self.mobs.get(mob_id)
         if mob is None:
             return CombatResult(False, "No mob selected")
-        if not self._is_adjacent(player_tile, mob.position) or not grid.in_bounds(player_tile):
+        if not grid.in_bounds(player_tile) or not self.can_attack_from(player_tile, mob):
             return CombatResult(False, "Too far away", mob_id=mob.mob_id)
         if self.is_dead(mob.mob_id):
             return CombatResult(False, f"{mob.display_name} is defeated", mob_id=mob.mob_id)
@@ -193,6 +210,7 @@ class CombatSystem:
                     mob_id=mob.mob_id,
                     pending=True,
                     duration=self.pending.duration,
+                    combat_style=self.pending.combat_style,
                 )
             self.cancel_pending()
 
@@ -201,6 +219,8 @@ class CombatSystem:
             mob_id=mob.mob_id,
             complete_at=self.time_provider() + mob.attack_seconds,
             duration=mob.attack_seconds,
+            combat_style=self.training_style,
+            player_tile=player_tile,
         )
         return CombatResult(
             True,
@@ -208,6 +228,7 @@ class CombatSystem:
             mob_id=mob.mob_id,
             pending=True,
             duration=mob.attack_seconds,
+            combat_style=self.training_style,
         )
 
     def update(self) -> CombatResult | None:
@@ -223,9 +244,10 @@ class CombatSystem:
             return CombatResult(False, f"{mob.display_name} is defeated", mob_id=mob.mob_id)
 
         state = self._state_for(mob)
-        player_damage = self._player_damage()
+        combat_style = pending.combat_style
+        player_damage = self._roll_player_damage(mob, combat_style)
         remaining_hitpoints = max(0, state.hitpoints - player_damage)
-        self._grant_combat_xp(player_damage)
+        self._grant_combat_xp(player_damage, combat_style)
         if remaining_hitpoints <= 0:
             self.states[mob.mob_id] = MobState(
                 hitpoints=0,
@@ -239,9 +261,10 @@ class CombatSystem:
                 killed=True,
                 drops=mob.drops,
                 player_damage=player_damage,
+                combat_style=combat_style,
             )
 
-        enemy_damage = self._enemy_damage(mob)
+        enemy_damage = self._enemy_damage(mob, pending.player_tile)
         self.current_hitpoints = max(0, self.current_hitpoints - enemy_damage)
         if self.current_hitpoints <= 0:
             self.states[mob.mob_id] = MobState(hitpoints=remaining_hitpoints)
@@ -256,6 +279,7 @@ class CombatSystem:
                 player_damage=player_damage,
                 enemy_damage=enemy_damage,
                 player_dead=True,
+                combat_style=combat_style,
             )
 
         self.states[mob.mob_id] = MobState(hitpoints=remaining_hitpoints)
@@ -263,11 +287,15 @@ class CombatSystem:
             mob_id=mob.mob_id,
             complete_at=self.time_provider() + mob.attack_seconds,
             duration=mob.attack_seconds,
+            combat_style=combat_style,
+            player_tile=pending.player_tile,
         )
+        attack_text = "Hit" if player_damage > 0 else "Missed"
+        damage_text = f"{remaining_hitpoints}/{mob.hitpoints} HP left"
         return CombatResult(
             True,
             (
-                f"Hit {mob.display_name}: {remaining_hitpoints}/{mob.hitpoints} HP left; "
+                f"{attack_text} {mob.display_name}: {damage_text}; "
                 f"{mob.display_name} hit you for {enemy_damage}; "
                 f"you: {self.current_hitpoints}/{self.max_hitpoints()} HP"
             ),
@@ -276,6 +304,7 @@ class CombatSystem:
             duration=mob.attack_seconds,
             player_damage=player_damage,
             enemy_damage=enemy_damage,
+            combat_style=combat_style,
         )
 
     def cancel_pending(self) -> bool:
@@ -337,29 +366,94 @@ class CombatSystem:
             if self.pending is not None and self.pending.mob_id == mob_id:
                 self.cancel_pending()
 
-    def _is_adjacent(self, player_tile: Tile, target_tile: Tile) -> bool:
-        distance = max(abs(player_tile[0] - target_tile[0]), abs(player_tile[1] - target_tile[1]))
-        return 0 < distance <= settings.INTERACTION_RANGE
+    def can_attack_from(self, player_tile: Tile, mob: MobDefinition) -> bool:
+        distance = self._tile_distance(player_tile, mob.position)
+        return 0 < distance <= self.attack_range_for_style(self.training_style)
 
-    def _player_damage(self) -> int:
-        strength_bonus = 0
-        if self.skills is not None and hasattr(self.skills, "level"):
-            strength_bonus = max(0, int(self.skills.level("strength")) - 1) // 10
-        return max(1, self.damage_per_hit + strength_bonus)
+    def attack_range_for_style(self, combat_style: str | None = None) -> int:
+        style = normalize_combat_training_style(combat_style or self.training_style)
+        if style in {"ranged", "magic"}:
+            return 5
+        return settings.INTERACTION_RANGE
 
-    def _enemy_damage(self, mob: MobDefinition) -> int:
+    def _in_mob_attack_range(self, player_tile: Tile, mob: MobDefinition) -> bool:
+        distance = self._tile_distance(player_tile, mob.position)
+        return 0 < distance <= max(1, mob.attack_range)
+
+    def _tile_distance(self, player_tile: Tile, target_tile: Tile) -> int:
+        distance = abs(player_tile[0] - target_tile[0]) + abs(player_tile[1] - target_tile[1])
+        return distance
+
+    def _roll_player_damage(self, mob: MobDefinition, combat_style: str) -> int:
+        if self._random_float() > self._hit_chance(mob, combat_style):
+            return 0
+        return self._random_int(1, self._max_player_damage(combat_style))
+
+    def _hit_chance(self, mob: MobDefinition, combat_style: str) -> float:
+        accuracy_level = _skill_level(self.skills, _accuracy_skill(combat_style))
+        chance = 0.72 + 0.015 * (accuracy_level - mob.level)
+        return max(0.20, min(0.95, chance))
+
+    def _max_player_damage(self, combat_style: str) -> int:
+        damage_skill = _damage_skill(combat_style)
+        skill_bonus = max(0, _skill_level(self.skills, damage_skill) - 1) // 10
+        if combat_style == "ranged":
+            base_damage = 1 + self.ranged_bonus
+        elif combat_style == "magic":
+            base_damage = 1 + self.magic_bonus
+        else:
+            base_damage = self.damage_per_hit
+        return max(1, base_damage + skill_bonus)
+
+    def _enemy_damage(self, mob: MobDefinition, player_tile: Tile) -> int:
+        if not self._in_mob_attack_range(player_tile, mob):
+            return 0
         return max(0, max(1, mob.level // 3) - self.defence_bonus)
 
-    def _grant_combat_xp(self, damage: int) -> None:
+    def _grant_combat_xp(self, damage: int, combat_style: str) -> None:
         if self.skills is None or damage <= 0 or not hasattr(self.skills, "add_xp"):
             return
-        self.skills.add_xp(self.training_style, damage * 4)
+        self.skills.add_xp(combat_style, damage * 4)
         self.skills.add_xp("hitpoints", damage)
+
+    def _random_float(self) -> float:
+        random_value = getattr(self.rng, "random", None)
+        return float(random_value()) if callable(random_value) else 0.0
+
+    def _random_int(self, lower: int, upper: int) -> int:
+        randint = getattr(self.rng, "randint", None)
+        if callable(randint):
+            return int(randint(lower, upper))
+        return lower
 
 
 def mobs_from_data(data: Iterable[dict[str, Any]]) -> dict[str, MobDefinition]:
     mobs = [MobDefinition.from_dict(raw_mob) for raw_mob in data]
     return {mob.mob_id: mob for mob in mobs}
+
+
+def _skill_level(skills: Any | None, skill_id: str) -> int:
+    if skills is None:
+        return 1
+    if hasattr(skills, "level"):
+        return max(1, int(skills.level(skill_id)))
+    return max(1, int(skills.get(skill_id).level))
+
+
+def _accuracy_skill(combat_style: str) -> str:
+    if combat_style in {"ranged", "magic"}:
+        return combat_style
+    return "attack"
+
+
+def _damage_skill(combat_style: str) -> str:
+    if combat_style in {"ranged", "magic"}:
+        return combat_style
+    return "strength"
+
+
+def _normalize_attack_style(style: str) -> str:
+    return style if style in {"melee", "ranged", "magic"} else "melee"
 
 
 def _pending_feedback(

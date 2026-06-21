@@ -47,6 +47,22 @@ def test_shake_animation_cancels_and_restores_position() -> None:
     assert node.pos == (0.0, 0.0, 0.0)
 
 
+def test_hit_animation_pulses_and_restores_scale() -> None:
+    animator = SceneAnimator()
+    node = _FakeNode()
+
+    animator.start_hit("fx:hit", node, direction=(1.0, 0.0, 0.0), distance=0.20, duration=0.2)
+    animator.update(0.1)
+
+    assert node.pos[0] > 0.0
+    assert node.scale != (1.0, 1.0, 1.0)
+
+    animator.update(0.1)
+
+    assert node.pos == (0.0, 0.0, 0.0)
+    assert node.scale == (1.0, 1.0, 1.0)
+
+
 def test_burst_animation_finishes_and_restores_scale_and_color() -> None:
     animator = SceneAnimator()
     node = _FakeNode()
@@ -69,6 +85,21 @@ def test_spark_animation_can_remove_temporary_node() -> None:
     node = _FakeNode()
 
     animator.start_spark("fx:spark", node, duration=0.1, remove_on_finish=True)
+    animator.update(0.1)
+
+    assert node.removed is True
+    assert animator.active_keys() == set()
+
+
+def test_projectile_animation_moves_to_target_and_removes_node() -> None:
+    animator = SceneAnimator()
+    node = _FakeNode()
+
+    animator.start_projectile("fx:projectile", node, target_pos=(1.0, 0.0, 0.0), arc=0.0, duration=0.2)
+    animator.update(0.1)
+
+    assert node.pos[0] == 0.5
+
     animator.update(0.1)
 
     assert node.removed is True

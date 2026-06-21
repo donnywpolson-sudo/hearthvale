@@ -126,6 +126,8 @@ class SaveTests(unittest.TestCase):
         self.assertEqual(state["skills"]["attack"], {"xp": 0, "level": 1})
         self.assertEqual(state["skills"]["strength"], {"xp": 0, "level": 1})
         self.assertEqual(state["skills"]["defence"], {"xp": 0, "level": 1})
+        self.assertEqual(state["skills"]["ranged"], {"xp": 0, "level": 1})
+        self.assertEqual(state["skills"]["magic"], {"xp": 0, "level": 1})
         self.assertEqual(state["skills"]["hitpoints"], {"xp": 0, "level": 10})
         self.assertEqual(state["skills"]["smithing"], {"xp": 0, "level": 1})
         self.assertNotIn("coins", state)
@@ -137,6 +139,8 @@ class SaveTests(unittest.TestCase):
         self.assertEqual(state["inventory"]["bronze_pickaxe"], 1)
         self.assertEqual(state["inventory"]["fishing_rod"], 1)
         self.assertEqual(state["inventory"]["bronze_sword"], 1)
+        self.assertEqual(state["inventory"]["training_bow"], 1)
+        self.assertEqual(state["inventory"]["training_staff"], 1)
         self.assertEqual(state["inventory"]["bronze_shield"], 1)
         self.assertEqual(state["equipment"], {})
 
@@ -180,7 +184,7 @@ class SaveTests(unittest.TestCase):
     def test_missing_or_invalid_combat_training_style_migrates_to_attack(self) -> None:
         self.assertEqual(migrate_save_state({"inventory": {}})["combat_training_style"], "attack")
         self.assertEqual(
-            migrate_save_state({"inventory": {}, "combat_training_style": "magic"})["combat_training_style"],
+            migrate_save_state({"inventory": {}, "combat_training_style": "unknown_style"})["combat_training_style"],
             "attack",
         )
 
@@ -188,6 +192,16 @@ class SaveTests(unittest.TestCase):
         migrated = migrate_save_state({"inventory": {}, "combat_training_style": "strength"})
 
         self.assertEqual(migrated["combat_training_style"], "strength")
+
+    def test_combat_training_style_migration_preserves_ranged_and_magic(self) -> None:
+        self.assertEqual(
+            migrate_save_state({"inventory": {}, "combat_training_style": "ranged"})["combat_training_style"],
+            "ranged",
+        )
+        self.assertEqual(
+            migrate_save_state({"inventory": {}, "combat_training_style": "magic"})["combat_training_style"],
+            "magic",
+        )
 
     def test_legacy_content_ids_migrate_to_starsteel_ids(self) -> None:
         state = {

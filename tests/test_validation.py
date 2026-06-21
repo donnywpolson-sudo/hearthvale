@@ -164,6 +164,30 @@ def test_data_validation_accepts_shop_stock_fishing_water_and_mobs() -> None:
     validate_all(_items(), _skills(), world)
 
 
+def test_data_validation_accepts_ranged_and_magic_weapon_requirements() -> None:
+    items = _items()
+    items["training_bow"] = {
+        "name": "Training bow",
+        "category": "weapon",
+        "stackable": False,
+        "sell_price": 10,
+        "ranged_bonus": 1,
+        "equip_slot": "weapon",
+        "required_skills": {"ranged": 1},
+    }
+    items["training_staff"] = {
+        "name": "Training staff",
+        "category": "weapon",
+        "stackable": False,
+        "sell_price": 10,
+        "magic_bonus": 1,
+        "equip_slot": "weapon",
+        "required_skills": {"magic": 1},
+    }
+
+    validate_all(items, _skills(), _world())
+
+
 def test_data_validation_accepts_recipes_npcs_and_smithing_stations() -> None:
     world = _world()
     world["furnace"] = {"id": "furnace_01", "tile": [16, 16]}
@@ -264,6 +288,21 @@ def test_data_validation_rejects_unknown_mob_drop() -> None:
     assert "unknown item_id 'missing_drop'" in str(exc.value)
 
 
+def test_data_validation_rejects_invalid_mob_combat_profile() -> None:
+    world = _world()
+    mob = _mob()
+    mob["attack_style"] = "shouting"
+    mob["attack_range"] = 0
+    world["mobs"] = [mob]
+
+    with pytest.raises(DataValidationError) as exc:
+        validate_all(_items(), _skills(), world)
+
+    message = str(exc.value)
+    assert "'attack_style' must be melee, ranged, or magic" in message
+    assert "'attack_range' must be a positive integer" in message
+
+
 def test_shipped_high_tier_content_uses_original_starsteel_ids() -> None:
     items = _load_data("items.json")
     recipes = _load_data("recipes.json")
@@ -294,6 +333,28 @@ def test_shipped_world_has_no_non_useful_decorations() -> None:
     world = _load_data("world.json")
 
     assert world.get("decorations") == []
+
+
+def test_shipped_world_has_phase_one_monster_roster() -> None:
+    items = _load_data("items.json")
+    world = _load_data("world.json")
+    mobs = {mob["mob_id"]: mob for mob in world["mobs"]}
+
+    assert set(mobs) == {
+        "rat_01",
+        "goblin_01",
+        "skeleton_01",
+        "slime_01",
+        "wolf_01",
+        "bandit_01",
+        "mage_imp_01",
+        "archer_goblin_01",
+    }
+    assert mobs["mage_imp_01"]["attack_style"] == "magic"
+    assert mobs["mage_imp_01"]["attack_range"] == 4
+    assert mobs["archer_goblin_01"]["attack_style"] == "ranged"
+    assert mobs["archer_goblin_01"]["attack_range"] == 4
+    assert {"bones", "cloth", "gel"} <= set(items)
 
 
 def test_shipped_fishing_nodes_use_generic_spot_names() -> None:
@@ -443,7 +504,7 @@ def _fish_node(position: list[int]) -> dict[str, object]:
 def _mob() -> dict[str, object]:
     return {
         "mob_id": "mob_01",
-        "display_name": "Worn dummy",
+        "display_name": "Test sentry",
         "level": 1,
         "hitpoints": 2,
         "attack_seconds": 1.0,

@@ -125,17 +125,6 @@ class WorldMap:
             )
             self.objects[obj.object_id] = obj
 
-        combat_dummy = data.get("combat_dummy")
-        if combat_dummy:
-            obj = WorldObject(
-                combat_dummy["id"],
-                "combat_dummy",
-                _tile(combat_dummy["tile"]),
-                blocking=True,
-                display_name=str(combat_dummy.get("name") or "Training dummy"),
-            )
-            self.objects[obj.object_id] = obj
-
         furnace = data.get("furnace")
         if furnace:
             obj = WorldObject(
@@ -172,16 +161,15 @@ class WorldMap:
             self.objects[obj.object_id] = obj
 
         for mob in self.mob_definitions.values():
-            obj = WorldObject(
-                mob.mob_id,
-                "mob",
-                mob.position,
-                blocking=True,
-                display_name=mob.display_name,
-                level=mob.level,
-                hitpoints=mob.hitpoints,
-                max_hitpoints=mob.hitpoints,
-            )
+            existing = self.objects.get(mob.mob_id)
+            obj = existing or WorldObject(mob.mob_id, "mob", mob.position)
+            obj.tile = mob.position
+            obj.blocking = True
+            obj.display_name = mob.display_name
+            obj.level = mob.level
+            obj.hitpoints = mob.hitpoints
+            obj.max_hitpoints = mob.hitpoints
+            obj.visual_kind = mob.visual_kind
             self.objects[obj.object_id] = obj
 
         self._reindex_objects()
@@ -459,6 +447,7 @@ class WorldMap:
         obj.tile = mob.position
         obj.display_name = mob.display_name
         obj.level = mob.level
+        obj.visual_kind = mob.visual_kind
         obj.hitpoints = state.hitpoints
         obj.max_hitpoints = mob.hitpoints
         obj.active = not state.dead

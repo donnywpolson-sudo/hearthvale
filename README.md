@@ -64,7 +64,8 @@ python -m game.tools.validate_data
 - In-game `File` menu: save, load, or quit
 - `F5`: save the currently logged-in account
 - `F9`: load the currently logged-in account
-- `Esc`: quit
+- `Esc`: no quit action; use `File` then `Quit` to close the game while playing
+- `I` / `C` / `K`: toggle inventory, clothes/equipment, and skills tabs
 
 ## Local Account Data
 
@@ -82,7 +83,7 @@ automatically when needed.
 
 ## Current MVP Features
 
-- 100x100 scalable tile world with the current starter area, grass, dirt paths, blocked rocks, trees, copper rocks, fishing spots, stumps, depleted rocks, shop, bank, cooking range, and training dummy markers.
+- 100x100 scalable tile world with the current starter area, grass, dirt paths, blocked rocks, trees, copper rocks, fishing spots, stumps, depleted rocks, shops, bank, crafting stations, NPCs, and monster spawns.
 - Angled top-down camera independent from player movement.
 - Left-click movement with grid A* pathfinding.
 - Classic-style left/right click interactions for ground, gameplay objects, and scenery, including default actions, walk-to behavior, context menus, and examine options.

@@ -231,13 +231,22 @@ class SceneAnimator:
 
         def apply(track: _Track) -> None:
             progress = _progress(track)
-            pulse = math.sin(math.pi * progress)
+            eased = progress * progress * (3.0 - 2.0 * progress)
+            pulse = math.sin(math.pi * eased)
             _set_pos(
                 track.node,
                 (
                     track.base.pos[0] + direction[0] * pulse * distance,
                     track.base.pos[1] + direction[1] * pulse * distance,
                     track.base.pos[2] + direction[2] * pulse * distance,
+                ),
+            )
+            _set_scale(
+                track.node,
+                (
+                    track.base.scale[0] * (1.0 + 0.08 * pulse),
+                    track.base.scale[1] * (1.0 - 0.04 * pulse),
+                    track.base.scale[2] * (1.0 + 0.05 * pulse),
                 ),
             )
             _set_color(track.node, _lerp4(track.base.color_scale, (1.45, 0.78, 0.58, 1.0), pulse))
@@ -250,6 +259,7 @@ class SceneAnimator:
                 apply,
                 duration=duration,
                 reset_pos=True,
+                reset_scale=True,
                 reset_color=True,
             )
         )
@@ -336,6 +346,51 @@ class SceneAnimator:
                 duration=duration,
                 reset_scale=True,
                 reset_color=True,
+            )
+        )
+
+    def start_projectile(
+        self,
+        key: str,
+        node: Any,
+        *,
+        target_pos: Vec3Tuple,
+        color: Vec4Tuple = (1.25, 1.12, 0.74, 1.0),
+        arc: float = 0.18,
+        duration: float = 0.26,
+    ) -> None:
+        base = _capture(node)
+
+        def apply(track: _Track) -> None:
+            progress = _progress(track)
+            eased = progress * progress * (3.0 - 2.0 * progress)
+            lift = math.sin(math.pi * progress) * arc
+            _set_pos(
+                track.node,
+                (
+                    base.pos[0] + (target_pos[0] - base.pos[0]) * eased,
+                    base.pos[1] + (target_pos[1] - base.pos[1]) * eased,
+                    base.pos[2] + (target_pos[2] - base.pos[2]) * eased + lift,
+                ),
+            )
+            _set_color(track.node, _lerp4(base.color_scale, color, 1.0 - progress * 0.45))
+
+        def cleanup() -> None:
+            remove_node = getattr(node, "removeNode", None)
+            if callable(remove_node):
+                remove_node()
+
+        self._replace(
+            _Track(
+                key,
+                node,
+                base,
+                apply,
+                duration=duration,
+                reset_pos=False,
+                reset_color=False,
+                restore_on_finish=False,
+                cleanup=cleanup,
             )
         )
 

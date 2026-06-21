@@ -6,7 +6,7 @@ import time
 from typing import Any
 
 
-COMBAT_TRAINING_STYLES = ("attack", "strength", "defence")
+COMBAT_TRAINING_STYLES = ("attack", "strength", "defence", "ranged", "magic")
 DEFAULT_COMBAT_TRAINING_STYLE = "attack"
 
 
@@ -41,24 +41,10 @@ class CombatTraining:
         return self.style
 
     def train(self) -> CombatTrainingResult:
-        now = self.time_provider()
-        if now < self.next_train_at:
-            remaining = self.next_train_at - now
-            return CombatTrainingResult(
-                False,
-                f"Training dummy is recovering: {remaining:.1f}s",
-                self.style,
-                remaining_seconds=remaining,
-            )
-
-        self.next_train_at = now + self.cooldown_seconds
-        self.skills.add_xp(self.style, self.xp_reward)
-        label = _skill_label(self.skills, self.style)
         return CombatTrainingResult(
-            True,
-            f"Trained {label}: +{self.xp_reward} {label} XP",
+            False,
+            "Combat practice is unavailable",
             self.style,
-            xp_awarded=self.xp_reward,
         )
 
 

@@ -54,6 +54,7 @@ class PendingSmithing:
     action_type: str
     complete_at: float
     duration: float
+    remaining: int = 1
 
 
 @dataclass(frozen=True)
@@ -86,29 +87,31 @@ class SmithingSystem:
         self.recipes = _recipes_from_data(recipes_data)
         self.pending: PendingSmithing | None = None
 
-    def start_smelting(self, selected_item_id: str | None) -> SmithingResult:
+    def start_smelting(self, selected_item_id: str | None, quantity: int = 1) -> SmithingResult:
         recipes = self.matching_recipes("smelting", selected_item_id)
         if not recipes:
             return SmithingResult(False, "Select ore to smelt")
         if len(recipes) > 1:
             return SmithingResult(False, "Choose a recipe to smelt", needs_choice=True)
-        return self.start_recipe(recipes[0])
+        return self.start_recipe(recipes[0], quantity)
 
-    def start_smithing(self, selected_item_id: str | None) -> SmithingResult:
+    def start_smithing(self, selected_item_id: str | None, quantity: int = 1) -> SmithingResult:
         recipes = self.matching_recipes("smithing", selected_item_id)
         if not recipes:
             return SmithingResult(False, "Select bars to smith")
         if len(recipes) > 1:
             return SmithingResult(False, "Choose a recipe to smith", needs_choice=True)
-        return self.start_recipe(recipes[0])
+        return self.start_recipe(recipes[0], quantity)
 
-    def start_recipe_by_id(self, action_type: str, recipe_id: str) -> SmithingResult:
+    def start_recipe_by_id(self, action_type: str, recipe_id: str, quantity: int = 1) -> SmithingResult:
         recipe = self.recipe_by_id(action_type, recipe_id)
         if recipe is None:
             return SmithingResult(False, "Recipe unavailable", recipe_id=recipe_id)
-        return self.start_recipe(recipe)
+        return self.start_recipe(recipe, quantity)
 
-    def start_recipe(self, recipe: SmithingRecipe) -> SmithingResult:
+    def start_recipe(self, recipe: SmithingRecipe, quantity: int = 1) -> SmithingResult:
+        if quantity <= 0:
+            raise ValueError("quantity must be positive")
         if self.pending is not None:
             if self.pending.recipe_id == recipe.recipe_id and self.pending.action_type == recipe.action_type:
                 return SmithingResult(
@@ -128,6 +131,16 @@ class SmithingSystem:
         missing = _missing_inputs(self.inventory, recipe.inputs)
         if missing:
             return SmithingResult(False, f"You need {missing}", recipe_id=recipe.recipe_id)
+        quantity = min(quantity, _max_recipe_quantity(self.inventory, recipe.inputs))
+        while quantity > 0 and not inventory_can_transact(
+            self.inventory.to_dict(),
+            self.item_definitions,
+            remove=_scale_inputs(recipe.inputs, quantity),
+            add={recipe.output_item_id: recipe.output_quantity * quantity},
+        ):
+            quantity -= 1
+        if quantity <= 0:
+            return SmithingResult(False, "Inventory is full", recipe_id=recipe.recipe_id)
         if not inventory_can_transact(
             self.inventory.to_dict(),
             self.item_definitions,
@@ -142,6 +155,7 @@ class SmithingSystem:
             action_type=recipe.action_type,
             complete_at=self.time_provider() + duration,
             duration=duration,
+            remaining=quantity,
         )
         return SmithingResult(
             True,
@@ -177,6 +191,8 @@ class SmithingSystem:
             self.inventory.remove(item_id, quantity)
         self.inventory.add(recipe.output_item_id, recipe.output_quantity)
         self.skills.add_xp("smithing", recipe.xp_reward)
+        duration = self._schedule_next_if_possible(recipe, pending.remaining - 1)
+        continuing = duration > 0
         return SmithingResult(
             True,
             _success_feedback(recipe),
@@ -184,6 +200,8 @@ class SmithingSystem:
             item_id=recipe.output_item_id,
             quantity=recipe.output_quantity,
             xp=recipe.xp_reward,
+            pending=continuing,
+            duration=duration,
         )
 
     def cancel_pending(self) -> bool:
@@ -203,6 +221,17 @@ class SmithingSystem:
         speed_bonus = min(0.50, 0.05 * level_advantage)
         return max(0.75, recipe.base_seconds * (1.0 - speed_bonus))
 
+    def max_quantity(self, recipe: SmithingRecipe) -> int:
+        quantity = _max_recipe_quantity(self.inventory, recipe.inputs)
+        while quantity > 0 and not inventory_can_transact(
+            self.inventory.to_dict(),
+            self.item_definitions,
+            remove=_scale_inputs(recipe.inputs, quantity),
+            add={recipe.output_item_id: recipe.output_quantity * quantity},
+        ):
+            quantity -= 1
+        return quantity
+
     def matching_recipes(self, action_type: str, selected_item_id: str | None) -> list[SmithingRecipe]:
         if selected_item_id is None:
             return []
@@ -220,6 +249,29 @@ class SmithingSystem:
         if not recipes:
             return None
         return recipes[0]
+
+    def _schedule_next_if_possible(self, recipe: SmithingRecipe, remaining: int) -> float:
+        if remaining <= 0:
+            return 0.0
+        missing = _missing_inputs(self.inventory, recipe.inputs)
+        if missing:
+            return 0.0
+        if not inventory_can_transact(
+            self.inventory.to_dict(),
+            self.item_definitions,
+            remove=recipe.inputs,
+            add={recipe.output_item_id: recipe.output_quantity},
+        ):
+            return 0.0
+        duration = self.action_duration(recipe)
+        self.pending = PendingSmithing(
+            recipe_id=recipe.recipe_id,
+            action_type=recipe.action_type,
+            complete_at=self.time_provider() + duration,
+            duration=duration,
+            remaining=remaining,
+        )
+        return duration
 
 
 def _recipes_from_data(data: dict[str, Any]) -> dict[str, dict[str, SmithingRecipe]]:
@@ -246,6 +298,15 @@ def _missing_inputs(inventory: Any, inputs: dict[str, int]) -> str:
         if available < quantity:
             missing.append(f"{quantity - available} {item_id.replace('_', ' ')}")
     return ", ".join(missing)
+
+
+def _scale_inputs(inputs: dict[str, int], quantity: int) -> dict[str, int]:
+    return {item_id: amount * quantity for item_id, amount in inputs.items()}
+
+
+def _max_recipe_quantity(inventory: Any, inputs: dict[str, int]) -> int:
+    quantities = [inventory.count(item_id) // amount for item_id, amount in inputs.items() if amount > 0]
+    return min(quantities) if quantities else 0
 
 
 def _start_feedback(recipe: SmithingRecipe, duration: float) -> str:

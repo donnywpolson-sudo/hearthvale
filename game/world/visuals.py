@@ -113,8 +113,6 @@ def render_world_object(
         _render_bank(holder, obj.object_id)
     elif render_kind == "cooking_range":
         _render_cooking_range(holder, obj.object_id)
-    elif render_kind == "combat_dummy":
-        _render_combat_dummy(holder, obj.object_id)
     elif render_kind == "furnace":
         _render_furnace(holder, obj.object_id)
     elif render_kind == "anvil":
@@ -322,6 +320,20 @@ def world_tint(minute: float) -> tuple[Color, Color]:
 def _render_grass_tile(holder: NodePath, tile: Tile) -> None:
     base = make_quad("grass_base", settings.TILE_SIZE, _grass_base_color(tile))
     base.reparentTo(holder)
+    if _hash(tile, 4) % 3 == 0:
+        tuft = make_box("grass_tuft", (0.18, 0.026, 0.030), C.GRASS_HIGHLIGHT)
+        tuft.reparentTo(holder)
+        tuft.setPos(_grass_offset(tile, 11), _grass_offset(tile, 12), 0.018)
+        tuft.setH((_hash(tile, 14) % 60) - 30)
+    if _hash(tile, 7) % 5 == 0:
+        patch = make_box("grass_shadow_patch", (0.34, 0.18, 0.012), C.GRASS_SHADOW_PATCH)
+        patch.reparentTo(holder)
+        patch.setPos(_grass_offset(tile, 21), _grass_offset(tile, 22), 0.010)
+        patch.setH(_hash(tile, 23) % 180)
+    if _hash(tile, 9) % 11 == 0:
+        flower = make_box("grass_flower", (0.035, 0.035, 0.035), C.FLOWER_YELLOW if _hash(tile, 10) % 2 else C.FLOWER_RED)
+        flower.reparentTo(holder)
+        flower.setPos(_grass_offset(tile, 31), _grass_offset(tile, 32), 0.030)
 
 
 def _render_dirt_tile(holder: NodePath, tile: Tile, edge_dirs: set[str]) -> None:
@@ -786,34 +798,6 @@ def _render_cooking_range(holder: NodePath, name: str) -> None:
         smoke.setPos(x, 0.20, z)
 
 
-def _render_combat_dummy(holder: NodePath, name: str) -> None:
-    _shadow(holder, f"{name}_shadow", 0.42, 0.28)
-    post = make_cylinder(f"{name}_post", 0.08, 0.78, 7, C.TRUNK)
-    post.reparentTo(holder)
-    post.setZ(0.04)
-
-    body = make_box(f"{name}_body", (0.36, 0.18, 0.44), C.WOOD_LIGHT)
-    body.reparentTo(holder)
-    body.setZ(0.48)
-
-    target = make_box(f"{name}_target", (0.24, 0.04, 0.24), C.CLOTH_RED)
-    target.reparentTo(holder)
-    target.setPos(0.0, -0.12, 0.58)
-    target_center = make_box(f"{name}_target_center", (0.10, 0.035, 0.10), C.CLOTH_CREAM)
-    target_center.reparentTo(holder)
-    target_center.setPos(0.0, -0.145, 0.65)
-    crossbar = make_box(f"{name}_crossbar", (0.54, 0.08, 0.08), C.WOOD_DARK)
-    crossbar.reparentTo(holder)
-    crossbar.setZ(0.64)
-
-    head = make_cylinder(f"{name}_head", 0.14, 0.16, 8, C.STUMP_TOP)
-    head.reparentTo(holder)
-    head.setZ(0.88)
-    face = make_box(f"{name}_face", (0.13, 0.025, 0.04), C.OUTLINE)
-    face.reparentTo(holder)
-    face.setPos(0.0, -0.13, 0.95)
-
-
 def _render_furnace(holder: NodePath, name: str) -> None:
     _shadow(holder, f"{name}_shadow", 0.58, 0.42)
     base = make_cylinder(f"{name}_base", 0.36, 0.52, 8, C.STONE_DARK)
@@ -908,51 +892,313 @@ def _render_quest_npc(holder: NodePath, name: str) -> None:
 
 
 def _render_mob(holder: NodePath, obj: WorldObject) -> None:
-    _shadow(holder, f"{obj.object_id}_shadow", 0.46, 0.30)
-    accent = _mob_color(obj.level)
+    visual_kind = obj.visual_kind or "fighter"
+    accent = _mob_color(obj.level, visual_kind)
+    if visual_kind == "rat":
+        _render_rat_mob(holder, obj, accent)
+    elif visual_kind in {"goblin", "archer_goblin"}:
+        _render_goblin_mob(holder, obj, accent)
+    elif visual_kind == "skeleton":
+        _render_skeleton_mob(holder, obj, accent)
+    elif visual_kind == "slime":
+        _render_slime_mob(holder, obj, accent)
+    elif visual_kind == "wolf":
+        _render_wolf_mob(holder, obj, accent)
+    elif visual_kind == "bandit":
+        _render_bandit_mob(holder, obj, accent)
+    elif visual_kind == "mage_imp":
+        _render_imp_mob(holder, obj, accent)
+    elif visual_kind in {"splinterling", "barkling"}:
+        _render_splinter_mob(holder, obj, accent)
+    elif visual_kind in {"cave_wisp", "glow_wisp", "mire_bat"}:
+        _render_wisp_mob(holder, obj, accent)
+    elif visual_kind in {"rock_mite", "ash_crawler"}:
+        _render_crawler_mob(holder, obj, accent)
+    else:
+        _render_sentry_mob(holder, obj, accent)
+    _render_mob_health_bar(holder, obj)
 
-    body = make_cylinder(f"{obj.object_id}_body", 0.20, 0.50, 8, C.STONE_DARK)
+
+def _render_rat_mob(holder: NodePath, obj: WorldObject, accent: Color) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.34, 0.20)
+    body = make_cylinder(f"{name}_rat_body", 0.16, 0.34, 8, accent)
+    body.reparentTo(holder)
+    body.setPos(0.0, 0.0, 0.09)
+    body.setP(82)
+    head = make_cylinder(f"{name}_rat_head", 0.11, 0.14, 7, accent)
+    head.reparentTo(holder)
+    head.setPos(0.0, -0.22, 0.18)
+    for index, x in enumerate((-0.075, 0.075)):
+        ear = make_cone(f"{name}_rat_ear_{index}", 0.045, 0.075, 5, C.STONE_DARK)
+        ear.reparentTo(holder)
+        ear.setPos(x, -0.25, 0.30)
+        eye = make_box(f"{name}_rat_eye_{index}", (0.022, 0.018, 0.020), C.GOLD)
+        eye.reparentTo(holder)
+        eye.setPos(x * 0.55, -0.32, 0.22)
+    tail = make_box(f"{name}_rat_tail", (0.035, 0.28, 0.030), C.SKIN_DARK)
+    tail.reparentTo(holder)
+    tail.setPos(0.0, 0.25, 0.12)
+    tail.setH(12)
+
+
+def _render_goblin_mob(holder: NodePath, obj: WorldObject, accent: Color) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.36, 0.24)
+    body = make_box(f"{name}_goblin_tunic", (0.30, 0.22, 0.38), C.CLOTH_GREEN)
+    body.reparentTo(holder)
+    body.setPos(0.0, 0.0, 0.12)
+    head = make_cylinder(f"{name}_goblin_head", 0.15, 0.16, 7, accent)
+    head.reparentTo(holder)
+    head.setZ(0.53)
+    for index, x in enumerate((-0.18, 0.18)):
+        ear = make_cone(f"{name}_goblin_ear_{index}", 0.060, 0.10, 5, accent)
+        ear.reparentTo(holder)
+        ear.setPos(x, -0.02, 0.58)
+        ear.setR(80 if x < 0 else -80)
+    for index, x in enumerate((-0.055, 0.055)):
+        eye = make_box(f"{name}_goblin_eye_{index}", (0.026, 0.020, 0.022), C.GOLD)
+        eye.reparentTo(holder)
+        eye.setPos(x, -0.14, 0.61)
+    for index, x in enumerate((-0.20, 0.20)):
+        arm = make_box(f"{name}_goblin_arm_{index}", (0.08, 0.09, 0.26), accent)
+        arm.reparentTo(holder)
+        arm.setPos(x, -0.01, 0.31)
+        arm.setR(-16 if x < 0 else 16)
+    weapon_name = "shortbow" if obj.visual_kind == "archer_goblin" else "club"
+    weapon = make_box(
+        f"{name}_goblin_{weapon_name}",
+        (0.045, 0.40, 0.045) if weapon_name == "shortbow" else (0.075, 0.24, 0.075),
+        C.WOOD_LIGHT,
+    )
+    weapon.reparentTo(holder)
+    weapon.setPos(0.24, -0.08, 0.36)
+    weapon.setH(-18 if weapon_name == "shortbow" else 24)
+
+
+def _render_skeleton_mob(holder: NodePath, obj: WorldObject, accent: Color) -> None:
+    name = obj.object_id
+    bone = (0.78, 0.72, 0.58, 1.0)
+    _shadow(holder, f"{name}_shadow", 0.36, 0.24)
+    spine = make_box(f"{name}_skeleton_spine", (0.08, 0.08, 0.42), bone)
+    spine.reparentTo(holder)
+    spine.setPos(0.0, 0.0, 0.18)
+    ribs = make_box(f"{name}_skeleton_ribs", (0.30, 0.045, 0.22), bone)
+    ribs.reparentTo(holder)
+    ribs.setPos(0.0, -0.07, 0.38)
+    skull = make_cylinder(f"{name}_skeleton_skull", 0.15, 0.17, 8, bone)
+    skull.reparentTo(holder)
+    skull.setZ(0.63)
+    for index, x in enumerate((-0.045, 0.045)):
+        eye = make_box(f"{name}_skeleton_eye_{index}", (0.032, 0.024, 0.030), C.OUTLINE)
+        eye.reparentTo(holder)
+        eye.setPos(x, -0.13, 0.71)
+    for index, x in enumerate((-0.18, 0.18)):
+        arm = make_box(f"{name}_skeleton_arm_{index}", (0.055, 0.055, 0.30), bone)
+        arm.reparentTo(holder)
+        arm.setPos(x, -0.01, 0.32)
+        arm.setR(-18 if x < 0 else 18)
+        leg = make_box(f"{name}_skeleton_leg_{index}", (0.060, 0.070, 0.30), bone)
+        leg.reparentTo(holder)
+        leg.setPos(x * 0.45, 0.0, 0.02)
+
+
+def _render_slime_mob(holder: NodePath, obj: WorldObject, accent: Color) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.42, 0.28)
+    base = make_cylinder(f"{name}_slime_blob", 0.25, 0.24, 10, accent)
+    base.reparentTo(holder)
+    base.setZ(0.04)
+    crown = make_cone(f"{name}_slime_peak", 0.20, 0.20, 8, (0.42, 0.82, 0.42, 0.95))
+    crown.reparentTo(holder)
+    crown.setZ(0.25)
+    for index, x in enumerate((-0.065, 0.065)):
+        eye = make_box(f"{name}_slime_eye_{index}", (0.035, 0.022, 0.026), C.OUTLINE)
+        eye.reparentTo(holder)
+        eye.setPos(x, -0.21, 0.26)
+    shine = make_box(f"{name}_slime_shine", (0.09, 0.018, 0.035), (0.82, 1.0, 0.82, 0.9))
+    shine.reparentTo(holder)
+    shine.setPos(-0.08, -0.17, 0.35)
+
+
+def _render_wolf_mob(holder: NodePath, obj: WorldObject, accent: Color) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.46, 0.26)
+    body = make_box(f"{name}_wolf_body", (0.42, 0.24, 0.24), accent)
+    body.reparentTo(holder)
+    body.setPos(0.0, 0.02, 0.14)
+    head = make_box(f"{name}_wolf_head", (0.22, 0.20, 0.18), accent)
+    head.reparentTo(holder)
+    head.setPos(0.0, -0.23, 0.25)
+    snout = make_box(f"{name}_wolf_snout", (0.12, 0.12, 0.08), C.STONE_DARK)
+    snout.reparentTo(holder)
+    snout.setPos(0.0, -0.37, 0.24)
+    for index, x in enumerate((-0.085, 0.085)):
+        ear = make_cone(f"{name}_wolf_ear_{index}", 0.055, 0.10, 5, C.STONE_DARK)
+        ear.reparentTo(holder)
+        ear.setPos(x, -0.20, 0.42)
+        leg = make_box(f"{name}_wolf_leg_{index}", (0.065, 0.075, 0.18), C.STONE_DARK)
+        leg.reparentTo(holder)
+        leg.setPos(x * 1.7, 0.04, 0.02)
+    tail = make_box(f"{name}_wolf_tail", (0.08, 0.25, 0.08), accent)
+    tail.reparentTo(holder)
+    tail.setPos(0.0, 0.29, 0.25)
+    tail.setP(28)
+
+
+def _render_bandit_mob(holder: NodePath, obj: WorldObject, accent: Color) -> None:
+    _render_npc(holder, obj.object_id, (0.0, 0.0, 0.02), C.LEATHER)
+    blade = make_box(f"{obj.object_id}_bandit_blade", (0.045, 0.34, 0.040), C.METAL_LIGHT)
+    blade.reparentTo(holder)
+    blade.setPos(0.24, -0.07, 0.38)
+    blade.setH(-24)
+
+
+def _render_imp_mob(holder: NodePath, obj: WorldObject, accent: Color) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.34, 0.22)
+    body = make_cylinder(f"{name}_imp_body", 0.16, 0.30, 8, accent)
+    body.reparentTo(holder)
+    body.setZ(0.20)
+    head = make_cylinder(f"{name}_imp_head", 0.13, 0.15, 8, accent)
+    head.reparentTo(holder)
+    head.setZ(0.55)
+    for index, x in enumerate((-0.09, 0.09)):
+        horn = make_cone(f"{name}_imp_horn_{index}", 0.035, 0.11, 5, C.GOLD)
+        horn.reparentTo(holder)
+        horn.setPos(x, -0.02, 0.72)
+        wing = make_box(f"{name}_imp_wing_{index}", (0.20, 0.035, 0.16), (0.38, 0.28, 0.58, 0.9))
+        wing.reparentTo(holder)
+        wing.setPos(x * 2.0, 0.04, 0.43)
+        wing.setR(24 if x < 0 else -24)
+    orb = make_cylinder(f"{name}_imp_spell_orb", 0.055, 0.055, 8, (0.58, 0.72, 1.0, 1.0))
+    orb.reparentTo(holder)
+    orb.setPos(0.20, -0.12, 0.50)
+
+
+def _render_sentry_mob(holder: NodePath, obj: WorldObject, accent: Color) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.46, 0.30)
+
+    body = make_cylinder(f"{name}_body", 0.20, 0.50, 8, C.STONE_DARK)
     body.reparentTo(holder)
     body.setZ(0.04)
 
-    core = make_box(f"{obj.object_id}_core", (0.28, 0.20, 0.28), accent)
+    core = make_box(f"{name}_core", (0.28, 0.20, 0.28), accent)
     core.reparentTo(holder)
     core.setPos(0.0, -0.02, 0.39)
     core.setH(18)
 
-    ribs = make_box(f"{obj.object_id}_ribs", (0.30, 0.045, 0.20), C.METAL_DARK)
+    ribs = make_box(f"{name}_ribs", (0.30, 0.045, 0.20), C.METAL_DARK)
     ribs.reparentTo(holder)
     ribs.setPos(0.0, -0.14, 0.44)
 
-    head = make_cylinder(f"{obj.object_id}_head", 0.15, 0.17, 8, C.STONE)
+    head = make_cylinder(f"{name}_head", 0.15, 0.17, 8, C.STONE)
     head.reparentTo(holder)
     head.setZ(0.62)
 
     for index, x in enumerate((-0.045, 0.045)):
-        eye = make_box(f"{obj.object_id}_eye_{index}", (0.040, 0.030, 0.035), C.GOLD)
+        eye = make_box(f"{name}_eye_{index}", (0.040, 0.030, 0.035), C.GOLD)
         eye.reparentTo(holder)
         eye.setPos(x, -0.13, 0.71)
 
-    shoulder = make_box(f"{obj.object_id}_shoulder", (0.42, 0.12, 0.10), accent)
+    shoulder = make_box(f"{name}_shoulder", (0.42, 0.12, 0.10), accent)
     shoulder.reparentTo(holder)
     shoulder.setPos(0.0, -0.02, 0.50)
     shoulder.setH(-10)
 
     for index, x in enumerate((-0.26, 0.26)):
-        arm = make_box(f"{obj.object_id}_arm_{index}", (0.09, 0.10, 0.30), C.STONE)
+        arm = make_box(f"{name}_arm_{index}", (0.09, 0.10, 0.30), C.STONE)
         arm.reparentTo(holder)
         arm.setPos(x, -0.02, 0.34)
         arm.setR(-14 if index == 0 else 14)
-        hand = make_box(f"{obj.object_id}_hand_{index}", (0.105, 0.12, 0.07), C.STONE_DARK)
+        hand = make_box(f"{name}_hand_{index}", (0.105, 0.12, 0.07), C.STONE_DARK)
         hand.reparentTo(holder)
         hand.setPos(x * 1.06, -0.04, 0.29)
 
     for index, x in enumerate((-0.13, 0.13)):
-        foot = make_box(f"{obj.object_id}_foot_{index}", (0.16, 0.20, 0.08), C.STONE_DARK)
+        foot = make_box(f"{name}_foot_{index}", (0.16, 0.20, 0.08), C.STONE_DARK)
         foot.reparentTo(holder)
         foot.setPos(x, -0.02, 0.02)
         foot.setH(10 if index == 0 else -10)
 
+
+def _render_splinter_mob(holder: NodePath, obj: WorldObject, accent: Color) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.42, 0.26)
+    trunk = make_cylinder(f"{name}_splinter_trunk", 0.17, 0.48, 7, C.TRUNK)
+    trunk.reparentTo(holder)
+    trunk.setZ(0.06)
+    trunk.setH(12)
+    bark = make_box(f"{name}_bark_mask", (0.28, 0.055, 0.34), C.WOOD_DARK)
+    bark.reparentTo(holder)
+    bark.setPos(0.0, -0.15, 0.32)
+    crown = make_cone(f"{name}_leaf_crown", 0.24, 0.22, 7, accent)
+    crown.reparentTo(holder)
+    crown.setZ(0.55)
+    for index, x in enumerate((-0.24, 0.24)):
+        branch = make_box(f"{name}_branch_{index}", (0.26, 0.055, 0.070), C.WOOD_LIGHT)
+        branch.reparentTo(holder)
+        branch.setPos(x, -0.02, 0.42)
+        branch.setH(24 if index == 0 else -24)
+        claw = make_cone(f"{name}_twig_claw_{index}", 0.055, 0.12, 5, accent)
+        claw.reparentTo(holder)
+        claw.setPos(x * 1.20, -0.06, 0.40)
+        claw.setH(24 if index == 0 else -24)
+    for index, x in enumerate((-0.055, 0.055)):
+        eye = make_box(f"{name}_amber_eye_{index}", (0.036, 0.026, 0.030), C.GOLD)
+        eye.reparentTo(holder)
+        eye.setPos(x, -0.17, 0.48)
+
+
+def _render_wisp_mob(holder: NodePath, obj: WorldObject, accent: Color) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.34, 0.22)
+    body = make_cylinder(f"{name}_glow_core", 0.20, 0.26, 10, accent)
+    body.reparentTo(holder)
+    body.setPos(0.0, 0.0, 0.42)
+    aura = make_ground_ring(f"{name}_aura_ring", 0.32, accent, thickness=2.0)
+    aura.reparentTo(holder)
+    aura.setZ(0.05)
+    for index, (x, z) in enumerate(((-0.20, 0.47), (0.20, 0.47), (0.00, 0.68))):
+        mote = make_cylinder(f"{name}_mote_{index}", 0.045, 0.045, 7, C.SPARK if index == 2 else accent)
+        mote.reparentTo(holder)
+        mote.setPos(x, -0.03, z)
+    if obj.visual_kind == "mire_bat":
+        for side, x in (("left", -0.28), ("right", 0.28)):
+            wing = make_box(f"{name}_{side}_wing", (0.28, 0.040, 0.16), accent)
+            wing.reparentTo(holder)
+            wing.setPos(x, -0.02, 0.48)
+            wing.setH(18 if side == "left" else -18)
+            wing.setR(20 if side == "left" else -20)
+
+
+def _render_crawler_mob(holder: NodePath, obj: WorldObject, accent: Color) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.44, 0.28)
+    shell = make_box(f"{name}_rock_shell", (0.42, 0.32, 0.20), C.STONE_DARK)
+    shell.reparentTo(holder)
+    shell.setPos(0.0, 0.0, 0.16)
+    shell.setH(18)
+    crest = make_cone(f"{name}_shell_crest", 0.24, 0.18, 6, accent)
+    crest.reparentTo(holder)
+    crest.setPos(0.02, -0.01, 0.28)
+    face = make_box(f"{name}_face_plate", (0.20, 0.050, 0.12), C.STONE)
+    face.reparentTo(holder)
+    face.setPos(0.0, -0.20, 0.19)
+    for index, x in enumerate((-0.20, -0.08, 0.08, 0.20)):
+        leg = make_box(f"{name}_leg_{index}", (0.12, 0.050, 0.050), C.METAL_DARK)
+        leg.reparentTo(holder)
+        leg.setPos(x, -0.17 if index % 2 == 0 else 0.16, 0.08)
+        leg.setH(-18 if x < 0 else 18)
+    for index, x in enumerate((-0.045, 0.045)):
+        eye = make_box(f"{name}_low_eye_{index}", (0.032, 0.026, 0.028), C.GOLD)
+        eye.reparentTo(holder)
+        eye.setPos(x, -0.23, 0.24)
+
+
+def _render_mob_health_bar(holder: NodePath, obj: WorldObject) -> None:
+    accent = _mob_color(obj.level, obj.visual_kind or "fighter")
     ring = make_ground_ring(f"{obj.object_id}_combat_ring", 0.34, accent, thickness=1.4)
     ring.reparentTo(holder)
     ring.setZ(0.034)
@@ -980,6 +1226,24 @@ def _render_ground_item(holder: NodePath, obj: WorldObject) -> None:
         sparkle.setPos(0.11, -0.07, 0.12)
         sparkle.setH(35)
         return
+    if obj.item_id == "wooden_splinters":
+        _render_splinter_drop(holder, obj)
+        return
+    if obj.item_id == "rusty_scrap":
+        _render_scrap_drop(holder, obj)
+        return
+    if obj.item_id == "glow_dust":
+        _render_glow_dust_drop(holder, obj)
+        return
+    if obj.item_id == "bones":
+        _render_bones_drop(holder, obj)
+        return
+    if obj.item_id == "cloth":
+        _render_cloth_drop(holder, obj)
+        return
+    if obj.item_id == "gel":
+        _render_gel_drop(holder, obj)
+        return
 
     _shadow(holder, f"{obj.object_id}_shadow", 0.24, 0.16)
     pouch = make_box(f"{obj.object_id}_pouch", (0.28, 0.22, 0.15), C.WOOD_LIGHT)
@@ -992,6 +1256,87 @@ def _render_ground_item(holder: NodePath, obj: WorldObject) -> None:
     glint.reparentTo(holder)
     glint.setPos(0.06, -0.11, 0.16)
     glint.setH(20)
+
+
+def _render_splinter_drop(holder: NodePath, obj: WorldObject) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.24, 0.14)
+    for index, (x, y, h) in enumerate(((-0.08, -0.02, 22), (0.03, 0.01, -18), (0.09, -0.05, 42))):
+        shard = make_box(f"{name}_wood_shard_{index}", (0.18, 0.035, 0.055), C.WOOD_LIGHT if index == 0 else C.WOOD_DARK)
+        shard.reparentTo(holder)
+        shard.setPos(x, y, 0.055 + index * 0.012)
+        shard.setH(h)
+    chip = make_cone(f"{name}_wood_chip", 0.055, 0.070, 5, C.STUMP_TOP)
+    chip.reparentTo(holder)
+    chip.setPos(-0.01, 0.06, 0.05)
+
+
+def _render_scrap_drop(holder: NodePath, obj: WorldObject) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.25, 0.16)
+    for index, (x, y, h) in enumerate(((-0.07, 0.02, 12), (0.05, -0.02, -20), (0.02, 0.07, 38))):
+        plate = make_box(f"{name}_rust_plate_{index}", (0.16, 0.10, 0.040), C.COPPER if index != 1 else C.METAL_DARK)
+        plate.reparentTo(holder)
+        plate.setPos(x, y, 0.055 + index * 0.018)
+        plate.setH(h)
+    rivet = make_cylinder(f"{name}_rust_rivet", 0.045, 0.035, 7, C.METAL_LIGHT)
+    rivet.reparentTo(holder)
+    rivet.setPos(0.00, -0.08, 0.115)
+
+
+def _render_glow_dust_drop(holder: NodePath, obj: WorldObject) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.22, 0.14)
+    glow = make_ground_ring(f"{name}_dust_glow", 0.20, (0.62, 0.86, 1.0, 0.92), thickness=1.6)
+    glow.reparentTo(holder)
+    glow.setZ(0.040)
+    for index, (x, y, z) in enumerate(((-0.06, -0.02, 0.070), (0.04, 0.01, 0.095), (0.09, -0.05, 0.075), (-0.01, 0.07, 0.105))):
+        mote = make_cylinder(f"{name}_glow_mote_{index}", 0.034, 0.030, 7, C.SPARK if index % 2 else (0.48, 0.72, 1.0, 1.0))
+        mote.reparentTo(holder)
+        mote.setPos(x, y, z)
+
+
+def _render_bones_drop(holder: NodePath, obj: WorldObject) -> None:
+    name = obj.object_id
+    bone = (0.78, 0.72, 0.58, 1.0)
+    _shadow(holder, f"{name}_shadow", 0.25, 0.15)
+    for index, (x, y, h) in enumerate(((-0.06, -0.01, 28), (0.06, 0.02, -24))):
+        shaft = make_box(f"{name}_bone_shaft_{index}", (0.20, 0.045, 0.050), bone)
+        shaft.reparentTo(holder)
+        shaft.setPos(x, y, 0.070 + index * 0.020)
+        shaft.setH(h)
+        for cap_index, cap_x in enumerate((-0.11, 0.11)):
+            cap = make_cylinder(f"{name}_bone_knob_{index}_{cap_index}", 0.035, 0.040, 6, bone)
+            cap.reparentTo(holder)
+            cap.setPos(x + cap_x, y, 0.078 + index * 0.020)
+
+
+def _render_cloth_drop(holder: NodePath, obj: WorldObject) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.24, 0.15)
+    cloth = make_box(f"{name}_cloth_fold", (0.26, 0.18, 0.040), C.CLOTH_RED)
+    cloth.reparentTo(holder)
+    cloth.setPos(0.0, 0.0, 0.050)
+    cloth.setH(-18)
+    patch = make_box(f"{name}_cloth_patch", (0.13, 0.08, 0.045), C.CLOTH_CREAM)
+    patch.reparentTo(holder)
+    patch.setPos(0.04, -0.02, 0.082)
+    patch.setH(10)
+    thread = make_box(f"{name}_cloth_thread", (0.20, 0.018, 0.024), C.GOLD)
+    thread.reparentTo(holder)
+    thread.setPos(-0.01, -0.08, 0.093)
+    thread.setH(30)
+
+
+def _render_gel_drop(holder: NodePath, obj: WorldObject) -> None:
+    name = obj.object_id
+    _shadow(holder, f"{name}_shadow", 0.23, 0.14)
+    blob = make_cylinder(f"{name}_gel_blob", 0.16, 0.10, 9, (0.34, 0.78, 0.34, 0.92))
+    blob.reparentTo(holder)
+    blob.setZ(0.045)
+    shine = make_box(f"{name}_gel_shine", (0.07, 0.018, 0.026), (0.78, 1.0, 0.78, 0.90))
+    shine.reparentTo(holder)
+    shine.setPos(-0.04, -0.10, 0.14)
 
 
 def _render_npc(holder: NodePath, name: str, pos: tuple[float, float, float], tunic: Color) -> None:
@@ -1255,12 +1600,34 @@ def _fishing_colors(level: int) -> tuple[Color, Color]:
     return _tiered_palette(level, palette)
 
 
-def _mob_color(level: int) -> Color:
+def _mob_color(level: int, visual_kind: str = "fighter") -> Color:
+    by_kind = {
+        "rat": (0.34, 0.32, 0.28, 1.0),
+        "goblin": (0.36, 0.58, 0.28, 1.0),
+        "archer_goblin": (0.28, 0.50, 0.24, 1.0),
+        "skeleton": (0.78, 0.72, 0.58, 1.0),
+        "slime": (0.22, 0.68, 0.26, 0.94),
+        "wolf": (0.42, 0.42, 0.38, 1.0),
+        "bandit": C.LEATHER,
+        "mage_imp": (0.52, 0.24, 0.68, 1.0),
+        "splinterling": C.GRASS_DARK,
+        "barkling": C.GRASS_LIGHT,
+        "rust_sentry": C.COPPER,
+        "cave_wisp": (0.48, 0.72, 1.0, 1.0),
+        "glow_wisp": (0.76, 0.90, 0.42, 1.0),
+        "mire_bat": (0.45, 0.36, 0.66, 1.0),
+        "rock_mite": C.STONE_LIGHT,
+        "ash_crawler": C.EMBER,
+    }
+    if visual_kind in by_kind:
+        return by_kind[visual_kind]
     if level <= 1:
         return C.CLOTH_RED
     if level == 2:
         return C.COPPER
-    return C.MITHRIL
+    if level <= 4:
+        return C.MITHRIL
+    return C.ADAMANT
 
 
 def _lerp_color(a: Color, b: Color, factor: float) -> Color:
