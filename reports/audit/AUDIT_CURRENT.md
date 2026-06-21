@@ -8,6 +8,8 @@ Goal: inspect the current repository and produce one concise, evidence-based aud
 
 * Verify `pwd`, `git rev-parse --show-toplevel`, and `git status --short` before deeper inspection. Stop if the path or repo root is wrong.
 * Treat every modified or untracked file as user work. Do not clean, reset, checkout, stash, revert, delete, migrate, format, regenerate, commit, or install dependencies.
+* Treat `.codex\META_AUDIT.md` and `.codex\AUDIT.md` as optional read-only prompt inputs. Never write to `.codex`, and do not fail the audit if `.codex` is unavailable.
+* Create or update files only when explicitly requested, and only within the requested report/handoff paths.
 * Skip `.venv/`, `.pytest_cache/`, `__pycache__/`, `*.pyc`, `build/`, `dist/`, `logs/`, binary files, and real user data.
 * Do not inspect real account/save contents unless explicitly asked: `users.db`, `saves/`, `savegame.json`.
 * Do not run the game, launcher, build script, formatter, installer, or full pytest unless the user explicitly asks. Ask the user to run full/expensive checks when needed.
@@ -43,6 +45,8 @@ rg -n "TODO|FIXME|pass|NotImplemented|stub|animation|sprite|tileset|audio|music|
 rg -ni "runescape|osrs|stardew|runite|\brune\b" AGENTS.md README.md docs launcher game tests -g "!*.pyc" -g "!__pycache__/**"
 ```
 
+Include `CODEX_HANDOFF.md` and root planning/asset notes such as `GRAPHICS_ANIMATION_NOTE.md` in the searches when present. If `CODEX_HANDOFF.md` conflicts with current `git status`, report it as stale handoff/process drift rather than source drift.
+
 Classify protected-term hits as policy text, legacy compatibility/migration coverage, generated/ignored drift, or unsafe active content drift.
 
 ## Safe Checks
@@ -58,7 +62,7 @@ Run only targeted pytest checks that directly support audit findings and appear 
 
 ```powershell
 $env:PYTHONDONTWRITEBYTECODE='1'
-python -B -m pytest -p no:cacheprovider tests\test_validation.py tests\test_launcher.py
+python -B -m pytest -p no:cacheprovider tests\test_validation.py tests\test_save.py tests\test_launcher.py
 ```
 
 Run `git status --short` after checks and report whether the worktree changed.
@@ -103,6 +107,8 @@ Rank recommendations by:
 5. Minimal refactor and no new dependencies.
 
 Avoid broad rewrites, speculative architecture, generated-file churn, and clone-like feature requests.
+
+If the user asks for an audit cycle, read the new audit report after writing it and select exactly one smallest safe actionable remediation batch. Do not fix the batch unless the user separately asks for implementation. Record the selected batch in `CODEX_HANDOFF.md` only when the task explicitly requests a handoff update.
 
 ## Required Report Format
 

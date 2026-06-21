@@ -2,76 +2,66 @@
 
 ## Current task
 
-Clean only the ignored local generated `Hearthvale.spec` protected-path drift.
+Ran one audit cycle for `C:\Users\donny\Desktop\hearthvale`.
 
-## Hearthvale.spec status
+## Audit report path
 
-* `Hearthvale.spec` was untracked: `git ls-files -- Hearthvale.spec` returned no tracked path.
-* `Hearthvale.spec` was ignored: `git check-ignore -v Hearthvale.spec` reported `.gitignore:15:*.spec`.
-* `Hearthvale.spec` was generated/local: `.gitignore` ignores `*.spec`, and `launcher\build_launcher.ps1` invokes PyInstaller with `--name Hearthvale`.
+`reports\audit\AUDIT_REPORT_20260621_145907.md`
 
-## Action taken
+## Latest report pointer path
 
-Deleted the ignored local `Hearthvale.spec`.
-
-Reason: the only documented regeneration path is the launcher build command, which runs PyInstaller, may install PyInstaller, and creates `build\` and `dist\` artifacts. There is no documented spec-only regeneration command, so deleting the ignored generated stale spec was the smallest scoped cleanup.
+`reports\audit\AUDIT_REPORT_LATEST.md`
 
 ## Files changed
 
-* `CODEX_HANDOFF.md`: recorded the ignored spec cleanup, commands, checks, and remaining protected-term hits.
+* `reports\audit\AUDIT_CURRENT.md`: added `.codex` read-only guardrails, handoff-drift handling, save-test example, and audit-cycle remediation selection guidance.
+* `reports\audit\AUDIT_REPORT_20260621_145907.md`: new timestamped audit report.
+* `reports\audit\AUDIT_REPORT_20260621_145613.md`: preserved concurrent audit artifact that appeared during this run.
+* `reports\audit\AUDIT_REPORT_LATEST.md`: updated to point at the new audit report.
+* `CODEX_HANDOFF.md`: replaced stale cleanup handoff with this audit-cycle handoff.
 
-Pre-existing modified files from the completed launcher/docs remediation batch remain:
+No gameplay/source/test/data/save/visual/audio/routine files were changed.
 
-* `GRAPHICS_ANIMATION_NOTE.md`
-* `README.md`
-* `launcher\hearthvale_launcher.py`
-* `tests\test_launcher.py`
+## Remediation batch selected
 
-## Exact commands run
+Selected but not implemented: make active `ranged` and `magic` skills explicit in `game\data\skills.json`, then tighten validation/tests so active required/combat skill IDs must exist in `skills.json` instead of relying on fallback whitelists.
 
-* `git status --short --ignored`
-* `git ls-files -- Hearthvale.spec`
-* `git check-ignore -v Hearthvale.spec`
-* `Get-Content -Raw .gitignore`
+## Commands run
+
+* `git status --short`
+* `Test-Path CODEX_HANDOFF.md; Test-Path .codex\META_AUDIT.md; Test-Path .codex\AUDIT.md; Test-Path reports\audit\AUDIT_CURRENT.md`
+* `Get-ChildItem -Force`
+* `Get-Content -Raw .codex\META_AUDIT.md`
+* `Get-Content -Raw .codex\AUDIT.md`
+* `Get-Content -Raw reports\audit\AUDIT_CURRENT.md`
+* `Get-Content -Raw CODEX_HANDOFF.md`
 * `Get-Content -Raw README.md`
 * `Get-Content -Raw requirements.txt`
-* `Get-Content -Raw launcher\build_launcher.ps1`
-* `Get-Content -Raw Hearthvale.spec`
-* `rg -n "pyinstaller|spec|Hearthvale.spec|build_launcher|--name|--onefile" README.md launcher . -g "!*.pyc" -g "!__pycache__/**" -g "!.venv/**" -g "!.pytest_cache/**" -g "!build/**" -g "!dist/**"`
-* `Remove-Item -LiteralPath <resolved repo>\Hearthvale.spec`
-* `Test-Path .\Hearthvale.spec`
-* `git status --short --ignored`
-* `rg -ni "RuneScape|OSRS|Stardew|runite|\brune\b" AGENTS.md README.md GRAPHICS_ANIMATION_NOTE.md docs launcher game tests -g "!*.pyc" -g "!__pycache__/**"`
-* `Select-String -Path Hearthvale.spec -Pattern 'RuneScape|OSRS|Stardew|runite|\brune\b' -CaseSensitive:$false`
+* `pwd; git rev-parse --show-toplevel; git status --short`
+* `rg --files game tests docs launcher reports\audit .codex | sort`
+* `Get-Content -Raw .gitignore`
+* `Get-ChildItem reports\audit -Force | Select-Object Mode,Length,LastWriteTime,Name`
+* Required targeted `rg` searches for systems, risks, protected terms, data, validation, save/auth, UI, visuals, launcher, and selected finding evidence
+* `Get-Content .\game\tools\validate_data.py -TotalCount 220`
+* `$env:PYTHONDONTWRITEBYTECODE='1'; python -B -m game.tools.validate_data`
+* `$env:PYTHONDONTWRITEBYTECODE='1'; python -B -m pytest -p no:cacheprovider tests\test_validation.py tests\test_save.py`
+* `$env:PYTHONDONTWRITEBYTECODE='1'; python -B -m pytest -p no:cacheprovider tests\test_launcher.py`
 
-## Check results
+## Test results
 
-* `Test-Path .\Hearthvale.spec`: `False`.
-* `git status --short --ignored`: no `!! Hearthvale.spec` entry after deletion.
-* Explicit spec protected-term check: `Hearthvale.spec not present`.
-* No validation or pytest was run for this task because no gameplay, launcher code, data, validation policy, or tests were changed in this task; only the ignored generated spec was deleted and this handoff was updated.
+* Data validation: passed.
+* Targeted pytest: 50 passed in 0.27s for validation/save; 7 passed in 0.12s for launcher.
+* Full pytest: not run per instruction to avoid full/expensive checks unless needed.
+* Game, launcher, and build smoke: not run during audit.
 
-## Remaining protected-term hits
+## Remaining findings
 
-The tracked-path protected-term search now reports only intentional references:
-
-* `AGENTS.md`: protected-term policy text.
-* `game\engine\validation.py`: protected-term validator guard list.
-* `tests\test_validation.py`: validator guard test fixture/assertions.
-* `game\engine\save.py` and `tests\test_save.py`: legacy save migration compatibility aliases/tests.
-
-## Remaining blockers
-
-None for the ignored local generated spec cleanup.
-
-## Final git status
-
-* `M CODEX_HANDOFF.md`
-* `M GRAPHICS_ANIMATION_NOTE.md`
-* `M README.md`
-* `M launcher\hearthvale_launcher.py`
-* `M tests\test_launcher.py`
+* Active `ranged` and `magic` skills are used by combat/equipment/HUD/save defaults but are not explicit entries in `game\data\skills.json`.
+* Time remains fixed at noon; daily routines are missing.
+* Audio/music pipeline is absent and visual identity is still procedural/placeholder-heavy.
+* Economy and world decoration content remain starter-scope.
+* Full manual gameplay smoke and full pytest remain unrun.
 
 ## Next recommended step
 
-None for this cleanup. Do not start another audit remediation batch without a new scoped request.
+Implement the selected explicit-skill schema/content batch in a separate scoped run, with `python -B -m game.tools.validate_data` and targeted validation/skills/combat/equipment tests.
