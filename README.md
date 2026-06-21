@@ -24,6 +24,11 @@ To build the Windows launcher:
 .\launcher\build_launcher.ps1
 ```
 
+The launcher build requires PyInstaller in the project virtual environment. The
+build script does not install it by default; install it explicitly with
+`.venv\Scripts\python.exe -m pip install pyinstaller`, or rerun the build script
+with `-InstallBuildDependencies` to allow that install step.
+
 Then run the built launcher from the project folder:
 
 ```powershell

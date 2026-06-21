@@ -64,21 +64,48 @@ Do not fix code during the audit step.
 
 Step 3:
 Read the new audit report and select only the next smallest safe actionable remediation batch.
-Do not fix the selected batch yet.
+Do not fix the selected batch.
 Do not modify gameplay code, save migrations, protected-term policy, content data, visuals, audio, routines, or tests.
 Do not delete user work.
 Do not commit.
 
+Audit-only contract:
+- Audit-only: yes
+- Remediation applied: no
+- Do not apply remediation.
+- Do not run full pytest automatically.
+- Do not run launcher, game, build, or manual smoke automatically.
+- Any remediation or expensive validation must be a separate explicit Codex goal or separate approved command.
+
 Rules:
 - Read files directly by path. Do not ask me to paste reports or logs.
 - Keep changes minimal.
-- Prefer targeted tests only.
-- If full pytest is needed, ask me to run it instead of running it yourself.
+- Prefer targeted audit checks only when needed to produce the report.
+- If full pytest, launcher/game/build smoke, or remediation validation is needed, recommend it in the selected-batch summary instead of running it.
+- The audit report and CODEX_HANDOFF.md must clearly include:
+  - Audit-only: yes
+  - Remediation applied: no
+  - Selected batch: <name>
+  - Selected batch severity: <Low/Medium/Severe>
+  - Likely files: <paths>
+  - Suggested commands: <validation/tests/manual smoke>
+  - Next action: run a separate approved remediation goal
+- Include a copyable selected-batch summary with:
+  - problem statement
+  - scope boundaries
+  - likely files
+  - acceptance criteria
+  - suggested focused tests
+  - explicit stop condition
 - Update or create CODEX_HANDOFF.md with:
   - audit report path
   - latest report pointer path
   - files changed
   - remediation batch selected
+  - audit-only and remediation-applied status
+  - selected batch severity
+  - likely files
+  - suggested commands
   - tests/checks run
   - remaining findings
   - next recommended step
@@ -90,7 +117,7 @@ Expected allowed changes:
 - CODEX_HANDOFF.md
 - no remediation/source/test/data/gameplay files
 
-Return only Changed, Notes/blockers, Next, Metrics.
+Return only Changed, Notes/blockers, Selected batch, Next, Metrics.
 "@
 
 $prompt | codex exec --cd "$RepoRoot" --sandbox workspace-write -
@@ -104,15 +131,19 @@ if (-not (Test-Path $ReportPath)) {
 
 Path: $ReportPath
 Generated: $Timestamp
+Audit-only: yes
+Remediation applied: no
+Selected batch summary: CODEX_HANDOFF.md
+Next action: run a separate approved remediation goal
 "@ | Set-Content -Path $LatestReportPath -Encoding UTF8
 
 Write-Host ""
-Write-Host "Running local verification..." -ForegroundColor Cyan
-
-$env:PYTHONDONTWRITEBYTECODE = "1"
-
-python -B -m game.tools.validate_data
-python -B -m pytest -p no:cacheprovider
+Write-Host "Audit-only selected batch summary:" -ForegroundColor Cyan
+if (Test-Path "CODEX_HANDOFF.md") {
+    Get-Content -Raw "CODEX_HANDOFF.md"
+} else {
+    Write-Host "CODEX_HANDOFF.md was not created." -ForegroundColor Yellow
+}
 
 Write-Host ""
 Write-Host "Final git status:" -ForegroundColor Cyan

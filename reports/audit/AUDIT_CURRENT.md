@@ -12,7 +12,8 @@ Goal: inspect the current repository and produce one concise, evidence-based aud
 * Create or update files only when explicitly requested, and only within the requested report/handoff paths.
 * Skip `.venv/`, `.pytest_cache/`, `__pycache__/`, `*.pyc`, `build/`, `dist/`, `logs/`, binary files, and real user data.
 * Do not inspect real account/save contents unless explicitly asked: `users.db`, `saves/`, `savegame.json`.
-* Do not run the game, launcher, build script, formatter, installer, or full pytest unless the user explicitly asks. Ask the user to run full/expensive checks when needed.
+* If the user supplies stricter audit-only rules, allowed output paths, forbidden remediation areas, or timestamp/report names, obey those limits over this reusable prompt.
+* Do not run the game, launcher, build script, formatter, installer, manual smoke, or full pytest unless the user explicitly asks. Ask the user to run full/expensive checks when needed.
 * Evidence must be concise: `path:line`, function/class/config key, command, or test name. Do not paste large source files or full logs.
 * Code/docs mentioning a feature is not proof it is playable. Classify audited systems exactly as `fully implemented`, `partially implemented`, `partially wired`, `present but unused`, `stub/TODO`, `missing`, or `manually unverified`.
 * Do not recommend protected clone content. Translate classic grindable RPG feel into original Hearthvale-safe mechanics, names, lore, items, quests, UI, progression, visuals, and audio.
@@ -110,6 +111,34 @@ Avoid broad rewrites, speculative architecture, generated-file churn, and clone-
 
 If the user asks for an audit cycle, read the new audit report after writing it and select exactly one smallest safe actionable remediation batch. Do not fix the batch unless the user separately asks for implementation. Record the selected batch in `CODEX_HANDOFF.md` only when the task explicitly requests a handoff update.
 
+If the user forbids source/gameplay/data/test remediation for the selected batch, select only a future batch that stays inside the allowed future scope, or state that no safe batch is selectable.
+
+Audit-cycle reports and handoffs must clearly state:
+
+* Audit-only: yes
+* Remediation applied: no
+* Selected batch: `<name>`
+* Selected batch severity: `<Low/Medium/Severe>`
+* Likely files: `<paths>`
+* Suggested commands: `<validation/tests/manual smoke>`
+* Next action: run a separate approved remediation goal
+
+The selected-batch summary must be easy to copy into the next Codex goal and include:
+
+* Problem statement
+* Scope boundaries
+* Likely files
+* Acceptance criteria
+* Suggested focused tests
+* Explicit stop condition
+
+For audit-cycle runs that request report files:
+
+* Create exactly one timestamped report at the requested `reports\audit\AUDIT_REPORT_<timestamp>.md` path.
+* Update `reports\audit\AUDIT_REPORT_LATEST.md` to point at the new report when requested.
+* Update `CODEX_HANDOFF.md` only when requested, and include the audit report path, latest report pointer path, files changed, selected remediation batch, audit-only and remediation-applied status, selected batch severity, likely files, suggested commands, checks run, remaining findings, and next recommended step.
+* Do not treat required report/handoff updates as remediation. The selected remediation batch is for a future implementation prompt.
+
 ## Required Report Format
 
 Output exactly:
@@ -129,6 +158,16 @@ Output exactly:
 * Checks run:
 * Checks result:
 * Worktree changed after checks:
+
+# Audit Contract
+
+* Audit-only:
+* Remediation applied:
+* Selected batch:
+* Selected batch severity:
+* Likely files:
+* Suggested commands:
+* Next action:
 
 # System Inventory
 
@@ -157,6 +196,17 @@ Manual check | Why | Steps
 # Recommended Next Work
 
 Rank | Feature/Fix | Why | Complexity | Risk | Files likely touched | Acceptance criteria | Suggested tests
+
+# Selected Remediation Batch
+
+* Selected batch:
+* Selected batch severity:
+* Problem statement:
+* Scope boundaries:
+* Likely files:
+* Acceptance criteria:
+* Suggested focused tests:
+* Explicit stop condition:
 
 # Next Codex Prompt
 
