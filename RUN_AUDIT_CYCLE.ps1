@@ -1,6 +1,18 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
-Set-Location "C:\Users\donny\Desktop\hearthvale"
+$RepoRoot = "C:\Users\donny\Desktop\hearthvale"
+Set-Location $RepoRoot
+
+$MetaAuditPath = ".codex\META_AUDIT.md"
+$AuditPath = ".codex\AUDIT.md"
+
+if (-not (Test-Path $MetaAuditPath)) {
+    throw "Missing $MetaAuditPath"
+}
+
+if (-not (Test-Path $AuditPath)) {
+    throw "Missing $AuditPath"
+}
 
 $dirty = git status --porcelain
 if ($dirty) {
@@ -9,15 +21,15 @@ if ($dirty) {
     exit 1
 }
 
-$prompt = @'
+$prompt = @"
 Run one audit cycle.
 
 Step 1:
-Use META AUDIT.md to inspect the current repo and update AUDIT.md.
-AUDIT.md should become the best reusable project-specific audit prompt for this repo.
+Use $MetaAuditPath to inspect the current repo and update $AuditPath.
+$AuditPath should become the best reusable project-specific audit prompt for this repo.
 
 Step 2:
-Using the updated AUDIT.md, audit the repo and create one new timestamped audit report.
+Using the updated $AuditPath, audit the repo and create one new timestamped audit report.
 The audit report should identify what to improve.
 Do not fix code during the audit step.
 
@@ -42,13 +54,13 @@ Rules:
   - next recommended step
 
 Expected allowed changes:
-- AUDIT.md
+- $AuditPath
 - one timestamped audit report
 - CODEX_HANDOFF.md
 - only source/test files needed for the single small remediation batch
 
 Return only Changed, Notes/blockers, Next, Metrics.
-'@
+"@
 
 $prompt | codex exec --sandbox workspace-write --skip-git-repo-check -
 
