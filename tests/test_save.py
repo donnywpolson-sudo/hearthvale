@@ -100,7 +100,7 @@ class SaveTests(unittest.TestCase):
             state = create_default_save("alice")
             state["inventory"]["coins"] = 125
             state["inventory"]["bronze_axe"] = 1
-            state["world"]["chopped_trees"].append("lumbridge_tree_1")
+            state["world"]["chopped_trees"].append("hearthvale_tree_1")
 
             save_game("alice", state, save_dir)
 
