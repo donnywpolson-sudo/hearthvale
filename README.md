@@ -117,6 +117,6 @@ automatically when needed.
 
 ## Next Recommended Systems
 
-- Add optional imported art assets through the procedural renderer hook.
+- Add optional imported art assets through the procedural renderer hook. See [docs/icon_asset_options.md](docs/icon_asset_options.md) for source and license rules.
 - Continue expanding character/object animation variety.
 - Expand the map data and object definitions.

@@ -2,19 +2,31 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from game import settings
+
 MINUTES_PER_DAY = 24 * 60
-FIXED_DAY = 1
-FIXED_MINUTE = 12 * 60
+START_DAY = settings.START_DAY
+START_MINUTE = settings.START_MINUTE
+FIXED_DAY = START_DAY
+FIXED_MINUTE = START_MINUTE
 
 
 @dataclass
 class GameTime:
-    day: int = FIXED_DAY
-    minute: float = float(FIXED_MINUTE)
+    day: int = START_DAY
+    minute: float = float(START_MINUTE)
 
-    def update(self, _dt: float) -> None:
-        self.day = FIXED_DAY
-        self.minute = float(FIXED_MINUTE)
+    def update(self, dt: float) -> None:
+        if dt <= 0:
+            return
+        minutes_per_second = float(settings.GAME_MINUTES_PER_REAL_SECOND)
+        if minutes_per_second <= 0:
+            return
+
+        self.minute += dt * minutes_per_second
+        while self.minute >= MINUTES_PER_DAY:
+            self.minute -= MINUTES_PER_DAY
+            self.day += 1
 
     def display(self) -> str:
         total = int(self.minute) % MINUTES_PER_DAY
@@ -23,8 +35,29 @@ class GameTime:
         return f"Day {self.day} {hour:02d}:{minute:02d}"
 
     def to_dict(self) -> dict[str, int | float]:
-        return {"day": FIXED_DAY, "minute": float(FIXED_MINUTE)}
+        return {"day": self.day, "minute": float(self.minute)}
 
-    def load_dict(self, _data: dict[str, int | float]) -> None:
-        self.day = FIXED_DAY
-        self.minute = float(FIXED_MINUTE)
+    def load_dict(self, data: dict[str, int | float]) -> None:
+        if not isinstance(data, dict):
+            self.day = START_DAY
+            self.minute = float(START_MINUTE)
+            return
+
+        try:
+            self.day = max(1, int(data.get("day", START_DAY)))
+        except (TypeError, ValueError):
+            self.day = START_DAY
+
+        try:
+            self.minute = float(data.get("minute", START_MINUTE))
+        except (TypeError, ValueError):
+            self.minute = float(START_MINUTE)
+
+        if self.minute < 0:
+            self.day = START_DAY
+            self.minute = float(START_MINUTE)
+            return
+
+        while self.minute >= MINUTES_PER_DAY:
+            self.minute -= MINUTES_PER_DAY
+            self.day += 1

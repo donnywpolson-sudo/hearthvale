@@ -302,7 +302,8 @@ class Hud:
         self._last_inventory = dict(inventory)
         self._last_bank = dict(bank)
         self._last_skills = skills
-        self.stats.setText(f"Account: {account}")
+        time_line = time_text.splitlines()[0] if time_text else ""
+        self.stats.setText(f"Account: {account}\n{time_line}" if time_line else f"Account: {account}")
         if selected_item_slot is None and selected_item_id is not None:
             selected_item_slot = (selected_item_id, 0)
         self._sync_inventory_slots(inventory, selected_item_slot)

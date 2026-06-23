@@ -724,7 +724,7 @@ class GameApp(ShowBase):
         objective = self.quest.current_objective()
         self.hud.update(
             account=self.current_username or "",
-            time_text="",
+            time_text=self.game_time.display(),
             selected_item_id=self.interactions.selected_item_id,
             selected_item_slot=self.interactions.selected_item_slot,
             inventory=self.inventory.to_dict(),

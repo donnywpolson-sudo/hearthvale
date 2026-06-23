@@ -315,8 +315,7 @@ def test_stats_panel_omits_selected_tile_and_item_text(monkeypatch) -> None:
         skills=FakeSkills(),
     )
 
-    assert ui.stats.text == "Account: test"
-    assert "Day" not in ui.stats.text
+    assert ui.stats.text == "Account: test\nDay 1 08:00"
     assert "HP" not in ui.stats.text
     assert "Selected" not in ui.stats.text
     assert ui.file_button.pos == (0.37, 0, -0.155)

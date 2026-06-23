@@ -2,26 +2,32 @@
 
 ## Current task
 
-Original quest chain batch completed.
+Implemented the `Time progression plumbing` remediation from `NEXT_REMEDIATION_PROMPT.md`.
 
 ## Files changed
 
-* `game/data/quests.json`: added the `road_watch` quest with original dialogue, four existing objectives, coin reward, and Attack XP reward.
-* `game/data/world.json`: added `Gate Scout` and linked it to `road_watch`.
-* `tests/test_quest.py`: added shipped quest coverage for `road_watch` and reward-once behavior.
-* `tests/test_validation.py`: extended shipped quest/NPC assertions to include `road_watch` and `Gate Scout`.
-* `CODEX_HANDOFF.md`: updated this handoff.
+* `game/settings.py`
+* `game/world/time.py`
+* `game/engine/app.py`
+* `game/ui/hud.py`
+* `tests/test_time.py`
+* `tests/test_hud.py`
+* `CODEX_HANDOFF.md`
 
 ## Checks run
 
-* `python -B -m game.tools.validate_data`: passed.
-* `python -B -m pytest -p no:cacheprovider tests/test_quest.py tests/test_validation.py`: passed.
-* `python -B -m pytest -p no:cacheprovider`: `256 passed`.
+* `git diff --check -- game/settings.py game/world/time.py game/engine/app.py game/ui/hud.py tests/test_time.py tests/test_hud.py`: passed with LF-to-CRLF warnings only
+* `python -m pytest -p no:cacheprovider tests/test_time.py tests/test_save.py tests/test_hud.py`: passed (`56 passed`)
 
-## Remaining work
+## Remediation batch selected
 
-None for this batch.
+* `Time progression plumbing`
+
+## Remaining findings
+
+* No issues in the edited time/save/HUD path.
+* Pre-existing audit-infra files remain dirty outside this remediation.
 
 ## Next recommended step
 
-Stop, or pick the next approved batch from the audit report if you want to continue.
+Run `python -m game.main` for a brief smoke check, or move to the next remediation prompt if you want another cycle.
