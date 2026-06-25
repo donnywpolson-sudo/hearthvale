@@ -1,0 +1,28 @@
+{
+  "name": "npc_mob_combat_response",
+  "loop": false,
+  "duration": 0.45,
+  "tracks": [
+    {
+      "method": "start_tilt",
+      "pitch": 3.5,
+      "roll": 6.0,
+      "speed": 7.5
+    },
+    {
+      "method": "start_bob",
+      "amplitude": 0.03,
+      "speed": 8.5
+    },
+    {
+      "method": "start_pulse",
+      "amplitude": 0.03,
+      "speed": 9.0
+    },
+    {
+      "method": "start_flash",
+      "color": [1.12, 0.92, 0.76, 1.0],
+      "speed": 10.0
+    }
+  ]
+}

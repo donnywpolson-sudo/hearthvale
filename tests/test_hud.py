@@ -498,7 +498,13 @@ def test_pointer_over_blocking_ui_covers_tabs_and_overlays(monkeypatch) -> None:
 
 def test_settings_menu_toggles_compact_tabs_and_closes_transients(monkeypatch) -> None:
     _install_hud_fakes(monkeypatch)
-    ui = hud.Hud(_items())
+    audio_toggles: list[str] = []
+    volume_toggles: list[str] = []
+    ui = hud.Hud(
+        _items(),
+        on_audio_toggle=lambda: audio_toggles.append("audio"),
+        on_audio_volume_cycle=lambda: volume_toggles.append("volume"),
+    )
 
     ui.file_button.click()
     assert ui.file_menu_open is True
@@ -509,6 +515,19 @@ def test_settings_menu_toggles_compact_tabs_and_closes_transients(monkeypatch) -
     assert ui.settings_menu_open is True
     assert ui.settings_menu.hidden is False
     assert ui.settings_compact_button.text == "Compact HUD: Off"
+    assert ui.settings_audio_button.text == "Audio: On"
+    assert ui.settings_volume_button.text == "Ambient: 35%"
+
+    ui.settings_audio_button.click()
+    assert audio_toggles == ["audio"]
+
+    ui.settings_volume_button.click()
+    assert volume_toggles == ["volume"]
+
+    ui.set_audio_enabled(False)
+    assert ui.settings_audio_button.text == "Audio: Off"
+    ui.set_ambient_volume(0.60)
+    assert ui.settings_volume_button.text == "Ambient: 60%"
 
     ui.settings_compact_button.click()
 

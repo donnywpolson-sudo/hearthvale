@@ -6,6 +6,7 @@ from typing import TypeVar
 
 from panda3d.core import LineSegs, NodePath
 
+from game.assets.runtime import apply_surface_texture, load_model
 from game import settings
 from game.style import Color, WorldPalette as C
 from game.systems.gathering import ResourceNode, ResourceNodeState
@@ -27,6 +28,196 @@ CARDINAL_DIRECTIONS: dict[str, tuple[int, int]] = {
 }
 
 
+def _apply_surface_textures(
+    holder: NodePath,
+    *,
+    render_kind: str,
+    obj: WorldObject | None = None,
+    resource_node: ResourceNode | None = None,
+    resource_state: ResourceNodeState | None = None,
+    tile: Tile | None = None,
+) -> None:
+    for geom in holder.findAllMatches("**/+GeomNode"):
+        geom_name = geom.getName().lower()
+        surface = _surface_for_geom(geom_name, render_kind, obj, resource_node, resource_state)
+        if surface is None:
+            continue
+        apply_surface_texture(geom, surface, _surface_variant(geom_name, obj=obj, resource_node=resource_node, tile=tile))
+
+
+def _surface_for_geom(
+    geom_name: str,
+    render_kind: str,
+    obj: WorldObject | None,
+    resource_node: ResourceNode | None,
+    resource_state: ResourceNodeState | None,
+) -> str | None:
+    if any(token in geom_name for token in ("shadow", "marker")):
+        return None
+    if "respawn" in geom_name:
+        return "respawn"
+    if "flash" in geom_name:
+        return "flash"
+    if any(token in geom_name for token in ("impact", "hit")):
+        return "impact"
+    if any(token in geom_name for token in ("projectile", "arrow", "bolt")):
+        return "spark"
+    if "dust" in geom_name:
+        return "dust"
+    if "ring" in geom_name and any(token in geom_name for token in ("glow", "combat", "ready")):
+        return None
+    if any(token in geom_name for token in ("water", "ripple", "shimmer", "foam", "wave")) or render_kind == "water":
+        return "water"
+    if any(token in geom_name for token in ("dirt", "path", "shore", "rut", "sand")) or render_kind == "dirt":
+        return "dirt"
+    if resource_node is not None and resource_node.skill_id == "fishing":
+        return "water"
+    if resource_node is not None and resource_node.skill_id == "woodcutting":
+        if any(token in geom_name for token in ("leaf", "clump", "canopy", "moss", "fleck", "glint")):
+            return "grass"
+        if any(token in geom_name for token in ("stump", "trunk", "branch", "root", "bark", "knot", "wood")):
+            return "wood"
+    if resource_node is not None and resource_node.skill_id == "mining":
+        if "vein" in geom_name or "ore" in geom_name:
+            return _ore_surface(resource_node.item_reward)
+        if any(token in geom_name for token in ("stone", "rock", "slab", "block", "boulder", "depleted", "collapsed", "core")):
+            return "stone"
+    if obj is not None and obj.kind == "ground_item":
+        return _ground_item_surface(obj, geom_name)
+    if any(token in geom_name for token in ("coin", "gold")):
+        return "gold"
+    if any(token in geom_name for token in ("bone", "skull", "tooth")):
+        return "bone"
+    if any(token in geom_name for token in ("gel", "slime", "blob")):
+        return "gel"
+    if any(token in geom_name for token in ("spark", "glow", "orb", "flare", "spell")):
+        return "spark"
+    if any(token in geom_name for token in ("blade", "rivet", "band", "buckle", "gear", "metal", "head", "chain", "lantern")):
+        if "coin" in geom_name:
+            return "gold"
+        return "metal"
+    if any(token in geom_name for token in ("cloth", "tunic", "sleeve", "skirt", "robe", "vest", "sash", "cape", "hood", "shoulder", "collar", "shirt")):
+        return "cloth"
+    if any(token in geom_name for token in ("shield", "backpack")):
+        return "wood"
+    if any(token in geom_name for token in ("boot", "belt", "cuff", "pouch")):
+        return "wood"
+    if any(token in geom_name for token in ("skin", "hand", "nose", "leg", "face")):
+        return "skin"
+    if any(token in geom_name for token in ("leaf", "grass", "tuft", "flower", "bush", "moss", "clump")):
+        return "grass"
+    if any(token in geom_name for token in ("trunk", "branch", "root", "post", "rail", "plank", "board", "handle", "shaft", "dock", "sign", "crate", "barrel")):
+        return "wood"
+    if any(token in geom_name for token in ("stone", "rock", "slab", "block", "wall", "roof", "ledge", "basin", "arch", "chip", "crest", "depleted")):
+        return "stone"
+    if obj is not None and obj.kind == "mob":
+        if obj.visual_kind == "skeleton" or "skull" in geom_name:
+            return "bone"
+        if obj.visual_kind == "slime":
+            return "gel"
+        if obj.visual_kind == "mage_imp" or "spell" in geom_name or "orb" in geom_name:
+            return "spark"
+        if obj.visual_kind in {"rat", "wolf", "mire_bat", "splinterling", "barkling", "ash_crawler"}:
+            return "organic"
+        if obj.visual_kind == "bandit":
+            if "blade" in geom_name or "metal" in geom_name:
+                return "metal"
+            if any(token in geom_name for token in ("tunic", "sleeve", "body", "pouch")):
+                return "cloth"
+            return "wood"
+        if obj.visual_kind == "archer_goblin":
+            if "bow" in geom_name or "shaft" in geom_name:
+                return "wood"
+            if any(token in geom_name for token in ("tunic", "sleeve", "body", "pouch")):
+                return "cloth"
+            return "organic"
+        if obj.visual_kind == "goblin":
+            if any(token in geom_name for token in ("tunic", "sleeve", "body", "pouch")):
+                return "cloth"
+            return "organic"
+    if render_kind in {"player", "npc"}:
+        if any(token in geom_name for token in ("hair", "fur", "brow", "beard")):
+            return "wood"
+        if any(token in geom_name for token in ("cloth", "tunic", "sleeve", "skirt", "robe", "vest", "sash", "cape", "hood", "body", "torso", "chest", "arm", "shoulder", "collar", "shirt")):
+            return "cloth"
+        if any(token in geom_name for token in ("boot", "belt", "cuff", "pouch")):
+            return "wood"
+        return "skin"
+    if render_kind in {"tree", "stump"}:
+        return "wood"
+    if render_kind in {"ore_rock", "depleted_rock"}:
+        return "stone"
+    if render_kind in {"shop", "bank", "cooking_range", "furnace", "anvil", "ruins"}:
+        return "stone"
+    if render_kind in {"crate", "barrel", "fence", "dock", "signpost"}:
+        return "wood"
+    if render_kind == "mushroom":
+        return "cloth"
+    if render_kind == "bush":
+        return "grass"
+    if resource_state is not None and resource_state.depleted:
+        return "stone"
+    return None
+
+
+def _surface_variant(
+    geom_name: str,
+    *,
+    obj: WorldObject | None = None,
+    resource_node: ResourceNode | None = None,
+    tile: Tile | None = None,
+) -> int:
+    value = _hash(tile or (0, 0), 17)
+    if obj is not None:
+        value ^= _hash(obj.tile, 29)
+        for char in obj.object_id:
+            value = (value * 33 + ord(char)) & 0xFFFFFFFF
+    if resource_node is not None:
+        for char in resource_node.node_type:
+            value = (value * 33 + ord(char)) & 0xFFFFFFFF
+    for char in geom_name:
+        value = (value * 33 + ord(char)) & 0xFFFFFFFF
+    return value % 5
+
+
+def _ore_surface(item_reward: str) -> str:
+    reward = item_reward.lower()
+    if "copper" in reward:
+        return "ore_copper"
+    if "tin" in reward:
+        return "ore_tin"
+    if "iron" in reward:
+        return "ore_iron"
+    if "coal" in reward:
+        return "ore_coal"
+    if "mithril" in reward:
+        return "ore_mithril"
+    if "adamant" in reward:
+        return "ore_adamant"
+    if "starsteel" in reward:
+        return "ore_starsteel"
+    return "stone"
+
+
+def _ground_item_surface(obj: WorldObject, geom_name: str) -> str:
+    item_id = obj.item_id.lower()
+    if item_id == "coins" or "coin" in geom_name:
+        return "gold"
+    if item_id == "wooden_splinters":
+        return "wood"
+    if item_id == "rusty_scrap":
+        return "metal"
+    if item_id == "glow_dust":
+        return "spark"
+    if item_id == "bones":
+        return "bone"
+    if item_id == "cloth":
+        return "cloth"
+    if item_id == "gel":
+        return "gel"
+    return "cloth"
+
+
 def render_terrain_tile(parent: NodePath, tile: Tile, terrain: str, edge_dirs: set[str]) -> None:
     x, y = tile
     holder = parent.attachNewNode(f"tile_{x}_{y}")
@@ -38,6 +229,7 @@ def render_terrain_tile(parent: NodePath, tile: Tile, terrain: str, edge_dirs: s
         _render_dirt_tile(holder, tile, edge_dirs)
     else:
         _render_grass_tile(holder, tile)
+    _apply_surface_textures(holder, render_kind=terrain, tile=tile)
 
 
 def render_static_obstacle(holder: NodePath, name: str) -> None:
@@ -66,6 +258,7 @@ def render_static_obstacle(holder: NodePath, name: str) -> None:
     moss.reparentTo(holder)
     moss.setPos(0.04, -0.32, 0.30)
     moss.setH(10)
+    _apply_surface_textures(holder, render_kind="blocked_rocks")
 
 
 def render_world_object(
@@ -123,6 +316,7 @@ def render_world_object(
         _render_mob(holder, obj)
     elif render_kind == "ground_item":
         _render_ground_item(holder, obj)
+    _apply_surface_textures(holder, render_kind=render_kind, obj=obj, resource_node=resource_node, resource_state=resource_state)
 
 
 def register_asset_renderer(render_kind: str, renderer: AssetRenderer | None) -> None:
@@ -142,6 +336,16 @@ def _render_asset_override(
 ) -> bool:
     renderer = ASSET_RENDERERS.get(render_kind)
     if renderer is None:
+        loaded_model = False
+        for asset_name in _asset_model_candidates(obj, resource_node, render_kind):
+            model = load_model(asset_name)
+            if model is None:
+                continue
+            model.copyTo(holder)
+            loaded_model = True
+            break
+        if loaded_model:
+            return False
         return False
     renderer(holder, obj, resource_node, resource_state, tier)
     return True
@@ -168,11 +372,19 @@ def render_decoration(holder: NodePath, decoration_id: str, kind: str) -> None:
         _render_dock(holder, decoration_id)
     else:
         _render_bush(holder, decoration_id)
+    _apply_surface_textures(holder, render_kind=kind)
 
 
 def render_player_model(parent: NodePath) -> dict[str, NodePath]:
     parts: dict[str, NodePath] = {}
     _shadow(parent, "player_shadow", 0.40, 0.26)
+
+    asset_model = load_model("player")
+    required_parts = ("left_leg", "right_leg", "left_arm", "right_arm", "body", "head", "tool")
+    if asset_model is not None and all(not asset_model.find(f"**/{part}").isEmpty() for part in required_parts):
+        asset_root = asset_model.copyTo(parent)
+        _apply_surface_textures(asset_root, render_kind="player")
+        return {part: asset_root.find(f"**/{part}") for part in required_parts}
 
     for side, x in (("left", -0.09), ("right", 0.09)):
         leg = parent.attachNewNode(f"player_{side}_leg")
@@ -273,6 +485,7 @@ def render_player_model(parent: NodePath) -> dict[str, NodePath]:
         eye.reparentTo(head)
         eye.setPos(x, -0.145, 0.13)
     parts["head"] = head
+    _apply_surface_textures(parent, render_kind="player")
     return parts
 
 
@@ -302,18 +515,18 @@ def world_tint(minute: float) -> tuple[Color, Color]:
     hour = (minute / 60.0) % 24.0
     if 5.0 <= hour < 7.0:
         factor = (hour - 5.0) / 2.0
-        tint = _lerp_color((0.70, 0.58, 0.48, 1.0), (1.0, 0.98, 0.90, 1.0), factor)
-        sky = _lerp_color((0.30, 0.35, 0.48, 1.0), (0.56, 0.70, 0.84, 1.0), factor)
+        tint = _lerp_color((0.66, 0.54, 0.44, 1.0), (0.96, 0.93, 0.86, 1.0), factor)
+        sky = _lerp_color((0.24, 0.28, 0.38, 1.0), (0.48, 0.60, 0.74, 1.0), factor)
     elif 7.0 <= hour < 18.0:
-        tint = (1.0, 0.98, 0.90, 1.0)
-        sky = (0.56, 0.70, 0.84, 1.0)
+        tint = (0.96, 0.93, 0.86, 1.0)
+        sky = (0.48, 0.60, 0.74, 1.0)
     elif 18.0 <= hour < 20.0:
         factor = (hour - 18.0) / 2.0
-        tint = _lerp_color((1.0, 0.98, 0.90, 1.0), (0.64, 0.52, 0.48, 1.0), factor)
-        sky = _lerp_color((0.56, 0.70, 0.84, 1.0), (0.24, 0.24, 0.36, 1.0), factor)
+        tint = _lerp_color((0.96, 0.93, 0.86, 1.0), (0.62, 0.50, 0.46, 1.0), factor)
+        sky = _lerp_color((0.48, 0.60, 0.74, 1.0), (0.18, 0.20, 0.30, 1.0), factor)
     else:
-        tint = (0.54, 0.56, 0.68, 1.0)
-        sky = (0.12, 0.15, 0.24, 1.0)
+        tint = (0.42, 0.44, 0.56, 1.0)
+        sky = (0.08, 0.10, 0.16, 1.0)
     return tint, sky
 
 
@@ -1482,6 +1695,37 @@ def _render_dock(holder: NodePath, name: str) -> None:
         rail.setPos(x, 0.0, 0.08)
 
 
+def _asset_model_candidates(obj: WorldObject, resource_node: ResourceNode | None, render_kind: str) -> tuple[str, ...]:
+    candidates: list[str] = []
+
+    def add(name: str) -> None:
+        cleaned = name.strip()
+        if cleaned and cleaned not in candidates:
+            candidates.append(cleaned)
+
+    if obj.kind == "mob" and obj.visual_kind:
+        add(obj.visual_kind)
+        add(f"mob_{obj.visual_kind}")
+    if obj.kind == "npc":
+        add(f"npc_{obj.object_id}")
+        if obj.display_name:
+            add(f"npc_{obj.display_name.replace(' ', '_').lower()}")
+        add("npc")
+    if obj.kind == "ground_item" and obj.item_id:
+        add(obj.item_id)
+    if resource_node is not None:
+        add(resource_node.node_type)
+        if resource_node.depleted_state:
+            add(resource_node.depleted_state)
+        if resource_node.skill_id == "mining":
+            add("rock")
+    if render_kind in {"ore_rock", "depleted_rock"}:
+        add("rock")
+    add(render_kind)
+    add(obj.kind)
+    return tuple(candidates)
+
+
 def _shadow(holder: NodePath, name: str, sx: float, sy: float) -> None:
     shadow = make_box(name, (sx, sy, 0.010), C.SHADOW)
     shadow.reparentTo(holder)
@@ -1494,6 +1738,7 @@ def _respawn_glow(holder: NodePath, name: str, state: ResourceNodeState, radius:
     glow = make_ground_ring(f"{name}_respawn_glow", radius, C.RESPAWN_GLOW, thickness=1.8)
     glow.reparentTo(holder)
     glow.setZ(0.035)
+    apply_surface_texture(glow, "respawn")
 
 
 def _palette_color(tile: Tile, palette: tuple[Color, ...]) -> Color:

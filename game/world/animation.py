@@ -77,14 +77,58 @@ class SceneAnimator:
     def active_keys(self) -> set[str]:
         return set(self._tracks)
 
-    def start_bob(self, key: str, node: Any, *, amplitude: float = 0.05, speed: float = 7.0) -> None:
+    def start_bob(
+        self,
+        key: str,
+        node: Any,
+        *,
+        amplitude: float = 0.05,
+        speed: float = 7.0,
+        phase: float = 0.0,
+    ) -> None:
         base = _capture(node)
 
         def apply(track: _Track) -> None:
-            z = track.base.pos[2] + math.sin(track.elapsed * speed) * amplitude
+            z = track.base.pos[2] + math.sin(track.elapsed * speed + phase) * amplitude
             _set_pos(track.node, (track.base.pos[0], track.base.pos[1], z))
 
         self._replace(_Track(key, node, base, apply, reset_pos=True))
+
+    def start_motion_profile(
+        self,
+        key_prefix: str,
+        node: Any,
+        profile: dict[str, Any] | None,
+        *,
+        phase: float = 0.0,
+    ) -> bool:
+        if profile is None:
+            return False
+        tracks = profile.get("tracks")
+        if not isinstance(tracks, list):
+            return False
+
+        self.stop_prefix(key_prefix)
+        started = False
+        for index, raw_track in enumerate(tracks):
+            if not isinstance(raw_track, dict):
+                continue
+            method_name = str(raw_track.get("method") or "")
+            method = getattr(self, method_name, None)
+            if not callable(method):
+                continue
+
+            kwargs: dict[str, object] = {}
+            for key in ("amplitude", "speed", "pitch", "roll", "axis", "steps", "color", "duration", "distance", "arc", "lift", "remove_on_finish", "target_pos", "direction"):
+                if key in raw_track:
+                    kwargs[key] = raw_track[key]
+            if "phase" in raw_track:
+                kwargs["phase"] = _coerce_float(raw_track.get("phase"), 0.0) + phase + index * 0.37
+            elif method_name in {"start_bob", "start_tilt", "start_swing"}:
+                kwargs["phase"] = phase + index * 0.37
+            method(f"{key_prefix}:{index}", node, **kwargs)
+            started = True
+        return started
 
     def start_pulse(self, key: str, node: Any, *, amplitude: float = 0.08, speed: float = 6.0) -> None:
         base = _capture(node)
@@ -120,11 +164,12 @@ class SceneAnimator:
         pitch: float = 0.0,
         roll: float = 5.0,
         speed: float = 6.0,
+        phase: float = 0.0,
     ) -> None:
         base = _capture(node)
 
         def apply(track: _Track) -> None:
-            offset = math.sin(track.elapsed * speed)
+            offset = math.sin(track.elapsed * speed + phase)
             _set_hpr(
                 track.node,
                 (
@@ -758,3 +803,10 @@ def _normalize(value: Vec3Tuple) -> Vec3Tuple:
 def _lerp4(a: Vec4Tuple, b: Vec4Tuple, factor: float) -> Vec4Tuple:
     factor = max(0.0, min(1.0, factor))
     return tuple(a[index] + (b[index] - a[index]) * factor for index in range(4))  # type: ignore[return-value]
+
+
+def _coerce_float(value: object, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default

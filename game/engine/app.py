@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from pathlib import Path
 from typing import Any
 
 from direct.showbase.ShowBase import ShowBase
 from direct.showbase.ShowBaseGlobal import globalClock
-from panda3d.core import AmbientLight, AntialiasAttrib, DirectionalLight, WindowProperties
+from panda3d.core import AmbientLight, AntialiasAttrib, DirectionalLight, Fog, WindowProperties
 
+from game.assets.runtime import load_animation_clip_data, load_sound
 from game import settings
 from game.engine.camera import CameraState, GameCamera
 from game.engine.game_state import GameState
@@ -40,8 +42,8 @@ from game.world.time import GameTime
 
 
 LOGGER = logging.getLogger(__name__)
-DAYLIGHT_TINT = (1.0, 0.98, 0.90, 1.0)
-DAYLIGHT_SKY = (0.56, 0.70, 0.84, 1.0)
+DAYLIGHT_TINT = (0.96, 0.93, 0.86, 1.0)
+DAYLIGHT_SKY = (0.48, 0.60, 0.74, 1.0)
 XP_POPUP_COLOR = (1.0, 0.86, 0.44, 1.0)
 XP_POPUP_DURATION = 1.20
 XP_POPUP_FADE_IN = 0.12
@@ -53,6 +55,8 @@ XP_POPUP_HEAD_OFFSET = 1.30
 XP_POPUP_FORWARD_OFFSET = -0.25
 XP_POPUP_STACK_SPACING = 0.16
 XP_POPUP_MAX_STACK = 4
+AMBIENT_VOLUME_LEVELS = (0.20, 0.35, 0.50, 0.70, 1.00)
+DEFAULT_AMBIENT_VOLUME = AMBIENT_VOLUME_LEVELS[1]
 
 
 class GameApp(ShowBase):
@@ -61,7 +65,12 @@ class GameApp(ShowBase):
         self.state = GameState.LOADING
         super().__init__()
         self.disableMouse()
-        self.setBackgroundColor(0.52, 0.70, 0.88, 1)
+        self.audio_enabled = True
+        self.ambient_volume = DEFAULT_AMBIENT_VOLUME
+        self.enableAllAudio()
+        self._ambient_sound_path = load_sound("ambient")
+        self._ambient_sound = None
+        self.setBackgroundColor(*DAYLIGHT_SKY)
         self._configure_window()
         self._configure_lighting()
 
@@ -137,6 +146,8 @@ class GameApp(ShowBase):
         self.game_time = GameTime()
         self._apply_world_light()
         self.animator = SceneAnimator()
+        self._idle_motion_clip = load_animation_clip_data("npc_mob_idle")
+        self._idle_motion_nodes: dict[str, int] = {}
 
         self.player = Player(self.world_map.grid, self.world_map.player_start)
         self.player.render(self.render)
@@ -177,7 +188,11 @@ class GameApp(ShowBase):
             on_save=self.save_game,
             on_load=self.load_game,
             on_quit=self.userExit,
+            audio_enabled=self.audio_enabled,
+            on_audio_toggle=self.toggle_audio,
+            on_audio_volume_cycle=self.cycle_ambient_volume,
         )
+        self.hud.set_ambient_volume(self.ambient_volume)
         self.hud.apply_viewport_layout(self.getAspectRatio())
         self.selected_text = "Selected: none"
         self.interactions = InteractionManager(
@@ -205,6 +220,7 @@ class GameApp(ShowBase):
 
         self.input = InputManager(self)
         self.input.bind()
+        self._sync_audio_playback()
         self.taskMgr.add(self.update, "update")
 
     def update(self, task):
@@ -215,6 +231,7 @@ class GameApp(ShowBase):
         self.world_map.apply_resource_states(self.gathering.states)
         self.combat.refresh_all()
         self.world_map.apply_mob_states(self.combat.states)
+        self._sync_idle_world_animations()
         self.interactions.update()
         self.animator.update(dt)
         self.game_time.update(dt)
@@ -225,6 +242,30 @@ class GameApp(ShowBase):
         self._update_hud()
         self.hud.tick(dt)
         return task.cont
+
+    def toggle_audio(self) -> None:
+        self.audio_enabled = not self.audio_enabled
+        if self.audio_enabled:
+            self.enableAllAudio()
+        else:
+            self.disableAllAudio()
+        self._sync_audio_playback()
+        if hasattr(self, "hud"):
+            self.hud.set_audio_enabled(self.audio_enabled)
+
+    def cycle_ambient_volume(self) -> None:
+        current_volume = float(getattr(self, "ambient_volume", DEFAULT_AMBIENT_VOLUME))
+        current_index = min(
+            range(len(AMBIENT_VOLUME_LEVELS)),
+            key=lambda index: abs(AMBIENT_VOLUME_LEVELS[index] - current_volume),
+        )
+        self.ambient_volume = AMBIENT_VOLUME_LEVELS[(current_index + 1) % len(AMBIENT_VOLUME_LEVELS)]
+        sound = getattr(self, "_ambient_sound", None)
+        if sound is not None and hasattr(sound, "setVolume"):
+            sound.setVolume(self.ambient_volume)
+        if hasattr(self, "hud"):
+            self.hud.set_ambient_volume(self.ambient_volume)
+        self.set_feedback(f"Ambient volume {int(round(self.ambient_volume * 100))}%")
 
     def on_mouse_wheel(self, direction: int) -> None:
         self.game_camera.zoom(direction * settings.CAMERA_ZOOM_STEP)
@@ -492,6 +533,7 @@ class GameApp(ShowBase):
         self.quest.load_dict(self._quest_state_from_save(state, world_state))
         self.world_map.apply_resource_states(self.gathering.states)
         self.world_map.apply_mob_states(self.combat.states)
+        self._sync_idle_world_animations()
         ground_items = combat_state.get("ground_items", [])
         self.world_map.load_ground_items(ground_items if isinstance(ground_items, list) else [])
         self.interactions.inventory = self.inventory
@@ -500,6 +542,72 @@ class GameApp(ShowBase):
         self.interactions.cooking = self.cooking
         self.interactions.smithing = self.smithing
         self.interactions.combat = self.combat
+
+    def _sync_idle_world_animations(self) -> None:
+        clip = getattr(self, "_idle_motion_clip", None)
+        animator = getattr(self, "animator", None)
+        if clip is None or animator is None:
+            return
+
+        tracks = clip.get("tracks")
+        if not isinstance(tracks, list):
+            return
+
+        for obj in self.world_map.objects.values():
+            if obj.kind not in {"npc", "mob"} or obj.node is None:
+                continue
+            if obj.node.isEmpty():
+                continue
+
+            node_key = id(obj.node)
+            if self._idle_motion_nodes.get(obj.object_id) == node_key:
+                continue
+            self._idle_motion_nodes[obj.object_id] = node_key
+
+            phase_seed = _phase_from_name(obj.object_id)
+            for index, raw_track in enumerate(tracks):
+                if not isinstance(raw_track, dict):
+                    continue
+                method_name = str(raw_track.get("method") or "")
+                method = getattr(animator, method_name, None)
+                if not callable(method):
+                    continue
+
+                kwargs: dict[str, object] = {}
+                for key in ("amplitude", "speed", "pitch", "roll", "axis", "steps", "color", "duration"):
+                    if key in raw_track:
+                        kwargs[key] = raw_track[key]
+                if "phase" in raw_track:
+                    kwargs["phase"] = _float_value(raw_track.get("phase"), 0.0) + phase_seed + index * 0.37
+                elif method_name in {"start_bob", "start_tilt", "start_swing"}:
+                    kwargs["phase"] = phase_seed + index * 0.37
+                method(f"idle:{obj.object_id}:{index}", obj.node, **kwargs)
+
+    def _sync_audio_playback(self) -> None:
+        sound = getattr(self, "_ambient_sound", None)
+        if sound is None and self.audio_enabled:
+            sound = self._load_ambient_sound()
+        if sound is None:
+            return
+        if self.audio_enabled:
+            sound.play()
+        else:
+            sound.stop()
+
+    def _load_ambient_sound(self):
+        sound_path = getattr(self, "_ambient_sound_path", None)
+        loader = getattr(self, "loader", None)
+        if sound_path is None or loader is None or not hasattr(loader, "loadSfx"):
+            return None
+        sound = loader.loadSfx(str(sound_path))
+        if sound is None:
+            return None
+        if hasattr(sound, "setLoop"):
+            sound.setLoop(True)
+        if hasattr(sound, "setVolume"):
+            sound.setVolume(float(getattr(self, "ambient_volume", DEFAULT_AMBIENT_VOLUME)))
+        self._ambient_sound = sound
+        return sound
 
     def open_bank(self) -> None:
         self.hud.close_shop()
@@ -511,6 +619,9 @@ class GameApp(ShowBase):
         self.hud.close_bank()
 
     def open_shop(self) -> None:
+        if hasattr(self, "game_time") and not self.game_time.is_shop_open():
+            self.set_feedback("The shop is closed after dark.")
+            return
         self.hud.close_bank()
         self.hud.open_shop()
         self._update_hud()
@@ -518,6 +629,12 @@ class GameApp(ShowBase):
 
     def close_shop(self) -> None:
         self.hud.close_shop()
+
+    def destroy(self) -> None:
+        sound = getattr(self, "_ambient_sound", None)
+        if sound is not None and hasattr(sound, "stop"):
+            sound.stop()
+        super().destroy()
 
     def deposit_bank_item(self, item_id: str) -> None:
         quantity = self.hud.transaction_quantity(self.inventory.count(item_id))
@@ -838,19 +955,24 @@ class GameApp(ShowBase):
     def _configure_lighting(self) -> None:
         self.render.setAntialias(AntialiasAttrib.MAuto)
 
+        self.world_fog = Fog("world_fog")
+        self.world_fog.setColor(*DAYLIGHT_SKY[:3])
+        self.world_fog.setLinearRange(36.0, 88.0)
+        self.render.setFog(self.world_fog)
+
         ambient = AmbientLight("ambient")
-        ambient.setColor((0.50, 0.48, 0.44, 1))
+        ambient.setColor((0.42, 0.40, 0.36, 1))
         ambient_np = self.render.attachNewNode(ambient)
         self.render.setLight(ambient_np)
 
         sun = DirectionalLight("sun")
-        sun.setColor((1.04, 0.92, 0.68, 1))
+        sun.setColor((1.16, 1.02, 0.78, 1))
         sun_np = self.render.attachNewNode(sun)
         sun_np.setHpr(35, -58, 0)
         self.render.setLight(sun_np)
 
         fill = DirectionalLight("cool_fill")
-        fill.setColor((0.26, 0.32, 0.40, 1))
+        fill.setColor((0.22, 0.28, 0.36, 1))
         fill_np = self.render.attachNewNode(fill)
         fill_np.setHpr(-145, -32, 0)
         self.render.setLight(fill_np)
@@ -879,8 +1001,14 @@ class GameApp(ShowBase):
         marker.show()
 
     def _apply_fixed_world_light(self) -> None:
-        self.render.setColorScale(*DAYLIGHT_TINT)
-        self.setBackgroundColor(*DAYLIGHT_SKY)
+        if hasattr(self, "game_time"):
+            tint, sky = visuals.world_tint(self.game_time.minute)
+        else:
+            tint, sky = DAYLIGHT_TINT, DAYLIGHT_SKY
+        self.render.setColorScale(*tint)
+        self.setBackgroundColor(*sky)
+        if hasattr(self, "world_fog"):
+            self.world_fog.setColor(*sky[:3])
 
     def _apply_world_light(self) -> None:
         self._apply_fixed_world_light()
@@ -930,6 +1058,20 @@ class GameApp(ShowBase):
 
 def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _phase_from_name(name: str) -> float:
+    value = 0x45D9F3B
+    for char in name:
+        value = ((value << 5) - value + ord(char)) & 0xFFFFFFFF
+    return (value % 1000) / 1000.0 * math.tau
+
+
+def _float_value(value: object, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _load_startup_account(

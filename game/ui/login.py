@@ -21,6 +21,9 @@ BUTTON_HOVER = UI.BUTTON_HOVER
 TEXT = UI.TEXT
 GOLD = UI.GOLD
 
+DEFAULT_LOGIN_USERNAME = "donny101"
+DEFAULT_LOGIN_PASSWORD = "donny101"
+
 
 class LoginScreen(DirectObject):
     def __init__(
@@ -44,42 +47,73 @@ class LoginScreen(DirectObject):
         self.widgets.clear()
 
     def _build(self) -> None:
+        backdrop = DirectFrame(
+            frameColor=(0.04, 0.05, 0.07, 0.84),
+            frameSize=(-2.0, 2.0, -1.25, 1.25),
+        )
+        shadow = DirectFrame(
+            parent=backdrop,
+            frameColor=(0.0, 0.0, 0.0, 0.32),
+            frameSize=(-0.71, 0.71, -0.46, 0.46),
+            pos=(0.03, 0, -0.03),
+        )
         frame = DirectFrame(
+            parent=backdrop,
             frameColor=UI.STONE,
-            frameSize=(-0.62, 0.62, -0.38, 0.38),
+            frameSize=(-0.68, 0.68, -0.43, 0.43),
         )
         inset = DirectFrame(
             parent=frame,
             frameColor=PANEL,
-            frameSize=(-0.59, 0.59, -0.35, 0.35),
+            frameSize=(-0.64, 0.64, -0.39, 0.39),
+        )
+        title_shadow = DirectFrame(
+            parent=frame,
+            frameColor=(0.0, 0.0, 0.0, 0.20),
+            frameSize=(-0.44, 0.44, 0.20, 0.31),
+            pos=(0.01, 0, -0.01),
         )
         title_strip = DirectFrame(
             parent=frame,
             frameColor=UI.PARCHMENT,
-            frameSize=(-0.45, 0.45, 0.205, 0.315),
+            frameSize=(-0.44, 0.44, 0.21, 0.32),
+        )
+        title_accent = DirectFrame(
+            parent=frame,
+            frameColor=UI.GOLD,
+            frameSize=(-0.22, 0.22, -0.01, 0.01),
+            pos=(0, 0, 0.225),
         )
         title = DirectLabel(
             parent=frame,
             text="Hearthvale",
-            scale=0.075,
+            scale=0.082,
             pos=(0, 0, 0.27),
             frameColor=(0, 0, 0, 0),
             text_fg=GOLD,
         )
+        subtitle = DirectLabel(
+            parent=frame,
+            text="Local saves only",
+            scale=0.031,
+            pos=(0, 0, 0.205),
+            frameColor=(0, 0, 0, 0),
+            text_fg=UI.MUTED_TEXT,
+        )
         username_label = DirectLabel(
             parent=frame,
             text="Username",
-            scale=0.038,
-            pos=(-0.34, 0, 0.19),
+            scale=0.036,
+            pos=(-0.34, 0, 0.18),
             frameColor=(0, 0, 0, 0),
             text_fg=TEXT,
         )
         self.username = DirectEntry(
             parent=frame,
-            initialText="",
+            initialText=DEFAULT_LOGIN_USERNAME,
             width=18,
-            scale=0.052,
-            pos=(-0.46, 0, 0.12),
+            scale=0.051,
+            pos=(-0.46, 0, 0.11),
             frameColor=PANEL_DARK,
             text_fg=TEXT,
             focus=1,
@@ -88,27 +122,28 @@ class LoginScreen(DirectObject):
         password_label = DirectLabel(
             parent=frame,
             text="Password",
-            scale=0.038,
-            pos=(-0.34, 0, 0.05),
+            scale=0.036,
+            pos=(-0.34, 0, 0.04),
             frameColor=(0, 0, 0, 0),
             text_fg=TEXT,
         )
         self.password = DirectEntry(
             parent=frame,
-            initialText="",
+            initialText=DEFAULT_LOGIN_PASSWORD,
             width=18,
-            scale=0.052,
-            pos=(-0.46, 0, -0.02),
+            scale=0.051,
+            pos=(-0.46, 0, -0.03),
             frameColor=PANEL_DARK,
             text_fg=TEXT,
             obscured=1,
+            focus=0,
             command=self._login,
         )
         login_button = DirectButton(
             parent=frame,
             text="Login",
-            scale=0.052,
-            pos=(-0.18, 0, -0.17),
+            scale=0.058,
+            pos=(-0.18, 0, -0.18),
             frameColor=(BUTTON, BUTTON_HOVER, BUTTON_HOVER, BUTTON),
             text_fg=TEXT,
             command=self._login,
@@ -116,8 +151,8 @@ class LoginScreen(DirectObject):
         register_button = DirectButton(
             parent=frame,
             text="Register",
-            scale=0.052,
-            pos=(0.20, 0, -0.17),
+            scale=0.048,
+            pos=(0.20, 0, -0.18),
             frameColor=(BUTTON, BUTTON_HOVER, BUTTON_HOVER, BUTTON),
             text_fg=TEXT,
             command=self._register,
@@ -125,25 +160,30 @@ class LoginScreen(DirectObject):
         quit_button = DirectButton(
             parent=frame,
             text="Quit",
-            scale=0.046,
-            pos=(0, 0, -0.27),
-            frameColor=(BUTTON, BUTTON_HOVER, BUTTON_HOVER, BUTTON),
+            scale=0.042,
+            pos=(0, 0, -0.28),
+            frameColor=(PANEL_DARK, BUTTON, BUTTON_HOVER, PANEL_DARK),
             text_fg=TEXT,
             command=self.app.userExit,
         )
         self.status = DirectLabel(
             parent=frame,
-            text="Local account only",
-            scale=0.042,
-            pos=(0, 0, -0.34),
+            text="Prefilled local test account",
+            scale=0.034,
+            pos=(0, 0, -0.37),
             frameColor=(0, 0, 0, 0),
             text_fg=GOLD,
         )
         self.widgets.extend([
+            backdrop,
+            shadow,
             frame,
             inset,
+            title_shadow,
             title_strip,
+            title_accent,
             title,
+            subtitle,
             username_label,
             self.username,
             password_label,

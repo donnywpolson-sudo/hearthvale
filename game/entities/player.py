@@ -4,9 +4,21 @@ import math
 
 from panda3d.core import NodePath, Vec3
 
+from game.assets.runtime import load_animation_clip_data
 from game import settings
 from game.world import visuals
 from game.world.grid import Tile, TileGrid
+
+
+PLAYER_RIG_PARTS = ("left_leg", "right_leg", "left_arm", "right_arm", "body", "head", "tool")
+PLAYER_COMBAT_ACTIONS = (
+    "combat_attack",
+    "combat_strength",
+    "combat_defence",
+    "combat_ranged",
+    "combat_magic",
+    "combat_reaction",
+)
 
 
 class Player:
@@ -22,6 +34,13 @@ class Player:
         self.idle_time = 0.0
         self.action_animation: str | None = None
         self.action_time = 0.0
+        self.action_duration: float | None = None
+        self._idle_motion_profile = load_animation_clip_data("player_idle")
+        self._walk_motion_profile = load_animation_clip_data("player_walk")
+        self._action_motion_profiles = {
+            action: load_animation_clip_data(f"player_{action}")
+            for action in PLAYER_COMBAT_ACTIONS
+        }
 
     def render(self, parent: NodePath) -> None:
         self.node = parent.attachNewNode("player")
@@ -45,6 +64,8 @@ class Player:
             self.idle_time += dt
             if self.action_animation is not None:
                 self.action_time += dt
+                if self.action_duration is not None and self.action_time >= self.action_duration:
+                    self.stop_action_animation(sync=False)
             self._sync_node()
             return
 
@@ -99,6 +120,7 @@ class Player:
         if self.action_animation != action_type:
             self.action_time = 0.0
         self.action_animation = action_type
+        self.action_duration = 0.30 if action_type == "combat_reaction" else None
         self._sync_node()
 
     def stop_action_animation(self, *, sync: bool = True) -> bool:
@@ -106,6 +128,7 @@ class Player:
             return False
         self.action_animation = None
         self.action_time = 0.0
+        self.action_duration = None
         if sync:
             self._sync_node()
         return True
@@ -118,28 +141,63 @@ class Player:
                 counter = math.sin(self.walk_time + math.pi)
                 lift = abs(math.sin(self.walk_time))
                 bob = lift * 0.045
-                self._set_part_hpr("left_leg", 0.0, stride * 22.0, stride * 2.5)
-                self._set_part_hpr("right_leg", 0.0, counter * 22.0, counter * 2.5)
-                self._set_part_hpr("left_arm", 0.0, counter * 18.0, -5.0 + counter * 2.5)
-                self._set_part_hpr("right_arm", 0.0, stride * 18.0, 5.0 + stride * 2.5)
-                self._set_part_hpr("body", 0.0, 1.2 + lift * 1.4, stride * 2.0)
-                self._set_part_hpr("head", 0.0, -0.8 + lift * 0.8, -stride * 1.0)
-                self._set_part_hpr("tool", -16.0 + stride * 2.4, -4.0 + counter * 5.2, -10.0 + stride * 3.2)
+                self._reset_pose()
+                if self._walk_motion_profile is not None and self._apply_motion_profile(
+                    self._walk_motion_profile,
+                    self.walk_time,
+                    required_parts=PLAYER_RIG_PARTS,
+                ):
+                    pass
+                else:
+                    self._apply_walk_pose(stride, counter, lift)
             else:
                 self._reset_pose()
                 if self.action_animation is not None:
                     self._apply_action_pose(self.action_animation)
+                elif self._idle_motion_profile is not None and self._apply_motion_profile(
+                    self._idle_motion_profile,
+                    self.idle_time,
+                    required_parts=PLAYER_RIG_PARTS,
+                ):
+                    pass
                 else:
                     self._apply_idle_pose()
             self.node.setPos(Vec3(self.x, self.y, 0.02 + bob))
             self.node.setH(self.heading)
 
+    def _apply_walk_pose(self, stride: float, counter: float, lift: float) -> None:
+        self._set_part_hpr("left_leg", 0.0, stride * 22.0, stride * 2.5)
+        self._set_part_hpr("right_leg", 0.0, counter * 22.0, counter * 2.5)
+        self._set_part_hpr("left_arm", 0.0, counter * 18.0, -5.0 + counter * 2.5)
+        self._set_part_hpr("right_arm", 0.0, stride * 18.0, 5.0 + stride * 2.5)
+        self._set_part_hpr("body", 0.0, 1.2 + lift * 1.4, stride * 2.0)
+        self._set_part_hpr("head", 0.0, -0.8 + lift * 0.8, -stride * 1.0)
+        self._set_part_hpr("tool", -16.0 + stride * 2.4, -4.0 + counter * 5.2, -10.0 + stride * 3.2)
+
     def _apply_action_pose(self, action_type: str) -> None:
+        if action_type == "combat":
+            action_type = "combat_attack"
+        profile = self._action_motion_profiles.get(action_type)
+        if profile is not None and self._apply_motion_profile(
+            profile,
+            self.action_time,
+            required_parts=PLAYER_RIG_PARTS,
+        ):
+            return
+
         cycle = math.sin(self.action_time * 6.0)
         fast_cycle = math.sin(self.action_time * 9.5)
         impact = max(0.0, fast_cycle)
         recoil = max(0.0, -fast_cycle)
-        if action_type == "woodcutting":
+        if action_type == "combat_reaction":
+            self._set_part_hpr("body", 0.0, -6.0 + impact * 8.0, 12.0 + impact * 4.0)
+            self._set_part_hpr("head", 0.0, 4.0 - impact * 2.0, -6.0)
+            self._set_part_hpr("left_leg", 0.0, -4.0, -3.0)
+            self._set_part_hpr("right_leg", 0.0, 4.0, 3.0)
+            self._set_part_hpr("left_arm", 0.0, 14.0 + impact * 6.0, -18.0)
+            self._set_part_hpr("right_arm", 0.0, -16.0 - impact * 6.0, 18.0)
+            self._set_part_hpr("tool", -14.0, -20.0 - impact * 12.0, -16.0)
+        elif action_type == "woodcutting":
             self._set_part_hpr("body", 0.0, 5.0 + impact * 5.0, -8.0 + cycle * 2.0)
             self._set_part_hpr("head", 0.0, 3.0 + impact * 2.0, -3.0)
             self._set_part_hpr("left_leg", 0.0, -8.0, -4.0)
@@ -240,6 +298,42 @@ class Player:
         self._set_part_hpr("left_arm", 0.0, 2.0 + breath * 1.2, -4.0)
         self._set_part_hpr("right_arm", 0.0, -2.0 - breath * 1.2, 4.0)
 
+    def _apply_motion_profile(
+        self,
+        profile: dict[str, object],
+        phase: float,
+        *,
+        required_parts: tuple[str, ...] | None = None,
+    ) -> bool:
+        parts = profile.get("parts")
+        if not isinstance(parts, dict):
+            return False
+
+        valid_parts: dict[str, dict[str, object]] = {}
+        for part_name, raw_spec in parts.items():
+            if not isinstance(part_name, str) or not isinstance(raw_spec, dict):
+                continue
+            valid_parts[part_name] = raw_spec
+
+        if not valid_parts:
+            return False
+        if required_parts is not None and any(part_name not in valid_parts for part_name in required_parts):
+            return False
+
+        for part_name, spec in valid_parts.items():
+            base = _vec3_from_value(spec.get("base"), (0.0, 0.0, 0.0))
+            amplitude = _vec3_from_value(spec.get("amplitude"), (0.0, 0.0, 0.0))
+            speed = _coerce_float(spec.get("speed"), 1.0)
+            phase_offset = _coerce_float(spec.get("phase"), 0.0)
+            offset = math.sin(phase * speed + phase_offset)
+            self._set_part_hpr(
+                part_name,
+                base[0] + amplitude[0] * offset,
+                base[1] + amplitude[1] * offset,
+                base[2] + amplitude[2] * offset,
+            )
+        return True
+
     def _reset_pose(self) -> None:
         for key in ("left_leg", "right_leg", "left_arm", "right_arm", "body", "head"):
             self._set_part_hpr(key, 0.0, 0.0, 0.0)
@@ -264,3 +358,19 @@ def heading_for_delta(dx: float, dy: float) -> float:
     if heading > 180.0:
         heading -= 360.0
     return heading
+
+
+def _vec3_from_value(value: object, default: tuple[float, float, float]) -> tuple[float, float, float]:
+    if isinstance(value, (list, tuple)) and len(value) == 3:
+        try:
+            return (float(value[0]), float(value[1]), float(value[2]))
+        except (TypeError, ValueError):
+            return default
+    return default
+
+
+def _coerce_float(value: object, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default

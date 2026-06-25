@@ -77,17 +77,19 @@ Read targeted files only:
 * `README.md`
 * `requirements.txt`
 * `game/settings.py`
+* `game/style.py`
 * `game/tools/validate_data.py`
+* `docs/icon_asset_options.md`
 * targeted source under `game/`
 * targeted data under `game/data/`
-* targeted tests under `tests/`
+* targeted tests under `tests/`, especially `tests/test_validation.py`, `tests/test_save.py`, `tests/test_time.py`, `tests/test_auth.py`, `tests/test_login.py`, `tests/test_hud.py`, `tests/test_world_rendering.py`, and `tests/test_app_audio.py`
 * launcher/build files only when auditing launcher/build risk
 * docs/planning files only when they affect current behavior or recommendations
 
 Search implementation and risk signals:
 
 ```powershell
-rg -n "TODO|FIXME|pass|NotImplemented|stub|animation|sprite|tileset|audio|music|settings|save|schema|migration|inventory|equipment|bank|shop|combat|skill|XP|level|quest|dialogue|npc|trade|market|economy|auth|account|launcher|build" AGENTS.md README.md requirements.txt docs launcher game tests -g "!*.pyc" -g "!__pycache__/**"
+rg -n "TODO|FIXME|pass|NotImplemented|stub|animation|sprite|tileset|palette|style|icon|license|audio|music|sound|sfx|volume|mute|settings|save|schema|migration|inventory|equipment|bank|shop|combat|skill|XP|level|quest|dialogue|npc|trade|market|economy|auth|account|launcher|build" AGENTS.md README.md requirements.txt docs launcher game tests -g "!*.pyc" -g "!__pycache__/**"
 ```
 
 Search protected-content drift terms from `AGENTS.md`:
@@ -107,7 +109,7 @@ $env:PYTHONDONTWRITEBYTECODE='1'
 python -B -m game.tools.validate_data
 ```
 
-Run only targeted pytest checks that are useful for audit evidence and appear read-only. Do not run full pytest unless the user explicitly asks for it; recommend the user run it when needed.
+Run only targeted pytest checks that are useful for audit evidence and appear read-only, especially `tests/test_validation.py`, `tests/test_save.py`, `tests/test_time.py`, `tests/test_auth.py`, `tests/test_login.py`, `tests/test_hud.py`, `tests/test_world_rendering.py`, and `tests/test_app_audio.py`. Do not run full pytest unless the user explicitly asks for it; recommend the user run it when needed.
 
 After checks:
 

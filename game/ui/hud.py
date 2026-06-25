@@ -117,6 +117,9 @@ class Hud:
         on_save: Callable[[], None] | None = None,
         on_load: Callable[[], None] | None = None,
         on_quit: Callable[[], None] | None = None,
+        audio_enabled: bool = True,
+        on_audio_toggle: Callable[[], None] | None = None,
+        on_audio_volume_cycle: Callable[[], None] | None = None,
     ) -> None:
         self.items_data = items_data or {}
         self.skills_data = _skills_data or {}
@@ -139,6 +142,9 @@ class Hud:
         self.on_save = on_save or (lambda: None)
         self.on_load = on_load or (lambda: None)
         self.on_quit = on_quit or (lambda: None)
+        self.on_audio_toggle = on_audio_toggle or (lambda: None)
+        self.on_audio_volume_cycle = on_audio_volume_cycle or (lambda: None)
+        self.ambient_volume = 0.35
         self.bank_is_open = False
         self.shop_is_open = False
         self.file_menu_open = False
@@ -178,7 +184,7 @@ class Hud:
         _button(self.file_menu, "Quit", (0.0, 0, -0.135), SMALL_BUTTON_TEXT_SCALE, self._quit_from_menu)
         self.file_menu.hide()
         self.settings_menu_open = False
-        self.settings_menu = _panel((-0.15, 0.15, -0.165, 0.03), (0.28, 0, -0.165), PANEL_DARK, self.stats_panel)
+        self.settings_menu = _panel((-0.15, 0.15, -0.265, 0.03), (0.28, 0, -0.165), PANEL_DARK, self.stats_panel)
         _text(self.settings_menu, "Settings", (0.0, 0.015), SMALL_BUTTON_TEXT_SCALE, TextNode.ACenter, GOLD)
         self.settings_compact_button = _button(
             self.settings_menu,
@@ -188,9 +194,27 @@ class Hud:
             self.toggle_compact_tabs,
             frame_size=(-0.145, 0.145, -0.024, 0.024),
         )
-        _button(self.settings_menu, "Close", (0.0, 0, -0.128), SMALL_BUTTON_TEXT_SCALE, self._close_settings_menu)
+        self.settings_audio_button = _button(
+            self.settings_menu,
+            "",
+            (0.0, 0, -0.110),
+            SMALL_BUTTON_TEXT_SCALE,
+            self.on_audio_toggle,
+            frame_size=(-0.145, 0.145, -0.024, 0.024),
+        )
+        self.settings_volume_button = _button(
+            self.settings_menu,
+            "",
+            (0.0, 0, -0.162),
+            SMALL_BUTTON_TEXT_SCALE,
+            self.on_audio_volume_cycle,
+            frame_size=(-0.145, 0.145, -0.024, 0.024),
+        )
+        _button(self.settings_menu, "Close", (0.0, 0, -0.214), SMALL_BUTTON_TEXT_SCALE, self._close_settings_menu)
         self.settings_menu.hide()
         self._sync_settings_compact_button()
+        self.set_audio_enabled(audio_enabled)
+        self.set_ambient_volume(self.ambient_volume)
 
         self.feedback_panel = _panel((-0.54, 0.54, -0.075, 0.045), (0.0, 0, 0.91), PANEL_DARK)
         self.feedback = _text(self.feedback_panel, "", (0.0, -0.012), FEEDBACK_TEXT_SCALE, TextNode.ACenter, GOLD, True)
@@ -379,10 +403,20 @@ class Hud:
         self.settings_menu_open = True
         self.settings_menu.show()
         self._sync_settings_compact_button()
+        self._sync_settings_audio_button()
+        self._sync_settings_volume_button()
 
     def toggle_compact_tabs(self) -> None:
         self.select_tab(self.active_tab)
         self._sync_settings_compact_button()
+
+    def set_audio_enabled(self, enabled: bool) -> None:
+        self.audio_enabled = bool(enabled)
+        self._sync_settings_audio_button()
+
+    def set_ambient_volume(self, volume: float) -> None:
+        self.ambient_volume = max(0.0, min(1.0, float(volume)))
+        self._sync_settings_volume_button()
 
     def _save_from_menu(self) -> None:
         self._close_file_menu()
@@ -622,6 +656,15 @@ class Hud:
     def _sync_settings_compact_button(self) -> None:
         if hasattr(self, "settings_compact_button"):
             self.settings_compact_button["text"] = f"Compact HUD: {'On' if getattr(self, 'tabs_collapsed', False) else 'Off'}"
+
+    def _sync_settings_audio_button(self) -> None:
+        if hasattr(self, "settings_audio_button"):
+            self.settings_audio_button["text"] = f"Audio: {'On' if getattr(self, 'audio_enabled', True) else 'Off'}"
+
+    def _sync_settings_volume_button(self) -> None:
+        if hasattr(self, "settings_volume_button"):
+            volume = max(0.0, min(1.0, float(getattr(self, "ambient_volume", 0.35))))
+            self.settings_volume_button["text"] = f"Ambient: {int(round(volume * 100))}%"
 
     def select_tab(self, tab_id: str) -> None:
         if tab_id not in self.tab_frames:

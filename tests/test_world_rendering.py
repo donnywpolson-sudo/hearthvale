@@ -113,6 +113,21 @@ def test_dirt_tiles_do_not_spawn_random_ground_props() -> None:
     assert tile.find("**/dirt_flagstone").isEmpty() is True
 
 
+def test_terrain_tiles_bind_textures_and_texcoords() -> None:
+    parent = NodePath("test_render")
+
+    visuals.render_terrain_tile(parent, (2, 3), "grass", set())
+
+    tile = parent.find("**/tile_2_3")
+    grass_base = tile.find("**/grass_base")
+    assert tile.isEmpty() is False
+    assert grass_base.isEmpty() is False
+    assert grass_base.hasTexture() is True
+    assert grass_base.getTexture().getFilename().getBasename() == "grass.png"
+    geom_format = grass_base.node().getGeom(0).getVertexData().getFormat()
+    assert str(geom_format.getColumn("texcoord").getName()) == "texcoord"
+
+
 def test_ore_node_exposes_material_color_and_depleted_state() -> None:
     world = WorldMap(
         {
@@ -205,6 +220,7 @@ def test_ore_node_exposes_material_color_and_depleted_state() -> None:
 
     rock = world.get_object("copper_rock_01")
     assert rock is not None and rock.node is not None
+    assert rock.node.find("**/rock_model").isEmpty() is False
     vein = rock.node.find("**/copper_rock_01_ore_vein_primary")
     core = rock.node.find("**/copper_rock_01_stone_slab_core")
     assert vein.isEmpty() is False
@@ -243,6 +259,10 @@ def test_ore_node_exposes_material_color_and_depleted_state() -> None:
 
     rock = world.get_object("copper_rock_01")
     assert rock is not None and rock.node is not None
+    respawn_glow = rock.node.find("**/copper_rock_01_respawn_glow")
+    assert respawn_glow.isEmpty() is False
+    assert respawn_glow.hasTexture() is True
+    assert respawn_glow.getTexture().getFilename().getBasename() == "respawn.png"
     assert rock.node.find("**/copper_rock_01_ore_vein_primary").isEmpty() is True
     assert rock.node.find("**/copper_rock_01_depleted_collapsed_core").isEmpty() is False
 

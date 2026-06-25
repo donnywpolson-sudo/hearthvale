@@ -1,0 +1,42 @@
+{
+  "name": "player_walk",
+  "loop": true,
+  "duration": 0.9,
+  "parts": {
+    "left_leg": {
+      "base": [0.0, 0.0, 0.0],
+      "amplitude": [0.0, 22.0, 2.5],
+      "speed": 1.0
+    },
+    "right_leg": {
+      "base": [0.0, 0.0, 0.0],
+      "amplitude": [0.0, -22.0, -2.5],
+      "speed": 1.0
+    },
+    "left_arm": {
+      "base": [0.0, 0.0, 0.0],
+      "amplitude": [0.0, -18.0, 5.0],
+      "speed": 1.0
+    },
+    "right_arm": {
+      "base": [0.0, 0.0, 0.0],
+      "amplitude": [0.0, 18.0, -5.0],
+      "speed": 1.0
+    },
+    "body": {
+      "base": [0.0, 1.2, 0.0],
+      "amplitude": [0.0, 1.4, 2.0],
+      "speed": 1.0
+    },
+    "head": {
+      "base": [0.0, -0.8, 0.0],
+      "amplitude": [0.0, 0.8, -1.0],
+      "speed": 1.0
+    },
+    "tool": {
+      "base": [-16.0, -4.0, -10.0],
+      "amplitude": [0.0, 2.4, 3.2],
+      "speed": 1.0
+    }
+  }
+}

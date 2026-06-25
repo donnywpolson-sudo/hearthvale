@@ -1,0 +1,18 @@
+{
+  "name": "npc_mob_idle",
+  "loop": true,
+  "duration": 1.2,
+  "tracks": [
+    {
+      "method": "start_bob",
+      "amplitude": 0.02,
+      "speed": 2.8
+    },
+    {
+      "method": "start_tilt",
+      "pitch": 1.2,
+      "roll": 1.6,
+      "speed": 1.8
+    }
+  ]
+}

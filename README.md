@@ -1,6 +1,6 @@
 # Hearthvale Prototype
 
-A small Panda3D vertical slice for a single-player, low-poly, top-down RPG about gathering, crafting, combat, shops, banking, and long-term character progression. It uses placeholder geometry only: tiles, boxes, cylinders, and cones.
+A small Panda3D vertical slice for a single-player, low-poly, top-down RPG about gathering, crafting, combat, shops, banking, and long-term character progression. It uses committed art where available with procedural fallback geometry for the rest.
 
 ## Setup
 
@@ -81,8 +81,7 @@ and verify:
 - Right click ground, gameplay objects, or scenery: choose an action
 - Bottom event log `Up` / `Down`: scroll through previous messages
 - In-game `File` menu: save, load, or quit
-- In-game `Settings` button: toggle the compact HUD layout.
-- There are still no in-game audio/music controls yet.
+- In-game `Settings` button: toggle the compact HUD layout, ambient audio playback, or ambient volume.
 - `F5`: save the currently logged-in account
 - `F9`: load the currently logged-in account
 - `Esc`: no quit action; use `File` then `Quit` to close the game while playing
@@ -109,7 +108,7 @@ automatically when needed.
 - Left-click movement with grid A* pathfinding.
 - Classic-style left/right click interactions for ground, gameplay objects, and scenery, including default actions, walk-to behavior, context menus, and examine options.
 - Shared gathering activity system for woodcutting, mining, and fishing with JSON-defined XP, level requirements, item rewards, tiered depletion, respawn state, and required starter tools.
-- Data-driven inventory display, bottom-right skills/equipment tabs, bankable coin item stack, fixed-noon world time, compact account HUD without a visible clock, in-game Settings toggle, File menu, and per-account save/load.
+- Data-driven inventory display, bottom-right skills/equipment tabs, bankable coin item stack, advancing world time, compact account HUD with a visible time readout, in-game Settings toggle, File menu, and per-account save/load.
 - Bank booth with an in-game bank panel for depositing and withdrawing inventory stacks.
 - Shop panel for choosing specific sellable inventory stacks instead of instantly selling everything.
 - Basic combat skills and equipment requirements for wielding higher-tier weapons and shields.
@@ -117,6 +116,6 @@ automatically when needed.
 
 ## Next Recommended Systems
 
-- Add optional imported art assets through the procedural renderer hook. See [docs/icon_asset_options.md](docs/icon_asset_options.md) for source and license rules.
+- Continue expanding optional imported art coverage through the procedural renderer hook. See [docs/icon_asset_options.md](docs/icon_asset_options.md) for source and license rules.
 - Continue expanding character/object animation variety.
 - Expand the map data and object definitions.

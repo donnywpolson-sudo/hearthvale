@@ -1,0 +1,1386 @@
+<CoordinateSystem> { Z-Up }
+
+<Group> mob_model {
+  <Group> body {
+    <Transform> {
+      <Translate> { 0 0 0.16 }
+    }
+    <Group> mob_body {
+      <VertexPool> mob_body_vp {
+        <Vertex> 0 {
+          -0.2 -0.14 -0.02
+          <UV> { 0 0 }
+        }
+        <Vertex> 1 {
+          -0.2 0.14 -0.02
+          <UV> { 1 0 }
+        }
+        <Vertex> 2 {
+          0.2 0.14 -0.02
+          <UV> { 1 1 }
+        }
+        <Vertex> 3 {
+          0.2 -0.14 -0.02
+          <UV> { 0 1 }
+        }
+        <Vertex> 4 {
+          -0.2 -0.14 0.3
+          <UV> { 0 0 }
+        }
+        <Vertex> 5 {
+          0.2 -0.14 0.3
+          <UV> { 1 0 }
+        }
+        <Vertex> 6 {
+          0.2 0.14 0.3
+          <UV> { 1 1 }
+        }
+        <Vertex> 7 {
+          -0.2 0.14 0.3
+          <UV> { 0 1 }
+        }
+        <Vertex> 8 {
+          -0.2 -0.14 -0.02
+          <UV> { 0 0 }
+        }
+        <Vertex> 9 {
+          0.2 -0.14 -0.02
+          <UV> { 1 0 }
+        }
+        <Vertex> 10 {
+          0.2 -0.14 0.3
+          <UV> { 1 1 }
+        }
+        <Vertex> 11 {
+          -0.2 -0.14 0.3
+          <UV> { 0 1 }
+        }
+        <Vertex> 12 {
+          0.2 -0.14 -0.02
+          <UV> { 0 0 }
+        }
+        <Vertex> 13 {
+          0.2 0.14 -0.02
+          <UV> { 1 0 }
+        }
+        <Vertex> 14 {
+          0.2 0.14 0.3
+          <UV> { 1 1 }
+        }
+        <Vertex> 15 {
+          0.2 -0.14 0.3
+          <UV> { 0 1 }
+        }
+        <Vertex> 16 {
+          0.2 0.14 -0.02
+          <UV> { 0 0 }
+        }
+        <Vertex> 17 {
+          -0.2 0.14 -0.02
+          <UV> { 1 0 }
+        }
+        <Vertex> 18 {
+          -0.2 0.14 0.3
+          <UV> { 1 1 }
+        }
+        <Vertex> 19 {
+          0.2 0.14 0.3
+          <UV> { 0 1 }
+        }
+        <Vertex> 20 {
+          -0.2 0.14 -0.02
+          <UV> { 0 0 }
+        }
+        <Vertex> 21 {
+          -0.2 -0.14 -0.02
+          <UV> { 1 0 }
+        }
+        <Vertex> 22 {
+          -0.2 -0.14 0.3
+          <UV> { 1 1 }
+        }
+        <Vertex> 23 {
+          -0.2 0.14 0.3
+          <UV> { 0 1 }
+        }
+      }
+      <Polygon> mob_body_face_0 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 0 1 2 3 <Ref> { mob_body_vp } }
+      }
+      <Polygon> mob_body_face_1 {
+        <Normal> { 0 0 1 }
+        <BFace> { 1 }
+        <VertexRef> { 4 5 6 7 <Ref> { mob_body_vp } }
+      }
+      <Polygon> mob_body_face_2 {
+        <Normal> { 0 -1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 8 9 10 11 <Ref> { mob_body_vp } }
+      }
+      <Polygon> mob_body_face_3 {
+        <Normal> { 1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 12 13 14 15 <Ref> { mob_body_vp } }
+      }
+      <Polygon> mob_body_face_4 {
+        <Normal> { 0 1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 16 17 18 19 <Ref> { mob_body_vp } }
+      }
+      <Polygon> mob_body_face_5 {
+        <Normal> { -1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 20 21 22 23 <Ref> { mob_body_vp } }
+      }
+    }
+    <Group> mob_belly {
+      <VertexPool> mob_belly_vp {
+        <Vertex> 0 {
+          -0.16 -0.1 0.04
+          <UV> { 0 0 }
+        }
+        <Vertex> 1 {
+          -0.16 0.1 0.04
+          <UV> { 1 0 }
+        }
+        <Vertex> 2 {
+          0.16 0.1 0.04
+          <UV> { 1 1 }
+        }
+        <Vertex> 3 {
+          0.16 -0.1 0.04
+          <UV> { 0 1 }
+        }
+        <Vertex> 4 {
+          -0.16 -0.1 0.18
+          <UV> { 0 0 }
+        }
+        <Vertex> 5 {
+          0.16 -0.1 0.18
+          <UV> { 1 0 }
+        }
+        <Vertex> 6 {
+          0.16 0.1 0.18
+          <UV> { 1 1 }
+        }
+        <Vertex> 7 {
+          -0.16 0.1 0.18
+          <UV> { 0 1 }
+        }
+        <Vertex> 8 {
+          -0.16 -0.1 0.04
+          <UV> { 0 0 }
+        }
+        <Vertex> 9 {
+          0.16 -0.1 0.04
+          <UV> { 1 0 }
+        }
+        <Vertex> 10 {
+          0.16 -0.1 0.18
+          <UV> { 1 1 }
+        }
+        <Vertex> 11 {
+          -0.16 -0.1 0.18
+          <UV> { 0 1 }
+        }
+        <Vertex> 12 {
+          0.16 -0.1 0.04
+          <UV> { 0 0 }
+        }
+        <Vertex> 13 {
+          0.16 0.1 0.04
+          <UV> { 1 0 }
+        }
+        <Vertex> 14 {
+          0.16 0.1 0.18
+          <UV> { 1 1 }
+        }
+        <Vertex> 15 {
+          0.16 -0.1 0.18
+          <UV> { 0 1 }
+        }
+        <Vertex> 16 {
+          0.16 0.1 0.04
+          <UV> { 0 0 }
+        }
+        <Vertex> 17 {
+          -0.16 0.1 0.04
+          <UV> { 1 0 }
+        }
+        <Vertex> 18 {
+          -0.16 0.1 0.18
+          <UV> { 1 1 }
+        }
+        <Vertex> 19 {
+          0.16 0.1 0.18
+          <UV> { 0 1 }
+        }
+        <Vertex> 20 {
+          -0.16 0.1 0.04
+          <UV> { 0 0 }
+        }
+        <Vertex> 21 {
+          -0.16 -0.1 0.04
+          <UV> { 1 0 }
+        }
+        <Vertex> 22 {
+          -0.16 -0.1 0.18
+          <UV> { 1 1 }
+        }
+        <Vertex> 23 {
+          -0.16 0.1 0.18
+          <UV> { 0 1 }
+        }
+      }
+      <Polygon> mob_belly_face_0 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 0 1 2 3 <Ref> { mob_belly_vp } }
+      }
+      <Polygon> mob_belly_face_1 {
+        <Normal> { 0 0 1 }
+        <BFace> { 1 }
+        <VertexRef> { 4 5 6 7 <Ref> { mob_belly_vp } }
+      }
+      <Polygon> mob_belly_face_2 {
+        <Normal> { 0 -1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 8 9 10 11 <Ref> { mob_belly_vp } }
+      }
+      <Polygon> mob_belly_face_3 {
+        <Normal> { 1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 12 13 14 15 <Ref> { mob_belly_vp } }
+      }
+      <Polygon> mob_belly_face_4 {
+        <Normal> { 0 1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 16 17 18 19 <Ref> { mob_belly_vp } }
+      }
+      <Polygon> mob_belly_face_5 {
+        <Normal> { -1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 20 21 22 23 <Ref> { mob_belly_vp } }
+      }
+    }
+  }
+  <Group> head {
+    <Transform> {
+      <Translate> { 0 -0.04 0.48 }
+    }
+    <Group> mob_face {
+      <VertexPool> mob_face_vp {
+        <Vertex> 0 {
+          -0.12 -0.1 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 1 {
+          -0.12 0.1 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 2 {
+          0.12 0.1 -0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 3 {
+          0.12 -0.1 -0.1
+          <UV> { 0 1 }
+        }
+        <Vertex> 4 {
+          -0.12 -0.1 0.12
+          <UV> { 0 0 }
+        }
+        <Vertex> 5 {
+          0.12 -0.1 0.12
+          <UV> { 1 0 }
+        }
+        <Vertex> 6 {
+          0.12 0.1 0.12
+          <UV> { 1 1 }
+        }
+        <Vertex> 7 {
+          -0.12 0.1 0.12
+          <UV> { 0 1 }
+        }
+        <Vertex> 8 {
+          -0.12 -0.1 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 9 {
+          0.12 -0.1 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 10 {
+          0.12 -0.1 0.12
+          <UV> { 1 1 }
+        }
+        <Vertex> 11 {
+          -0.12 -0.1 0.12
+          <UV> { 0 1 }
+        }
+        <Vertex> 12 {
+          0.12 -0.1 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 13 {
+          0.12 0.1 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 14 {
+          0.12 0.1 0.12
+          <UV> { 1 1 }
+        }
+        <Vertex> 15 {
+          0.12 -0.1 0.12
+          <UV> { 0 1 }
+        }
+        <Vertex> 16 {
+          0.12 0.1 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 17 {
+          -0.12 0.1 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 18 {
+          -0.12 0.1 0.12
+          <UV> { 1 1 }
+        }
+        <Vertex> 19 {
+          0.12 0.1 0.12
+          <UV> { 0 1 }
+        }
+        <Vertex> 20 {
+          -0.12 0.1 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 21 {
+          -0.12 -0.1 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 22 {
+          -0.12 -0.1 0.12
+          <UV> { 1 1 }
+        }
+        <Vertex> 23 {
+          -0.12 0.1 0.12
+          <UV> { 0 1 }
+        }
+      }
+      <Polygon> mob_face_face_0 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 0 1 2 3 <Ref> { mob_face_vp } }
+      }
+      <Polygon> mob_face_face_1 {
+        <Normal> { 0 0 1 }
+        <BFace> { 1 }
+        <VertexRef> { 4 5 6 7 <Ref> { mob_face_vp } }
+      }
+      <Polygon> mob_face_face_2 {
+        <Normal> { 0 -1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 8 9 10 11 <Ref> { mob_face_vp } }
+      }
+      <Polygon> mob_face_face_3 {
+        <Normal> { 1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 12 13 14 15 <Ref> { mob_face_vp } }
+      }
+      <Polygon> mob_face_face_4 {
+        <Normal> { 0 1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 16 17 18 19 <Ref> { mob_face_vp } }
+      }
+      <Polygon> mob_face_face_5 {
+        <Normal> { -1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 20 21 22 23 <Ref> { mob_face_vp } }
+      }
+    }
+    <Group> mob_horn {
+      <Transform> {
+        <Translate> { 0 0.08 0.12 }
+      }
+      <VertexPool> mob_horn_vp {
+        <Vertex> 0 {
+          0.06 0 0
+          <UV> { 0 0 }
+        }
+        <Vertex> 1 {
+          0.0185410196624968 0.0570633909777092 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 2 {
+          0 0 0.12
+          <UV> { 0.5 1 }
+        }
+        <Vertex> 3 {
+          0 0 0
+          <UV> { 0.5 0.5 }
+        }
+        <Vertex> 4 {
+          0.0185410196624968 0.0570633909777092 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 5 {
+          0.06 0 0
+          <UV> { 0 0 }
+        }
+        <Vertex> 6 {
+          0.0185410196624968 0.0570633909777092 0
+          <UV> { 0 0 }
+        }
+        <Vertex> 7 {
+          -0.0485410196624968 0.0352671151375484 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 8 {
+          0 0 0.12
+          <UV> { 0.5 1 }
+        }
+        <Vertex> 9 {
+          0 0 0
+          <UV> { 0.5 0.5 }
+        }
+        <Vertex> 10 {
+          -0.0485410196624968 0.0352671151375484 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 11 {
+          0.0185410196624968 0.0570633909777092 0
+          <UV> { 0 0 }
+        }
+        <Vertex> 12 {
+          -0.0485410196624968 0.0352671151375484 0
+          <UV> { 0 0 }
+        }
+        <Vertex> 13 {
+          -0.0485410196624968 -0.0352671151375484 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 14 {
+          0 0 0.12
+          <UV> { 0.5 1 }
+        }
+        <Vertex> 15 {
+          0 0 0
+          <UV> { 0.5 0.5 }
+        }
+        <Vertex> 16 {
+          -0.0485410196624968 -0.0352671151375484 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 17 {
+          -0.0485410196624968 0.0352671151375484 0
+          <UV> { 0 0 }
+        }
+        <Vertex> 18 {
+          -0.0485410196624968 -0.0352671151375484 0
+          <UV> { 0 0 }
+        }
+        <Vertex> 19 {
+          0.0185410196624968 -0.0570633909777092 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 20 {
+          0 0 0.12
+          <UV> { 0.5 1 }
+        }
+        <Vertex> 21 {
+          0 0 0
+          <UV> { 0.5 0.5 }
+        }
+        <Vertex> 22 {
+          0.0185410196624968 -0.0570633909777092 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 23 {
+          -0.0485410196624968 -0.0352671151375484 0
+          <UV> { 0 0 }
+        }
+        <Vertex> 24 {
+          0.0185410196624968 -0.0570633909777092 0
+          <UV> { 0 0 }
+        }
+        <Vertex> 25 {
+          0.06 0 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 26 {
+          0 0 0.12
+          <UV> { 0.5 1 }
+        }
+        <Vertex> 27 {
+          0 0 0
+          <UV> { 0.5 0.5 }
+        }
+        <Vertex> 28 {
+          0.06 0 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 29 {
+          0.0185410196624968 -0.0570633909777092 0
+          <UV> { 0 0 }
+        }
+      }
+      <Polygon> mob_horn_side_0 {
+        <Normal> { 0.749981803669958 0.544893675596392 0.374990901834979 }
+        <BFace> { 1 }
+        <VertexRef> { 0 1 2 <Ref> { mob_horn_vp } }
+      }
+      <Polygon> mob_horn_base_0 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 3 4 5 <Ref> { mob_horn_vp } }
+      }
+      <Polygon> mob_horn_side_1 {
+        <Normal> { -0.286467558057973 0.881656487369821 0.374990901834979 }
+        <BFace> { 1 }
+        <VertexRef> { 6 7 8 <Ref> { mob_horn_vp } }
+      }
+      <Polygon> mob_horn_base_1 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 9 10 11 <Ref> { mob_horn_vp } }
+      }
+      <Polygon> mob_horn_side_2 {
+        <Normal> { -0.927028491223969 0 0.374990901834979 }
+        <BFace> { 1 }
+        <VertexRef> { 12 13 14 <Ref> { mob_horn_vp } }
+      }
+      <Polygon> mob_horn_base_2 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 15 16 17 <Ref> { mob_horn_vp } }
+      }
+      <Polygon> mob_horn_side_3 {
+        <Normal> { -0.286467558057974 -0.881656487369821 0.374990901834979 }
+        <BFace> { 1 }
+        <VertexRef> { 18 19 20 <Ref> { mob_horn_vp } }
+      }
+      <Polygon> mob_horn_base_3 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 21 22 23 <Ref> { mob_horn_vp } }
+      }
+      <Polygon> mob_horn_side_4 {
+        <Normal> { 0.749981803669958 -0.544893675596392 0.374990901834979 }
+        <BFace> { 1 }
+        <VertexRef> { 24 25 26 <Ref> { mob_horn_vp } }
+      }
+      <Polygon> mob_horn_base_4 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 27 28 29 <Ref> { mob_horn_vp } }
+      }
+    }
+  }
+  <Group> left_arm {
+    <Transform> {
+      <Translate> { -0.22 0 0.26 }
+    }
+    <Group> mob_left_arm {
+      <VertexPool> mob_left_arm_vp {
+        <Vertex> 0 {
+          -0.05 -0.05 -0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 1 {
+          -0.05 0.05 -0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 2 {
+          0.05 0.05 -0.16
+          <UV> { 1 1 }
+        }
+        <Vertex> 3 {
+          0.05 -0.05 -0.16
+          <UV> { 0 1 }
+        }
+        <Vertex> 4 {
+          -0.05 -0.05 0
+          <UV> { 0 0 }
+        }
+        <Vertex> 5 {
+          0.05 -0.05 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 6 {
+          0.05 0.05 0
+          <UV> { 1 1 }
+        }
+        <Vertex> 7 {
+          -0.05 0.05 0
+          <UV> { 0 1 }
+        }
+        <Vertex> 8 {
+          -0.05 -0.05 -0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 9 {
+          0.05 -0.05 -0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 10 {
+          0.05 -0.05 0
+          <UV> { 1 1 }
+        }
+        <Vertex> 11 {
+          -0.05 -0.05 0
+          <UV> { 0 1 }
+        }
+        <Vertex> 12 {
+          0.05 -0.05 -0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 13 {
+          0.05 0.05 -0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 14 {
+          0.05 0.05 0
+          <UV> { 1 1 }
+        }
+        <Vertex> 15 {
+          0.05 -0.05 0
+          <UV> { 0 1 }
+        }
+        <Vertex> 16 {
+          0.05 0.05 -0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 17 {
+          -0.05 0.05 -0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 18 {
+          -0.05 0.05 0
+          <UV> { 1 1 }
+        }
+        <Vertex> 19 {
+          0.05 0.05 0
+          <UV> { 0 1 }
+        }
+        <Vertex> 20 {
+          -0.05 0.05 -0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 21 {
+          -0.05 -0.05 -0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 22 {
+          -0.05 -0.05 0
+          <UV> { 1 1 }
+        }
+        <Vertex> 23 {
+          -0.05 0.05 0
+          <UV> { 0 1 }
+        }
+      }
+      <Polygon> mob_left_arm_face_0 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 0 1 2 3 <Ref> { mob_left_arm_vp } }
+      }
+      <Polygon> mob_left_arm_face_1 {
+        <Normal> { 0 0 1 }
+        <BFace> { 1 }
+        <VertexRef> { 4 5 6 7 <Ref> { mob_left_arm_vp } }
+      }
+      <Polygon> mob_left_arm_face_2 {
+        <Normal> { 0 -1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 8 9 10 11 <Ref> { mob_left_arm_vp } }
+      }
+      <Polygon> mob_left_arm_face_3 {
+        <Normal> { 1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 12 13 14 15 <Ref> { mob_left_arm_vp } }
+      }
+      <Polygon> mob_left_arm_face_4 {
+        <Normal> { 0 1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 16 17 18 19 <Ref> { mob_left_arm_vp } }
+      }
+      <Polygon> mob_left_arm_face_5 {
+        <Normal> { -1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 20 21 22 23 <Ref> { mob_left_arm_vp } }
+      }
+    }
+  }
+  <Group> right_arm {
+    <Transform> {
+      <Translate> { 0.22 0 0.26 }
+    }
+    <Group> mob_right_arm {
+      <VertexPool> mob_right_arm_vp {
+        <Vertex> 0 {
+          -0.05 -0.05 -0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 1 {
+          -0.05 0.05 -0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 2 {
+          0.05 0.05 -0.16
+          <UV> { 1 1 }
+        }
+        <Vertex> 3 {
+          0.05 -0.05 -0.16
+          <UV> { 0 1 }
+        }
+        <Vertex> 4 {
+          -0.05 -0.05 0
+          <UV> { 0 0 }
+        }
+        <Vertex> 5 {
+          0.05 -0.05 0
+          <UV> { 1 0 }
+        }
+        <Vertex> 6 {
+          0.05 0.05 0
+          <UV> { 1 1 }
+        }
+        <Vertex> 7 {
+          -0.05 0.05 0
+          <UV> { 0 1 }
+        }
+        <Vertex> 8 {
+          -0.05 -0.05 -0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 9 {
+          0.05 -0.05 -0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 10 {
+          0.05 -0.05 0
+          <UV> { 1 1 }
+        }
+        <Vertex> 11 {
+          -0.05 -0.05 0
+          <UV> { 0 1 }
+        }
+        <Vertex> 12 {
+          0.05 -0.05 -0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 13 {
+          0.05 0.05 -0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 14 {
+          0.05 0.05 0
+          <UV> { 1 1 }
+        }
+        <Vertex> 15 {
+          0.05 -0.05 0
+          <UV> { 0 1 }
+        }
+        <Vertex> 16 {
+          0.05 0.05 -0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 17 {
+          -0.05 0.05 -0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 18 {
+          -0.05 0.05 0
+          <UV> { 1 1 }
+        }
+        <Vertex> 19 {
+          0.05 0.05 0
+          <UV> { 0 1 }
+        }
+        <Vertex> 20 {
+          -0.05 0.05 -0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 21 {
+          -0.05 -0.05 -0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 22 {
+          -0.05 -0.05 0
+          <UV> { 1 1 }
+        }
+        <Vertex> 23 {
+          -0.05 0.05 0
+          <UV> { 0 1 }
+        }
+      }
+      <Polygon> mob_right_arm_face_0 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 0 1 2 3 <Ref> { mob_right_arm_vp } }
+      }
+      <Polygon> mob_right_arm_face_1 {
+        <Normal> { 0 0 1 }
+        <BFace> { 1 }
+        <VertexRef> { 4 5 6 7 <Ref> { mob_right_arm_vp } }
+      }
+      <Polygon> mob_right_arm_face_2 {
+        <Normal> { 0 -1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 8 9 10 11 <Ref> { mob_right_arm_vp } }
+      }
+      <Polygon> mob_right_arm_face_3 {
+        <Normal> { 1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 12 13 14 15 <Ref> { mob_right_arm_vp } }
+      }
+      <Polygon> mob_right_arm_face_4 {
+        <Normal> { 0 1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 16 17 18 19 <Ref> { mob_right_arm_vp } }
+      }
+      <Polygon> mob_right_arm_face_5 {
+        <Normal> { -1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 20 21 22 23 <Ref> { mob_right_arm_vp } }
+      }
+    }
+  }
+  <Group> left_leg {
+    <Transform> {
+      <Translate> { -0.1 0 0.04 }
+    }
+    <Group> mob_left_leg {
+      <VertexPool> mob_left_leg_vp {
+        <Vertex> 0 {
+          -0.05 -0.05 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 1 {
+          -0.05 0.05 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 2 {
+          0.05 0.05 -0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 3 {
+          0.05 -0.05 -0.1
+          <UV> { 0 1 }
+        }
+        <Vertex> 4 {
+          -0.05 -0.05 0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 5 {
+          0.05 -0.05 0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 6 {
+          0.05 0.05 0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 7 {
+          -0.05 0.05 0.1
+          <UV> { 0 1 }
+        }
+        <Vertex> 8 {
+          -0.05 -0.05 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 9 {
+          0.05 -0.05 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 10 {
+          0.05 -0.05 0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 11 {
+          -0.05 -0.05 0.1
+          <UV> { 0 1 }
+        }
+        <Vertex> 12 {
+          0.05 -0.05 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 13 {
+          0.05 0.05 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 14 {
+          0.05 0.05 0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 15 {
+          0.05 -0.05 0.1
+          <UV> { 0 1 }
+        }
+        <Vertex> 16 {
+          0.05 0.05 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 17 {
+          -0.05 0.05 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 18 {
+          -0.05 0.05 0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 19 {
+          0.05 0.05 0.1
+          <UV> { 0 1 }
+        }
+        <Vertex> 20 {
+          -0.05 0.05 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 21 {
+          -0.05 -0.05 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 22 {
+          -0.05 -0.05 0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 23 {
+          -0.05 0.05 0.1
+          <UV> { 0 1 }
+        }
+      }
+      <Polygon> mob_left_leg_face_0 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 0 1 2 3 <Ref> { mob_left_leg_vp } }
+      }
+      <Polygon> mob_left_leg_face_1 {
+        <Normal> { 0 0 1 }
+        <BFace> { 1 }
+        <VertexRef> { 4 5 6 7 <Ref> { mob_left_leg_vp } }
+      }
+      <Polygon> mob_left_leg_face_2 {
+        <Normal> { 0 -1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 8 9 10 11 <Ref> { mob_left_leg_vp } }
+      }
+      <Polygon> mob_left_leg_face_3 {
+        <Normal> { 1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 12 13 14 15 <Ref> { mob_left_leg_vp } }
+      }
+      <Polygon> mob_left_leg_face_4 {
+        <Normal> { 0 1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 16 17 18 19 <Ref> { mob_left_leg_vp } }
+      }
+      <Polygon> mob_left_leg_face_5 {
+        <Normal> { -1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 20 21 22 23 <Ref> { mob_left_leg_vp } }
+      }
+    }
+  }
+  <Group> right_leg {
+    <Transform> {
+      <Translate> { 0.1 0 0.04 }
+    }
+    <Group> mob_right_leg {
+      <VertexPool> mob_right_leg_vp {
+        <Vertex> 0 {
+          -0.05 -0.05 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 1 {
+          -0.05 0.05 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 2 {
+          0.05 0.05 -0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 3 {
+          0.05 -0.05 -0.1
+          <UV> { 0 1 }
+        }
+        <Vertex> 4 {
+          -0.05 -0.05 0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 5 {
+          0.05 -0.05 0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 6 {
+          0.05 0.05 0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 7 {
+          -0.05 0.05 0.1
+          <UV> { 0 1 }
+        }
+        <Vertex> 8 {
+          -0.05 -0.05 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 9 {
+          0.05 -0.05 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 10 {
+          0.05 -0.05 0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 11 {
+          -0.05 -0.05 0.1
+          <UV> { 0 1 }
+        }
+        <Vertex> 12 {
+          0.05 -0.05 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 13 {
+          0.05 0.05 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 14 {
+          0.05 0.05 0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 15 {
+          0.05 -0.05 0.1
+          <UV> { 0 1 }
+        }
+        <Vertex> 16 {
+          0.05 0.05 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 17 {
+          -0.05 0.05 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 18 {
+          -0.05 0.05 0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 19 {
+          0.05 0.05 0.1
+          <UV> { 0 1 }
+        }
+        <Vertex> 20 {
+          -0.05 0.05 -0.1
+          <UV> { 0 0 }
+        }
+        <Vertex> 21 {
+          -0.05 -0.05 -0.1
+          <UV> { 1 0 }
+        }
+        <Vertex> 22 {
+          -0.05 -0.05 0.1
+          <UV> { 1 1 }
+        }
+        <Vertex> 23 {
+          -0.05 0.05 0.1
+          <UV> { 0 1 }
+        }
+      }
+      <Polygon> mob_right_leg_face_0 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 0 1 2 3 <Ref> { mob_right_leg_vp } }
+      }
+      <Polygon> mob_right_leg_face_1 {
+        <Normal> { 0 0 1 }
+        <BFace> { 1 }
+        <VertexRef> { 4 5 6 7 <Ref> { mob_right_leg_vp } }
+      }
+      <Polygon> mob_right_leg_face_2 {
+        <Normal> { 0 -1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 8 9 10 11 <Ref> { mob_right_leg_vp } }
+      }
+      <Polygon> mob_right_leg_face_3 {
+        <Normal> { 1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 12 13 14 15 <Ref> { mob_right_leg_vp } }
+      }
+      <Polygon> mob_right_leg_face_4 {
+        <Normal> { 0 1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 16 17 18 19 <Ref> { mob_right_leg_vp } }
+      }
+      <Polygon> mob_right_leg_face_5 {
+        <Normal> { -1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 20 21 22 23 <Ref> { mob_right_leg_vp } }
+      }
+    }
+  }
+  <Group> tool {
+    <Transform> {
+      <Translate> { 0.3 -0.06 0.2 }
+    }
+    <Group> mob_tool_handle {
+      <VertexPool> mob_tool_handle_vp {
+        <Vertex> 0 {
+          -0.02 -0.02 -0.24
+          <UV> { 0 0 }
+        }
+        <Vertex> 1 {
+          -0.02 0.02 -0.24
+          <UV> { 1 0 }
+        }
+        <Vertex> 2 {
+          0.02 0.02 -0.24
+          <UV> { 1 1 }
+        }
+        <Vertex> 3 {
+          0.02 -0.02 -0.24
+          <UV> { 0 1 }
+        }
+        <Vertex> 4 {
+          -0.02 -0.02 0.24
+          <UV> { 0 0 }
+        }
+        <Vertex> 5 {
+          0.02 -0.02 0.24
+          <UV> { 1 0 }
+        }
+        <Vertex> 6 {
+          0.02 0.02 0.24
+          <UV> { 1 1 }
+        }
+        <Vertex> 7 {
+          -0.02 0.02 0.24
+          <UV> { 0 1 }
+        }
+        <Vertex> 8 {
+          -0.02 -0.02 -0.24
+          <UV> { 0 0 }
+        }
+        <Vertex> 9 {
+          0.02 -0.02 -0.24
+          <UV> { 1 0 }
+        }
+        <Vertex> 10 {
+          0.02 -0.02 0.24
+          <UV> { 1 1 }
+        }
+        <Vertex> 11 {
+          -0.02 -0.02 0.24
+          <UV> { 0 1 }
+        }
+        <Vertex> 12 {
+          0.02 -0.02 -0.24
+          <UV> { 0 0 }
+        }
+        <Vertex> 13 {
+          0.02 0.02 -0.24
+          <UV> { 1 0 }
+        }
+        <Vertex> 14 {
+          0.02 0.02 0.24
+          <UV> { 1 1 }
+        }
+        <Vertex> 15 {
+          0.02 -0.02 0.24
+          <UV> { 0 1 }
+        }
+        <Vertex> 16 {
+          0.02 0.02 -0.24
+          <UV> { 0 0 }
+        }
+        <Vertex> 17 {
+          -0.02 0.02 -0.24
+          <UV> { 1 0 }
+        }
+        <Vertex> 18 {
+          -0.02 0.02 0.24
+          <UV> { 1 1 }
+        }
+        <Vertex> 19 {
+          0.02 0.02 0.24
+          <UV> { 0 1 }
+        }
+        <Vertex> 20 {
+          -0.02 0.02 -0.24
+          <UV> { 0 0 }
+        }
+        <Vertex> 21 {
+          -0.02 -0.02 -0.24
+          <UV> { 1 0 }
+        }
+        <Vertex> 22 {
+          -0.02 -0.02 0.24
+          <UV> { 1 1 }
+        }
+        <Vertex> 23 {
+          -0.02 0.02 0.24
+          <UV> { 0 1 }
+        }
+      }
+      <Polygon> mob_tool_handle_face_0 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 0 1 2 3 <Ref> { mob_tool_handle_vp } }
+      }
+      <Polygon> mob_tool_handle_face_1 {
+        <Normal> { 0 0 1 }
+        <BFace> { 1 }
+        <VertexRef> { 4 5 6 7 <Ref> { mob_tool_handle_vp } }
+      }
+      <Polygon> mob_tool_handle_face_2 {
+        <Normal> { 0 -1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 8 9 10 11 <Ref> { mob_tool_handle_vp } }
+      }
+      <Polygon> mob_tool_handle_face_3 {
+        <Normal> { 1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 12 13 14 15 <Ref> { mob_tool_handle_vp } }
+      }
+      <Polygon> mob_tool_handle_face_4 {
+        <Normal> { 0 1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 16 17 18 19 <Ref> { mob_tool_handle_vp } }
+      }
+      <Polygon> mob_tool_handle_face_5 {
+        <Normal> { -1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 20 21 22 23 <Ref> { mob_tool_handle_vp } }
+      }
+    }
+    <Group> mob_tool_head {
+      <VertexPool> mob_tool_head_vp {
+        <Vertex> 0 {
+          -0.08 -0.04 0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 1 {
+          -0.08 0.04 0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 2 {
+          0.08 0.04 0.16
+          <UV> { 1 1 }
+        }
+        <Vertex> 3 {
+          0.08 -0.04 0.16
+          <UV> { 0 1 }
+        }
+        <Vertex> 4 {
+          -0.08 -0.04 0.26
+          <UV> { 0 0 }
+        }
+        <Vertex> 5 {
+          0.08 -0.04 0.26
+          <UV> { 1 0 }
+        }
+        <Vertex> 6 {
+          0.08 0.04 0.26
+          <UV> { 1 1 }
+        }
+        <Vertex> 7 {
+          -0.08 0.04 0.26
+          <UV> { 0 1 }
+        }
+        <Vertex> 8 {
+          -0.08 -0.04 0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 9 {
+          0.08 -0.04 0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 10 {
+          0.08 -0.04 0.26
+          <UV> { 1 1 }
+        }
+        <Vertex> 11 {
+          -0.08 -0.04 0.26
+          <UV> { 0 1 }
+        }
+        <Vertex> 12 {
+          0.08 -0.04 0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 13 {
+          0.08 0.04 0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 14 {
+          0.08 0.04 0.26
+          <UV> { 1 1 }
+        }
+        <Vertex> 15 {
+          0.08 -0.04 0.26
+          <UV> { 0 1 }
+        }
+        <Vertex> 16 {
+          0.08 0.04 0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 17 {
+          -0.08 0.04 0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 18 {
+          -0.08 0.04 0.26
+          <UV> { 1 1 }
+        }
+        <Vertex> 19 {
+          0.08 0.04 0.26
+          <UV> { 0 1 }
+        }
+        <Vertex> 20 {
+          -0.08 0.04 0.16
+          <UV> { 0 0 }
+        }
+        <Vertex> 21 {
+          -0.08 -0.04 0.16
+          <UV> { 1 0 }
+        }
+        <Vertex> 22 {
+          -0.08 -0.04 0.26
+          <UV> { 1 1 }
+        }
+        <Vertex> 23 {
+          -0.08 0.04 0.26
+          <UV> { 0 1 }
+        }
+      }
+      <Polygon> mob_tool_head_face_0 {
+        <Normal> { 0 0 -1 }
+        <BFace> { 1 }
+        <VertexRef> { 0 1 2 3 <Ref> { mob_tool_head_vp } }
+      }
+      <Polygon> mob_tool_head_face_1 {
+        <Normal> { 0 0 1 }
+        <BFace> { 1 }
+        <VertexRef> { 4 5 6 7 <Ref> { mob_tool_head_vp } }
+      }
+      <Polygon> mob_tool_head_face_2 {
+        <Normal> { 0 -1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 8 9 10 11 <Ref> { mob_tool_head_vp } }
+      }
+      <Polygon> mob_tool_head_face_3 {
+        <Normal> { 1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 12 13 14 15 <Ref> { mob_tool_head_vp } }
+      }
+      <Polygon> mob_tool_head_face_4 {
+        <Normal> { 0 1 0 }
+        <BFace> { 1 }
+        <VertexRef> { 16 17 18 19 <Ref> { mob_tool_head_vp } }
+      }
+      <Polygon> mob_tool_head_face_5 {
+        <Normal> { -1 0 0 }
+        <BFace> { 1 }
+        <VertexRef> { 20 21 22 23 <Ref> { mob_tool_head_vp } }
+      }
+    }
+  }
+}

@@ -153,28 +153,34 @@ def _make_poly_node(
     faces: list[tuple[int, ...]],
     color: Color,
 ) -> NodePath:
-    fmt = GeomVertexFormat.getV3n3c4()
+    fmt = GeomVertexFormat.getV3n3cpt2()
     vdata = GeomVertexData(name, fmt, Geom.UHStatic)
     vertex_writer = GeomVertexWriter(vdata, "vertex")
     normal_writer = GeomVertexWriter(vdata, "normal")
     color_writer = GeomVertexWriter(vdata, "color")
+    texcoord_writer = GeomVertexWriter(vdata, "texcoord")
 
     tris = GeomTriangles(Geom.UHStatic)
     next_vertex = 0
     for face in faces:
+        face_uvs = _face_uvs(len(face))
         triangles: list[tuple[int, int, int]] = []
         if len(face) == 3:
-            triangles.append((face[0], face[1], face[2]))
+            triangles.append((0, 1, 2))
         elif len(face) == 4:
-            a, b, c, d = face
-            triangles.append((a, b, c))
-            triangles.append((a, c, d))
+            triangles.append((0, 1, 2))
+            triangles.append((0, 2, 3))
+        else:
+            for index in range(1, len(face) - 1):
+                triangles.append((0, index, index + 1))
         for a, b, c in triangles:
-            normal = _triangle_normal(vertices[a], vertices[b], vertices[c])
-            for vertex_index in (a, b, c):
+            vertex_indices = (face[a], face[b], face[c])
+            normal = _triangle_normal(vertices[vertex_indices[0]], vertices[vertex_indices[1]], vertices[vertex_indices[2]])
+            for face_index, vertex_index in zip((a, b, c), vertex_indices, strict=True):
                 vertex_writer.addData3f(*vertices[vertex_index])
                 normal_writer.addData3f(normal[0], normal[1], normal[2])
                 color_writer.addData4f(*color)
+                texcoord_writer.addData2f(*face_uvs[face_index])
             tris.addVertices(next_vertex, next_vertex + 1, next_vertex + 2)
             next_vertex += 3
     tris.closePrimitive()
@@ -201,3 +207,16 @@ def _triangle_normal(
         return Vec3(0.0, 0.0, 1.0)
     normal.normalize()
     return normal
+
+
+def _face_uvs(face_length: int) -> tuple[tuple[float, float], ...]:
+    if face_length == 3:
+        return ((0.0, 0.0), (1.0, 0.0), (0.5, 1.0))
+    if face_length == 4:
+        return ((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0))
+
+    coords: list[tuple[float, float]] = []
+    for index in range(face_length):
+        angle = math.tau * index / max(1, face_length)
+        coords.append((0.5 + math.cos(angle) * 0.5, 0.5 + math.sin(angle) * 0.5))
+    return tuple(coords)

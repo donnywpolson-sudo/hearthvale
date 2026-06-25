@@ -9,12 +9,20 @@ START_DAY = settings.START_DAY
 START_MINUTE = settings.START_MINUTE
 FIXED_DAY = START_DAY
 FIXED_MINUTE = START_MINUTE
+SHOP_OPEN_HOUR = 7
+SHOP_CLOSE_HOUR = 20
 
 
 @dataclass
 class GameTime:
     day: int = START_DAY
     minute: float = float(START_MINUTE)
+
+    def hour(self) -> int:
+        return int(self.minute) % MINUTES_PER_DAY // 60
+
+    def is_shop_open(self) -> bool:
+        return SHOP_OPEN_HOUR <= self.hour() < SHOP_CLOSE_HOUR
 
     def update(self, dt: float) -> None:
         if dt <= 0:

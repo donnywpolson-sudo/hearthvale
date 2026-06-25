@@ -1,0 +1,42 @@
+{
+  "name": "player_combat_reaction",
+  "loop": false,
+  "duration": 0.3,
+  "parts": {
+    "left_leg": {
+      "base": [0.0, -4.0, -3.0],
+      "amplitude": [0.0, 0.5, 0.0],
+      "speed": 8.5
+    },
+    "right_leg": {
+      "base": [0.0, 4.0, 3.0],
+      "amplitude": [0.0, -0.5, 0.0],
+      "speed": 8.5
+    },
+    "left_arm": {
+      "base": [0.0, 14.0, -18.0],
+      "amplitude": [0.0, 6.0, -2.0],
+      "speed": 8.5
+    },
+    "right_arm": {
+      "base": [0.0, -16.0, 18.0],
+      "amplitude": [0.0, -6.0, 2.0],
+      "speed": 8.5
+    },
+    "body": {
+      "base": [0.0, -6.0, 12.0],
+      "amplitude": [0.0, 8.0, 4.0],
+      "speed": 8.5
+    },
+    "head": {
+      "base": [0.0, 4.0, -6.0],
+      "amplitude": [0.0, -2.0, 0.0],
+      "speed": 8.5
+    },
+    "tool": {
+      "base": [-14.0, -20.0, -16.0],
+      "amplitude": [0.0, -12.0, -6.0],
+      "speed": 8.5
+    }
+  }
+}

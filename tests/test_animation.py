@@ -19,6 +19,35 @@ def test_loop_animation_stops_and_restores_node_state() -> None:
     assert animator.active_keys() == set()
 
 
+def test_bob_animation_supports_phase_offset() -> None:
+    animator = SceneAnimator()
+    node = _FakeNode()
+
+    animator.start_bob("action:bob", node, amplitude=0.50, speed=math.pi, phase=math.pi / 2.0)
+    animator.update(0.5)
+
+    assert node.pos == (0.0, 0.0, 0.0)
+
+
+def test_motion_profile_animation_starts_multiple_tracks() -> None:
+    animator = SceneAnimator()
+    node = _FakeNode()
+    profile = {
+        "tracks": [
+            {"method": "start_bob", "amplitude": 0.50, "speed": math.pi},
+            {"method": "start_tilt", "pitch": 2.0, "roll": 3.0, "speed": math.pi},
+        ]
+    }
+
+    assert animator.start_motion_profile("action:response", node, profile) is True
+    assert animator.active_keys() == {"action:response:0", "action:response:1"}
+
+    animator.update(0.5)
+
+    assert node.pos == (0.0, 0.0, 0.5)
+    assert node.hpr != (0.0, 0.0, 0.0)
+
+
 def test_one_shot_animation_finishes_and_restores() -> None:
     animator = SceneAnimator()
     node = _FakeNode()

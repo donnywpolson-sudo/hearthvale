@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import math
+
+from panda3d.core import NodePath
+
+import game.entities.player as player_module
 from game.entities.player import Player
 from game.world.grid import TileGrid
+from game.world import visuals
 
 
 def test_player_action_animation_sets_and_restores_pose() -> None:
@@ -65,6 +71,78 @@ def test_player_combat_styles_use_distinct_action_poses() -> None:
         poses[action_type] = (player.parts["right_arm"].hpr, player.parts["tool"].hpr)
 
     assert len(set(poses.values())) == len(poses)
+
+
+def test_player_combat_action_clip_applies_when_available(monkeypatch) -> None:
+    clip_parts = {
+        part: {"base": [0.0, 0.0, 0.0], "amplitude": [0.0, 0.0, 0.0], "speed": 0.0}
+        for part in ("left_leg", "right_leg", "left_arm", "right_arm", "body", "head", "tool")
+    }
+    clip_parts["body"] = {"base": [1.0, 2.0, 3.0], "amplitude": [0.0, 0.0, 0.0], "speed": 0.0}
+    clip_parts["right_arm"] = {"base": [4.0, 5.0, 6.0], "amplitude": [0.0, 0.0, 0.0], "speed": 0.0}
+    clip_parts["tool"] = {"base": [-7.0, -8.0, -9.0], "amplitude": [0.0, 0.0, 0.0], "speed": 0.0}
+    clip = {"name": "player_combat_attack", "parts": clip_parts}
+
+    monkeypatch.setattr(
+        player_module,
+        "load_animation_clip_data",
+        lambda asset_name: clip if asset_name == "player_combat_attack" else None,
+    )
+
+    player = _player_with_fake_nodes()
+    player.start_action_animation("combat_attack")
+
+    assert tuple(round(value, 3) for value in player.parts["body"].hpr) == (1.0, 2.0, 3.0)
+    assert tuple(round(value, 3) for value in player.parts["right_arm"].hpr) == (4.0, 5.0, 6.0)
+    assert tuple(round(value, 3) for value in player.parts["tool"].hpr) == (-7.0, -8.0, -9.0)
+
+
+def test_player_combat_reaction_falls_back_and_clears_without_clip(monkeypatch) -> None:
+    monkeypatch.setattr(player_module, "load_animation_clip_data", lambda _asset_name: None)
+
+    player = _player_with_fake_nodes()
+    player.start_action_animation("combat_reaction")
+
+    assert player.action_animation == "combat_reaction"
+    assert player.parts["body"].hpr != (0.0, 0.0, 0.0)
+
+    player.update(0.31)
+
+    assert player.action_animation is None
+
+
+def test_player_render_falls_back_when_model_loading_misses(monkeypatch) -> None:
+    monkeypatch.setattr(visuals, "load_model", lambda _asset_name: None)
+    monkeypatch.setattr(player_module, "load_animation_clip_data", lambda _asset_name: None)
+
+    player = Player(TileGrid(4, 4), (1, 1))
+    player.render(NodePath("parent"))
+
+    required_parts = {"left_leg", "right_leg", "left_arm", "right_arm", "body", "head", "tool"}
+    assert required_parts.issubset(player.parts)
+
+
+def test_player_idle_clip_applies_when_available(monkeypatch) -> None:
+    clip_parts = {
+        part: {"base": [0.0, 0.0, 0.0], "amplitude": [0.0, 0.0, 0.0], "speed": 0.0}
+        for part in ("left_leg", "right_leg", "left_arm", "right_arm", "body", "head", "tool")
+    }
+    clip_parts["body"] = {
+        "base": [1.0, 2.0, 3.0],
+        "amplitude": [4.0, 5.0, 6.0],
+        "speed": 0.0,
+        "phase": math.pi / 2.0,
+    }
+    clip = {"name": "player_idle", "parts": clip_parts}
+
+    monkeypatch.setattr(player_module, "load_animation_clip_data", lambda asset_name: clip if asset_name == "player_idle" else None)
+    monkeypatch.setattr(visuals, "load_model", lambda _asset_name: None)
+
+    player = Player(TileGrid(4, 4), (1, 1))
+    player.render(NodePath("parent"))
+    player.update(0.0)
+
+    assert tuple(round(value, 3) for value in player.parts["body"].getHpr()) == (5.0, 7.0, 9.0)
 
 
 def test_player_click_movement_uses_slower_walk_speed() -> None:

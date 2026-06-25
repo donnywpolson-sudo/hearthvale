@@ -1,0 +1,42 @@
+{
+  "name": "player_idle",
+  "loop": true,
+  "duration": 1.6,
+  "parts": {
+    "left_leg": {
+      "base": [0.0, 0.0, 0.0],
+      "amplitude": [0.0, 0.0, 0.0],
+      "speed": 1.0
+    },
+    "right_leg": {
+      "base": [0.0, 0.0, 0.0],
+      "amplitude": [0.0, 0.0, 0.0],
+      "speed": 1.0
+    },
+    "left_arm": {
+      "base": [0.0, 2.0, -4.0],
+      "amplitude": [0.0, 1.2, 0.0],
+      "speed": 2.2
+    },
+    "right_arm": {
+      "base": [0.0, -2.0, 4.0],
+      "amplitude": [0.0, -1.2, 0.0],
+      "speed": 2.2
+    },
+    "body": {
+      "base": [0.0, 0.8, 0.0],
+      "amplitude": [0.0, 0.8, 0.9],
+      "speed": 2.2
+    },
+    "head": {
+      "base": [0.0, -0.4, 0.0],
+      "amplitude": [0.0, 0.4, -0.5],
+      "speed": 2.2
+    },
+    "tool": {
+      "base": [-16.0, 0.0, -10.0],
+      "amplitude": [0.0, 0.8, 0.6],
+      "speed": 1.8
+    }
+  }
+}

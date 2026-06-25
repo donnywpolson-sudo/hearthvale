@@ -5,6 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from game import settings
+from game.assets.runtime import apply_surface_texture, load_animation_clip_data
 from game.entities.player import Player, heading_for_delta
 from game.systems.combat import CombatSystem
 from game.systems.cooking import CookingSystem
@@ -69,6 +70,7 @@ class InteractionManager:
         self.on_quantity_choice = on_quantity_choice
         self.on_combat_result = on_combat_result
         self.animator = animator
+        self._mob_response_clip = load_animation_clip_data("npc_mob_combat_response")
         self.pending_object_id: str | None = None
         self.pending_action_id: str | None = None
         self.selected_item_id: str | None = None
@@ -755,6 +757,12 @@ class InteractionManager:
             distance=0.045,
             duration=0.18,
         )
+        self._start_motion_profile(
+            f"fx:response:{obj.object_id}",
+            obj.node,
+            self._mob_response_clip,
+            phase=_motion_phase(obj.object_id),
+        )
         if damage > 0:
             self._start_anim(
                 "start_float_text",
@@ -781,6 +789,7 @@ class InteractionManager:
             arc = 0.10
             duration = 0.24
         projectile.reparentTo(root)
+        apply_surface_texture(projectile, "spark" if kind == "magic" else "impact")
         projectile.setPos(start_x, start_y, 0.58)
         projectile.setH(heading_for_delta(obj.tile[0] - self.player.tile[0], obj.tile[1] - self.player.tile[1]))
         self._start_anim(
@@ -797,6 +806,7 @@ class InteractionManager:
         if self.animator is None:
             return
         player_node = getattr(self.player, "node", None)
+        self._start_player_action("combat_reaction", None)
         self._start_anim(
             "start_hit",
             "fx:player_hit",
@@ -835,6 +845,21 @@ class InteractionManager:
         method = getattr(self.animator, method_name, None)
         if method is not None:
             method(key, node, **kwargs)
+
+    def _start_motion_profile(
+        self,
+        key_prefix: str,
+        node: object | None,
+        profile: dict[str, object] | None,
+        *,
+        phase: float = 0.0,
+    ) -> bool:
+        if node is None or self.animator is None or profile is None:
+            return False
+        method = getattr(self.animator, "start_motion_profile", None)
+        if not callable(method):
+            return False
+        return bool(method(key_prefix, node, profile, phase=phase))
 
     def _face_object(self, obj: WorldObject | None) -> None:
         if obj is None:
@@ -918,3 +943,9 @@ def _object_label(obj: WorldObject) -> str:
 def _combat_animation_id(style: str) -> str:
     normalized = style if style in {"attack", "strength", "defence", "ranged", "magic"} else "attack"
     return f"combat_{normalized}"
+
+
+def _motion_phase(name: str) -> float:
+    if not name:
+        return 0.0
+    return (sum(ord(char) for char in name) % 360) * math.pi / 180.0

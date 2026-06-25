@@ -1,0 +1,996 @@
+<CoordinateSystem> { Z-Up }
+
+<Group> tree_model {
+  <Group> tree_trunk {
+    <VertexPool> tree_trunk_vp {
+      <Vertex> 0 {
+        -0.12 -0.12 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 1 {
+        -0.12 0.12 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 2 {
+        0.12 0.12 0
+        <UV> { 1 1 }
+      }
+      <Vertex> 3 {
+        0.12 -0.12 0
+        <UV> { 0 1 }
+      }
+      <Vertex> 4 {
+        -0.12 -0.12 1.05
+        <UV> { 0 0 }
+      }
+      <Vertex> 5 {
+        0.12 -0.12 1.05
+        <UV> { 1 0 }
+      }
+      <Vertex> 6 {
+        0.12 0.12 1.05
+        <UV> { 1 1 }
+      }
+      <Vertex> 7 {
+        -0.12 0.12 1.05
+        <UV> { 0 1 }
+      }
+      <Vertex> 8 {
+        -0.12 -0.12 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 9 {
+        0.12 -0.12 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 10 {
+        0.12 -0.12 1.05
+        <UV> { 1 1 }
+      }
+      <Vertex> 11 {
+        -0.12 -0.12 1.05
+        <UV> { 0 1 }
+      }
+      <Vertex> 12 {
+        0.12 -0.12 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 13 {
+        0.12 0.12 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 14 {
+        0.12 0.12 1.05
+        <UV> { 1 1 }
+      }
+      <Vertex> 15 {
+        0.12 -0.12 1.05
+        <UV> { 0 1 }
+      }
+      <Vertex> 16 {
+        0.12 0.12 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 17 {
+        -0.12 0.12 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 18 {
+        -0.12 0.12 1.05
+        <UV> { 1 1 }
+      }
+      <Vertex> 19 {
+        0.12 0.12 1.05
+        <UV> { 0 1 }
+      }
+      <Vertex> 20 {
+        -0.12 0.12 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 21 {
+        -0.12 -0.12 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 22 {
+        -0.12 -0.12 1.05
+        <UV> { 1 1 }
+      }
+      <Vertex> 23 {
+        -0.12 0.12 1.05
+        <UV> { 0 1 }
+      }
+    }
+    <Polygon> tree_trunk_face_0 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 3 <Ref> { tree_trunk_vp } }
+    }
+    <Polygon> tree_trunk_face_1 {
+      <Normal> { 0 0 1 }
+      <BFace> { 1 }
+      <VertexRef> { 4 5 6 7 <Ref> { tree_trunk_vp } }
+    }
+    <Polygon> tree_trunk_face_2 {
+      <Normal> { 0 -1 0 }
+      <BFace> { 1 }
+      <VertexRef> { 8 9 10 11 <Ref> { tree_trunk_vp } }
+    }
+    <Polygon> tree_trunk_face_3 {
+      <Normal> { 1 0 0 }
+      <BFace> { 1 }
+      <VertexRef> { 12 13 14 15 <Ref> { tree_trunk_vp } }
+    }
+    <Polygon> tree_trunk_face_4 {
+      <Normal> { 0 1 0 }
+      <BFace> { 1 }
+      <VertexRef> { 16 17 18 19 <Ref> { tree_trunk_vp } }
+    }
+    <Polygon> tree_trunk_face_5 {
+      <Normal> { -1 0 0 }
+      <BFace> { 1 }
+      <VertexRef> { 20 21 22 23 <Ref> { tree_trunk_vp } }
+    }
+  }
+  <Group> tree_root {
+    <VertexPool> tree_root_vp {
+      <Vertex> 0 {
+        -0.22 -0.22 -0.02
+        <UV> { 0 0 }
+      }
+      <Vertex> 1 {
+        -0.22 0.22 -0.02
+        <UV> { 1 0 }
+      }
+      <Vertex> 2 {
+        0.22 0.22 -0.02
+        <UV> { 1 1 }
+      }
+      <Vertex> 3 {
+        0.22 -0.22 -0.02
+        <UV> { 0 1 }
+      }
+      <Vertex> 4 {
+        -0.22 -0.22 0.08
+        <UV> { 0 0 }
+      }
+      <Vertex> 5 {
+        0.22 -0.22 0.08
+        <UV> { 1 0 }
+      }
+      <Vertex> 6 {
+        0.22 0.22 0.08
+        <UV> { 1 1 }
+      }
+      <Vertex> 7 {
+        -0.22 0.22 0.08
+        <UV> { 0 1 }
+      }
+      <Vertex> 8 {
+        -0.22 -0.22 -0.02
+        <UV> { 0 0 }
+      }
+      <Vertex> 9 {
+        0.22 -0.22 -0.02
+        <UV> { 1 0 }
+      }
+      <Vertex> 10 {
+        0.22 -0.22 0.08
+        <UV> { 1 1 }
+      }
+      <Vertex> 11 {
+        -0.22 -0.22 0.08
+        <UV> { 0 1 }
+      }
+      <Vertex> 12 {
+        0.22 -0.22 -0.02
+        <UV> { 0 0 }
+      }
+      <Vertex> 13 {
+        0.22 0.22 -0.02
+        <UV> { 1 0 }
+      }
+      <Vertex> 14 {
+        0.22 0.22 0.08
+        <UV> { 1 1 }
+      }
+      <Vertex> 15 {
+        0.22 -0.22 0.08
+        <UV> { 0 1 }
+      }
+      <Vertex> 16 {
+        0.22 0.22 -0.02
+        <UV> { 0 0 }
+      }
+      <Vertex> 17 {
+        -0.22 0.22 -0.02
+        <UV> { 1 0 }
+      }
+      <Vertex> 18 {
+        -0.22 0.22 0.08
+        <UV> { 1 1 }
+      }
+      <Vertex> 19 {
+        0.22 0.22 0.08
+        <UV> { 0 1 }
+      }
+      <Vertex> 20 {
+        -0.22 0.22 -0.02
+        <UV> { 0 0 }
+      }
+      <Vertex> 21 {
+        -0.22 -0.22 -0.02
+        <UV> { 1 0 }
+      }
+      <Vertex> 22 {
+        -0.22 -0.22 0.08
+        <UV> { 1 1 }
+      }
+      <Vertex> 23 {
+        -0.22 0.22 0.08
+        <UV> { 0 1 }
+      }
+    }
+    <Polygon> tree_root_face_0 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 3 <Ref> { tree_root_vp } }
+    }
+    <Polygon> tree_root_face_1 {
+      <Normal> { 0 0 1 }
+      <BFace> { 1 }
+      <VertexRef> { 4 5 6 7 <Ref> { tree_root_vp } }
+    }
+    <Polygon> tree_root_face_2 {
+      <Normal> { 0 -1 0 }
+      <BFace> { 1 }
+      <VertexRef> { 8 9 10 11 <Ref> { tree_root_vp } }
+    }
+    <Polygon> tree_root_face_3 {
+      <Normal> { 1 0 0 }
+      <BFace> { 1 }
+      <VertexRef> { 12 13 14 15 <Ref> { tree_root_vp } }
+    }
+    <Polygon> tree_root_face_4 {
+      <Normal> { 0 1 0 }
+      <BFace> { 1 }
+      <VertexRef> { 16 17 18 19 <Ref> { tree_root_vp } }
+    }
+    <Polygon> tree_root_face_5 {
+      <Normal> { -1 0 0 }
+      <BFace> { 1 }
+      <VertexRef> { 20 21 22 23 <Ref> { tree_root_vp } }
+    }
+  }
+  <Group> tree_branch {
+    <Transform> {
+      <Translate> { 0.16 -0.02 0.7 }
+    }
+    <VertexPool> tree_branch_vp {
+      <Vertex> 0 {
+        -0.08 -0.36 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 1 {
+        -0.08 0.36 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 2 {
+        0.08 0.36 0
+        <UV> { 1 1 }
+      }
+      <Vertex> 3 {
+        0.08 -0.36 0
+        <UV> { 0 1 }
+      }
+      <Vertex> 4 {
+        -0.08 -0.36 0.12
+        <UV> { 0 0 }
+      }
+      <Vertex> 5 {
+        0.08 -0.36 0.12
+        <UV> { 1 0 }
+      }
+      <Vertex> 6 {
+        0.08 0.36 0.12
+        <UV> { 1 1 }
+      }
+      <Vertex> 7 {
+        -0.08 0.36 0.12
+        <UV> { 0 1 }
+      }
+      <Vertex> 8 {
+        -0.08 -0.36 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 9 {
+        0.08 -0.36 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 10 {
+        0.08 -0.36 0.12
+        <UV> { 1 1 }
+      }
+      <Vertex> 11 {
+        -0.08 -0.36 0.12
+        <UV> { 0 1 }
+      }
+      <Vertex> 12 {
+        0.08 -0.36 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 13 {
+        0.08 0.36 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 14 {
+        0.08 0.36 0.12
+        <UV> { 1 1 }
+      }
+      <Vertex> 15 {
+        0.08 -0.36 0.12
+        <UV> { 0 1 }
+      }
+      <Vertex> 16 {
+        0.08 0.36 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 17 {
+        -0.08 0.36 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 18 {
+        -0.08 0.36 0.12
+        <UV> { 1 1 }
+      }
+      <Vertex> 19 {
+        0.08 0.36 0.12
+        <UV> { 0 1 }
+      }
+      <Vertex> 20 {
+        -0.08 0.36 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 21 {
+        -0.08 -0.36 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 22 {
+        -0.08 -0.36 0.12
+        <UV> { 1 1 }
+      }
+      <Vertex> 23 {
+        -0.08 0.36 0.12
+        <UV> { 0 1 }
+      }
+    }
+    <Polygon> tree_branch_face_0 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 3 <Ref> { tree_branch_vp } }
+    }
+    <Polygon> tree_branch_face_1 {
+      <Normal> { 0 0 1 }
+      <BFace> { 1 }
+      <VertexRef> { 4 5 6 7 <Ref> { tree_branch_vp } }
+    }
+    <Polygon> tree_branch_face_2 {
+      <Normal> { 0 -1 0 }
+      <BFace> { 1 }
+      <VertexRef> { 8 9 10 11 <Ref> { tree_branch_vp } }
+    }
+    <Polygon> tree_branch_face_3 {
+      <Normal> { 1 0 0 }
+      <BFace> { 1 }
+      <VertexRef> { 12 13 14 15 <Ref> { tree_branch_vp } }
+    }
+    <Polygon> tree_branch_face_4 {
+      <Normal> { 0 1 0 }
+      <BFace> { 1 }
+      <VertexRef> { 16 17 18 19 <Ref> { tree_branch_vp } }
+    }
+    <Polygon> tree_branch_face_5 {
+      <Normal> { -1 0 0 }
+      <BFace> { 1 }
+      <VertexRef> { 20 21 22 23 <Ref> { tree_branch_vp } }
+    }
+  }
+  <Group> tree_leaf_canopy {
+    <Transform> {
+      <Translate> { 0 0 0.54 }
+    }
+    <VertexPool> tree_leaf_canopy_vp {
+      <Vertex> 0 {
+        0.66 0 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 1 {
+        0.33 0.571576766497729 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 2 {
+        0 0 0.62
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 3 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 4 {
+        0.33 0.571576766497729 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 5 {
+        0.66 0 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 6 {
+        0.33 0.571576766497729 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 7 {
+        -0.33 0.57157676649773 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 8 {
+        0 0 0.62
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 9 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 10 {
+        -0.33 0.57157676649773 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 11 {
+        0.33 0.571576766497729 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 12 {
+        -0.33 0.57157676649773 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 13 {
+        -0.66 8.08266887437253e-17 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 14 {
+        0 0 0.62
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 15 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 16 {
+        -0.66 8.08266887437253e-17 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 17 {
+        -0.33 0.57157676649773 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 18 {
+        -0.66 8.08266887437253e-17 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 19 {
+        -0.33 -0.571576766497729 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 20 {
+        0 0 0.62
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 21 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 22 {
+        -0.33 -0.571576766497729 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 23 {
+        -0.66 8.08266887437253e-17 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 24 {
+        -0.33 -0.571576766497729 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 25 {
+        0.33 -0.571576766497729 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 26 {
+        0 0 0.62
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 27 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 28 {
+        0.33 -0.571576766497729 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 29 {
+        -0.33 -0.571576766497729 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 30 {
+        0.33 -0.571576766497729 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 31 {
+        0.66 0 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 32 {
+        0 0 0.62
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 33 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 34 {
+        0.66 0 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 35 {
+        0.33 -0.571576766497729 0
+        <UV> { 0 0 }
+      }
+    }
+    <Polygon> tree_leaf_canopy_side_0 {
+      <Normal> { 0.636732447591434 0.367617650018684 0.677811960339269 }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 <Ref> { tree_leaf_canopy_vp } }
+    }
+    <Polygon> tree_leaf_canopy_base_0 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 3 4 5 <Ref> { tree_leaf_canopy_vp } }
+    }
+    <Polygon> tree_leaf_canopy_side_1 {
+      <Normal> { 0 0.735235300037367 0.677811960339269 }
+      <BFace> { 1 }
+      <VertexRef> { 6 7 8 <Ref> { tree_leaf_canopy_vp } }
+    }
+    <Polygon> tree_leaf_canopy_base_1 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 9 10 11 <Ref> { tree_leaf_canopy_vp } }
+    }
+    <Polygon> tree_leaf_canopy_side_2 {
+      <Normal> { -0.636732447591434 0.367617650018684 0.677811960339269 }
+      <BFace> { 1 }
+      <VertexRef> { 12 13 14 <Ref> { tree_leaf_canopy_vp } }
+    }
+    <Polygon> tree_leaf_canopy_base_2 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 15 16 17 <Ref> { tree_leaf_canopy_vp } }
+    }
+    <Polygon> tree_leaf_canopy_side_3 {
+      <Normal> { -0.636732447591434 -0.367617650018683 0.677811960339269 }
+      <BFace> { 1 }
+      <VertexRef> { 18 19 20 <Ref> { tree_leaf_canopy_vp } }
+    }
+    <Polygon> tree_leaf_canopy_base_3 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 21 22 23 <Ref> { tree_leaf_canopy_vp } }
+    }
+    <Polygon> tree_leaf_canopy_side_4 {
+      <Normal> { 0 -0.735235300037368 0.677811960339269 }
+      <BFace> { 1 }
+      <VertexRef> { 24 25 26 <Ref> { tree_leaf_canopy_vp } }
+    }
+    <Polygon> tree_leaf_canopy_base_4 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 27 28 29 <Ref> { tree_leaf_canopy_vp } }
+    }
+    <Polygon> tree_leaf_canopy_side_5 {
+      <Normal> { 0.636732447591434 -0.367617650018684 0.677811960339269 }
+      <BFace> { 1 }
+      <VertexRef> { 30 31 32 <Ref> { tree_leaf_canopy_vp } }
+    }
+    <Polygon> tree_leaf_canopy_base_5 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 33 34 35 <Ref> { tree_leaf_canopy_vp } }
+    }
+  }
+  <Group> tree_leaf_top {
+    <Transform> {
+      <Translate> { 0 0 1 }
+    }
+    <VertexPool> tree_leaf_top_vp {
+      <Vertex> 0 {
+        0.42 0 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 1 {
+        0.21 0.363730669589464 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 2 {
+        0 0 0.42
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 3 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 4 {
+        0.21 0.363730669589464 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 5 {
+        0.42 0 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 6 {
+        0.21 0.363730669589464 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 7 {
+        -0.21 0.363730669589464 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 8 {
+        0 0 0.42
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 9 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 10 {
+        -0.21 0.363730669589464 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 11 {
+        0.21 0.363730669589464 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 12 {
+        -0.21 0.363730669589464 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 13 {
+        -0.42 5.14351655641888e-17 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 14 {
+        0 0 0.42
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 15 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 16 {
+        -0.42 5.14351655641888e-17 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 17 {
+        -0.21 0.363730669589464 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 18 {
+        -0.42 5.14351655641888e-17 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 19 {
+        -0.21 -0.363730669589464 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 20 {
+        0 0 0.42
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 21 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 22 {
+        -0.21 -0.363730669589464 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 23 {
+        -0.42 5.14351655641888e-17 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 24 {
+        -0.21 -0.363730669589464 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 25 {
+        0.21 -0.363730669589464 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 26 {
+        0 0 0.42
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 27 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 28 {
+        0.21 -0.363730669589464 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 29 {
+        -0.21 -0.363730669589464 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 30 {
+        0.21 -0.363730669589464 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 31 {
+        0.42 0 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 32 {
+        0 0 0.42
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 33 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 34 {
+        0.42 0 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 35 {
+        0.21 -0.363730669589464 0
+        <UV> { 0 0 }
+      }
+    }
+    <Polygon> tree_leaf_top_side_0 {
+      <Normal> { 0.654653670707977 0.377964473009227 0.654653670707977 }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 <Ref> { tree_leaf_top_vp } }
+    }
+    <Polygon> tree_leaf_top_base_0 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 3 4 5 <Ref> { tree_leaf_top_vp } }
+    }
+    <Polygon> tree_leaf_top_side_1 {
+      <Normal> { 0 0.755928946018455 0.654653670707977 }
+      <BFace> { 1 }
+      <VertexRef> { 6 7 8 <Ref> { tree_leaf_top_vp } }
+    }
+    <Polygon> tree_leaf_top_base_1 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 9 10 11 <Ref> { tree_leaf_top_vp } }
+    }
+    <Polygon> tree_leaf_top_side_2 {
+      <Normal> { -0.654653670707977 0.377964473009227 0.654653670707977 }
+      <BFace> { 1 }
+      <VertexRef> { 12 13 14 <Ref> { tree_leaf_top_vp } }
+    }
+    <Polygon> tree_leaf_top_base_2 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 15 16 17 <Ref> { tree_leaf_top_vp } }
+    }
+    <Polygon> tree_leaf_top_side_3 {
+      <Normal> { -0.654653670707977 -0.377964473009227 0.654653670707977 }
+      <BFace> { 1 }
+      <VertexRef> { 18 19 20 <Ref> { tree_leaf_top_vp } }
+    }
+    <Polygon> tree_leaf_top_base_3 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 21 22 23 <Ref> { tree_leaf_top_vp } }
+    }
+    <Polygon> tree_leaf_top_side_4 {
+      <Normal> { 0 -0.755928946018455 0.654653670707977 }
+      <BFace> { 1 }
+      <VertexRef> { 24 25 26 <Ref> { tree_leaf_top_vp } }
+    }
+    <Polygon> tree_leaf_top_base_4 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 27 28 29 <Ref> { tree_leaf_top_vp } }
+    }
+    <Polygon> tree_leaf_top_side_5 {
+      <Normal> { 0.654653670707977 -0.377964473009227 0.654653670707977 }
+      <BFace> { 1 }
+      <VertexRef> { 30 31 32 <Ref> { tree_leaf_top_vp } }
+    }
+    <Polygon> tree_leaf_top_base_5 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 33 34 35 <Ref> { tree_leaf_top_vp } }
+    }
+  }
+  <Group> tree_leaf_side {
+    <Transform> {
+      <Translate> { 0.28 0.08 0.82 }
+    }
+    <VertexPool> tree_leaf_side_vp {
+      <Vertex> 0 {
+        0.28 0 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 1 {
+        0.0865247584249853 0.266295824562643 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 2 {
+        0 0 0.3
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 3 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 4 {
+        0.0865247584249853 0.266295824562643 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 5 {
+        0.28 0 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 6 {
+        0.0865247584249853 0.266295824562643 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 7 {
+        -0.226524758424985 0.164579870641893 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 8 {
+        0 0 0.3
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 9 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 10 {
+        -0.226524758424985 0.164579870641893 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 11 {
+        0.0865247584249853 0.266295824562643 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 12 {
+        -0.226524758424985 0.164579870641893 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 13 {
+        -0.226524758424985 -0.164579870641892 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 14 {
+        0 0 0.3
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 15 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 16 {
+        -0.226524758424985 -0.164579870641892 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 17 {
+        -0.226524758424985 0.164579870641893 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 18 {
+        -0.226524758424985 -0.164579870641892 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 19 {
+        0.0865247584249852 -0.266295824562643 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 20 {
+        0 0 0.3
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 21 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 22 {
+        0.0865247584249852 -0.266295824562643 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 23 {
+        -0.226524758424985 -0.164579870641892 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 24 {
+        0.0865247584249852 -0.266295824562643 0
+        <UV> { 0 0 }
+      }
+      <Vertex> 25 {
+        0.28 0 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 26 {
+        0 0 0.3
+        <UV> { 0.5 1 }
+      }
+      <Vertex> 27 {
+        0 0 0
+        <UV> { 0.5 0.5 }
+      }
+      <Vertex> 28 {
+        0.28 0 0
+        <UV> { 1 0 }
+      }
+      <Vertex> 29 {
+        0.0865247584249852 -0.266295824562643 0
+        <UV> { 0 0 }
+      }
+    }
+    <Polygon> tree_leaf_side_side_0 {
+      <Normal> { 0.645635088081681 0.469081349063829 0.602592748876236 }
+      <BFace> { 1 }
+      <VertexRef> { 0 1 2 <Ref> { tree_leaf_side_vp } }
+    }
+    <Polygon> tree_leaf_side_base_0 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 3 4 5 <Ref> { tree_leaf_side_vp } }
+    }
+    <Polygon> tree_leaf_side_side_1 {
+      <Normal> { -0.24661065931767 0.758989566273928 0.602592748876236 }
+      <BFace> { 1 }
+      <VertexRef> { 6 7 8 <Ref> { tree_leaf_side_vp } }
+    }
+    <Polygon> tree_leaf_side_base_1 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 9 10 11 <Ref> { tree_leaf_side_vp } }
+    }
+    <Polygon> tree_leaf_side_side_2 {
+      <Normal> { -0.798048857528022 0 0.602592748876236 }
+      <BFace> { 1 }
+      <VertexRef> { 12 13 14 <Ref> { tree_leaf_side_vp } }
+    }
+    <Polygon> tree_leaf_side_base_2 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 15 16 17 <Ref> { tree_leaf_side_vp } }
+    }
+    <Polygon> tree_leaf_side_side_3 {
+      <Normal> { -0.24661065931767 -0.758989566273928 0.602592748876236 }
+      <BFace> { 1 }
+      <VertexRef> { 18 19 20 <Ref> { tree_leaf_side_vp } }
+    }
+    <Polygon> tree_leaf_side_base_3 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 21 22 23 <Ref> { tree_leaf_side_vp } }
+    }
+    <Polygon> tree_leaf_side_side_4 {
+      <Normal> { 0.645635088081681 -0.469081349063829 0.602592748876236 }
+      <BFace> { 1 }
+      <VertexRef> { 24 25 26 <Ref> { tree_leaf_side_vp } }
+    }
+    <Polygon> tree_leaf_side_base_4 {
+      <Normal> { 0 0 -1 }
+      <BFace> { 1 }
+      <VertexRef> { 27 28 29 <Ref> { tree_leaf_side_vp } }
+    }
+  }
+}

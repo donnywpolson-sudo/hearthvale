@@ -48,6 +48,8 @@ def test_tab_navigation_switches_between_login_entries(monkeypatch) -> None:
 
     screen = login.LoginScreen(FakeApp(), lambda *_args: None)
 
+    assert screen.username.get() == "donny101"
+    assert screen.password.get() == "donny101"
     assert screen.username["focus"] == 1
     assert screen.password.options.get("focus", 0) == 0
 
