@@ -377,6 +377,64 @@ def test_shipped_road_watch_quest_tracks_and_rewards_once() -> None:
     assert app.skills.xp("attack") == 20
 
 
+def test_shipped_forge_reserve_quest_tracks_and_rewards_once() -> None:
+    quest = QuestSystem(_load_data("quests.json"))
+
+    started = quest.talk_to("forge_reserve")
+
+    assert started.feedback.startswith("Forge Keeper:")
+    assert quest.current_objective().text == "Forge reserve 0/5: Smelt a bar."
+
+    quest.record("smelted_bar")
+
+    assert quest.current_objective().text == "Forge reserve 1/5: Smith gear."
+
+    quest.record("smithed_gear")
+
+    assert quest.current_objective().text == "Forge reserve 2/5: Equip a weapon."
+
+    quest.record("equipped_weapon")
+
+    assert quest.current_objective().text == "Forge reserve 3/5: Defeat an enemy."
+
+    quest.record("defeated_enemy")
+
+    assert quest.current_objective().text == "Forge reserve 4/5: Use the bank."
+
+    quest.record("used_bank")
+    completed = quest.talk_to("forge_reserve")
+    after = quest.talk_to("forge_reserve")
+    app = SimpleNamespace(
+        inventory=Inventory(),
+        skills=Skills(
+            {
+                "attack": {
+                    "display_name": "Attack",
+                    "starting_level": 1,
+                    "xp_thresholds": skill_xp_thresholds(),
+                },
+                "smithing": {
+                    "display_name": "Smithing",
+                    "starting_level": 1,
+                    "xp_thresholds": skill_xp_thresholds(),
+                },
+            }
+        ),
+    )
+
+    GameApp._apply_quest_rewards(app, completed)
+    GameApp._apply_quest_rewards(app, after)
+
+    assert completed.completed is True
+    assert completed.feedback == "Quest complete: Forge reserve. Reward: 45 coins, +30 Smithing XP, +20 Attack XP."
+    assert after.feedback == "Forge Keeper: The reserve rack can hold through another night now."
+    assert after.item_rewards == ()
+    assert after.skill_rewards == ()
+    assert app.inventory.count(COINS_ITEM_ID) == 45
+    assert app.skills.xp("attack") == 20
+    assert app.skills.xp("smithing") == 30
+
+
 def _quest_data() -> dict[str, object]:
     return {
         "quests": [

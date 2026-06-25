@@ -96,6 +96,32 @@
       "skill_rewards": [
         {"skill_id": "attack", "xp": 20}
       ]
+    },
+    {
+      "quest_id": "forge_reserve",
+      "display_name": "Forge reserve",
+      "start_text": "Forge Keeper: The east watch needs a fresh reserve blade and settled pay. Smelt a bar, smith gear, equip a weapon, clear one threat, bank the patrol pay, then report back.",
+      "in_progress_text": "Forge Keeper: The reserve is still short. Still needed: {missing_objectives}.",
+      "completed_text": "Forge Keeper: The reserve rack can hold through another night now.",
+      "completion_text": "Quest complete: Forge reserve. Reward: 45 coins, +30 Smithing XP, +20 Attack XP.",
+      "not_started_objective": "Talk to the Forge Keeper.",
+      "return_objective": "Return to the Forge Keeper.",
+      "completed_objective": "Forge reserve complete.",
+      "progress_format": "Forge reserve {completed}/{total}: {objective}.",
+      "objectives": [
+        {"flag": "smelted_bar", "label": "Smelt a bar"},
+        {"flag": "smithed_gear", "label": "Smith gear"},
+        {"flag": "equipped_weapon", "label": "Equip a weapon"},
+        {"flag": "defeated_enemy", "label": "Defeat an enemy"},
+        {"flag": "used_bank", "label": "Use the bank"}
+      ],
+      "item_rewards": [
+        {"item_id": "coins", "quantity": 45}
+      ],
+      "skill_rewards": [
+        {"skill_id": "smithing", "xp": 30},
+        {"skill_id": "attack", "xp": 20}
+      ]
     }
   ]
 }

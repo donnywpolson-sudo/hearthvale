@@ -1016,6 +1016,15 @@
         14
       ],
       "quest_id": "road_watch"
+    },
+    {
+      "id": "forge_keeper_01",
+      "name": "Forge Keeper",
+      "tile": [
+        12,
+        14
+      ],
+      "quest_id": "forge_reserve"
     }
   ]
 }

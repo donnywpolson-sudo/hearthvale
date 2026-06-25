@@ -1,41 +1,39 @@
 # Snapshot
 - Stack: Python 3.11, Panda3D, pytest
 - Entry point: `python -m game.main`
-- Focused tests: `python -B -m pytest -p no:cacheprovider tests/test_hud.py tests/test_app_audio.py tests/test_assets_runtime.py tests/test_time.py tests/test_save.py`
-- Current status: the settings menu now includes a session-only ambient volume control that updates the loaded loop immediately.
+- Focused tests: `python -B -m pytest -p no:cacheprovider tests/test_quest.py tests/test_validation.py`
+- Current status: a new data-only mid-game quest, `forge_reserve`, is linked to a new `Forge Keeper` NPC near the smithing area.
 
 # Changes
-- Updated `game/ui/hud.py` to add an ambient volume button and label sync in the existing settings menu.
-- Updated `game/engine/app.py` to cycle ambient volume levels, apply them to loaded audio, and surface the current value in the HUD.
-- Expanded `tests/test_hud.py` and `tests/test_app_audio.py` to cover the new control and volume propagation.
-- Updated `README.md` to mention ambient volume in the settings controls list.
+- Updated `game/data/quests.json` to add the `forge_reserve` quest with smithing, combat, and banking objectives plus coin, Smithing XP, and Attack XP rewards.
+- Updated `game/data/world.json` to add `forge_keeper_01` at tile `[12, 14]`, linked to `forge_reserve`.
+- Expanded `tests/test_quest.py` with shipped-quest coverage for `forge_reserve`, including one-time reward application across two skill rewards.
+- Expanded `tests/test_validation.py` to assert the new quest and NPC link in shipped data.
 
 # Checks
 - `python -B -m game.tools.validate_data`: passed
-- `python -B -m pytest -p no:cacheprovider tests/test_hud.py tests/test_app_audio.py tests/test_assets_runtime.py tests/test_time.py tests/test_save.py`: passed (`100 passed`)
-- `python -c "from game.engine.app import GameApp; app = GameApp(); print('startup ok'); app.destroy()"`: passed (`startup ok`); non-fatal `SetForegroundWindow() failed!` warning from Panda3D on Windows
+- `python -B -m pytest -p no:cacheprovider tests/test_quest.py tests/test_validation.py`: passed (`51 passed`)
 
 # Remaining Work
-- None required for this batch.
+- Manual in-game verification is still needed because this batch did not run `python -m game.main`.
+- Pre-existing unrelated worktree change remains in `AUDIT.md`.
 
 # Next Prompt
 Continue from `CODEX_HANDOFF.md`.
 
-Next selected scope: add one small UI feedback toggle, such as a switch for hover text or XP toasts.
+Next selected scope: manually verify the new `Forge Keeper` quest path in-game and fix only the smallest data-level issues if the smoke test exposes one.
 
 Rules:
-- Do not change gameplay, saves, login, or map layout.
-- Do not remove the procedural fallback, the asset hooks, or the existing audio controls.
-- Keep the batch limited to HUD/app wiring and the smallest doc/test updates needed.
-- Keep the control optional or session-only unless persistence is clearly needed.
-- Do not copy protected content, preserve user work, and do not commit.
-- Verify with `python -B -m pytest -p no:cacheprovider tests/test_hud.py tests/test_app_audio.py tests/test_assets_runtime.py tests/test_time.py tests/test_save.py` and `python -B -m game.tools.validate_data`.
-- Do a short startup smoke with `python -c "from game.engine.app import GameApp; app = GameApp(); print('startup ok'); app.destroy()"` if practical.
+- Do not change save/auth, launcher/build, or unrelated gameplay systems.
+- Do not add dependencies or protected/clone content.
+- Preserve user work and do not commit.
+- Keep scope limited to `game/data/quests.json`, `game/data/world.json`, and the smallest related test updates if a data fix is needed.
 
 Task:
-- Add one new UI feedback control with an observable runtime effect.
-- Wire it through `game/ui/hud.py` and `game/engine/app.py` using the existing settings pattern.
-- Update only the smallest tests and README text needed to document the control.
+- Run `python -m game.main`.
+- Log into a local test account, talk to the `Forge Keeper`, and verify the `Forge reserve` objective flow, NPC placement, completion text, and rewards.
+- If the smoke test finds a data issue, make only the smallest data/test fix needed and rerun `python -B -m game.tools.validate_data` plus `python -B -m pytest -p no:cacheprovider tests/test_quest.py tests/test_validation.py`.
 
 Stop when:
-- The control changes runtime behavior, focused tests pass, and no unrelated files changed.
+- The `Forge Keeper` quest is confirmed reachable and readable in-game, or one minimal data-only fix is applied and the targeted checks pass.
+- Do not copy protected content, preserve user work, and do not commit.

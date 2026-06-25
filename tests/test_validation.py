@@ -433,7 +433,7 @@ def test_shipped_fishing_nodes_use_generic_spot_names() -> None:
     assert {node["display_name"] for node in fishing_nodes} == {"Fishing spot"}
 
 
-def test_shipped_trail_supplies_quest_links_to_original_npc() -> None:
+def test_shipped_side_quests_link_to_original_npcs() -> None:
     items = _load_data("items.json")
     skills = _load_data("skills.json")
     recipes = _load_data("recipes.json")
@@ -454,6 +454,9 @@ def test_shipped_trail_supplies_quest_links_to_original_npc() -> None:
     assert "road_watch" in quest_ids
     assert npcs_by_id["gate_scout_01"]["name"] == "Gate Scout"
     assert npcs_by_id["gate_scout_01"]["quest_id"] == "road_watch"
+    assert "forge_reserve" in quest_ids
+    assert npcs_by_id["forge_keeper_01"]["name"] == "Forge Keeper"
+    assert npcs_by_id["forge_keeper_01"]["quest_id"] == "forge_reserve"
 
 
 def _items() -> dict[str, dict[str, object]]:

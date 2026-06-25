@@ -48,11 +48,22 @@ Important repo areas:
 * Data: `game/data/items.json`, `skills.json`, `world.json`, `recipes.json`, `quests.json`
 * Validation: `game/engine/validation.py`, `game/tools/validate_data.py`
 * Save/account/auth: `game/engine/save.py`, `game/engine/auth.py`, `game/settings.py`
+* Runtime entry point: `game/main.py`
+* Launcher entry point: `launcher/hearthvale_launcher.py`
 * User data boundaries: `users.db`, `saves/<username>.json`, legacy `savegame.json`
 * Launcher/build docs: `launcher/`, `Hearthvale.spec`, `build/`, `dist/`, `README.md`
 * Planning/docs: `AGENTS.md`, `docs/`, `GRAPHICS_ANIMATION_NOTE.md`
 * Audit workflow drift: `reports\audit\AUDIT_CURRENT.md`, `reports\audit\AUDIT_REPORT_LATEST.md`, `reports\audit\NEXT_REMEDIATION_PROMPT.md`
 * Tests: `tests/`
+
+## Repo-Specific Risk Themes
+
+* `launcher\hearthvale_launcher.py` resolves the project root, logs launcher output, and starts `python -m game.main`; audit launcher changes against the actual file, not just the README.
+* `game\ui\hud.py` now exposes compact-tabs, audio toggle, and ambient-volume controls; do not report the settings UI as missing without checking the current HUD.
+* `game\engine\save.py` still carries legacy `runite`/`rune` migration aliases; treat those as compatibility evidence unless they appear in new player-facing content.
+* `game\world\visuals.py` is procedural-first with optional asset hooks; separate placeholder geometry from authored assets and check README/license guidance drift.
+* `game\engine\validation.py` enforces protected-term checks; still search player-facing content, docs, tests, and recommendations for drift.
+* `game\world\time.py` advances and persists day/minute; if time or routine behavior is relevant, verify the live gameplay path and save compatibility instead of inferring from comments or old reports.
 
 Protected/generated areas:
 
@@ -93,7 +104,7 @@ Read targeted files only:
 Search implementation and risk signals:
 
 ```powershell
-rg -n "TODO|FIXME|pass|NotImplemented|stub|animation|sprite|tileset|palette|style|icon|license|audio|music|sound|sfx|volume|mute|settings|save|schema|migration|inventory|equipment|bank|shop|combat|skill|XP|level|quest|dialogue|npc|trade|market|economy|auth|account|launcher|build" AGENTS.md README.md requirements.txt docs launcher game tests -g "!*.pyc" -g "!__pycache__/**"
+rg -n "TODO|FIXME|pass|NotImplemented|stub|animation|sprite|tileset|palette|style|icon|license|audio|music|sound|sfx|volume|mute|settings|time|day|night|routine|save|schema|migration|inventory|equipment|bank|shop|combat|skill|XP|level|quest|dialogue|npc|trade|market|economy|auth|account|launcher|build" AGENTS.md README.md requirements.txt docs launcher game tests -g "!*.pyc" -g "!__pycache__/**"
 ```
 
 Search protected-content drift terms from `AGENTS.md`:
@@ -103,6 +114,8 @@ rg -n "RuneScape|OSRS|Stardew|runite|\brune\b" AGENTS.md README.md docs launcher
 ```
 
 Report hits as concise evidence. Distinguish allowed policy text, legacy compatibility/migration coverage, and unsafe gameplay/content drift.
+Treat `runite` and `rune` hits in save migration code or tests as legacy compatibility unless they appear in new player-facing content, docs, or recommendations.
+Treat `pass` hits in test doubles, helper fallbacks, or defensive `except` blocks as non-stub evidence unless they are in production code that should be doing work.
 
 ## Safe Checks
 
